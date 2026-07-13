@@ -1,0 +1,21 @@
+{
+  "name": "siteforge-phase0",
+  "version": "0.1.0",
+  "description": "Phase 0 - Feasibility Spike for SiteForge AI",
+  "type": "module",
+  "scripts": {
+    "parse": "tsx parse-elementor.ts",
+    "modify": "tsx modify-elementor.ts",
+    "test-ai": "tsx test-ai-replacement.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^0.14.0",
+    "adm-zip": "^0.5.10",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.5",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
