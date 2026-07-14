@@ -48,6 +48,7 @@ model Project {
   description  String?
   logo         String?       // Supabase Storage URL
   status       ProjectStatus @default(DRAFT)
+  templateId  String?      // Selected template for this project
   stylePreset  String?       // modern, luxury, minimal, corporate, creative, friendly
   brandColors  Json?         // { primary: "#...", secondary: "#...", accent: "#..." }
   

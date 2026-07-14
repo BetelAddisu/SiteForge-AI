@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/lib/auth/context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { 
   FileStack, 
   FolderOpen, 
@@ -13,9 +14,9 @@ import {
   Clock,
   Plus,
   AlertCircle,
-  CheckCircle2
+  LogIn,
+  UserPlus
 } from 'lucide-react';
-import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 interface DashboardStats {
@@ -32,6 +33,7 @@ interface Project {
 }
 
 export default function DashboardPage() {
+  const { user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({ templates: 0, projects: 0, deployments: 0 });
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,42 +45,140 @@ export default function DashboardPage() {
         const templatesRes = await fetch('/api/templates');
         const templatesData = await templatesRes.json();
         
-        // Fetch projects count
-        const projectsRes = await fetch('/api/projects');
-        const projectsData = await projectsRes.json();
-        
-        setStats({
-          templates: templatesData.templates?.length || 0,
-          projects: projectsData.projects?.length || 0,
-          deployments: projectsData.projects?.filter((p: Project) => p.status === 'published').length || 0,
-        });
-        
-        setProjects(projectsData.projects?.slice(0, 5) || []);
+        // Fetch projects only if authenticated
+        if (user) {
+          const projectsRes = await fetch('/api/projects');
+          const projectsData = await projectsRes.json();
+          
+          setStats({
+            templates: templatesData.templates?.length || 0,
+            projects: projectsData.projects?.length || 0,
+            deployments: projectsData.projects?.filter((p: Project) => p.status === 'PUBLISHED').length || 0,
+          });
+          
+          setProjects(projectsData.projects?.slice(0, 5) || []);
+        } else {
+          setStats({
+            templates: templatesData.templates?.length || 0,
+            projects: 0,
+            deployments: 0,
+          });
+          setProjects([]);
+        }
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       } finally {
         setLoading(false);
       }
     }
-    loadData();
-  }, []);
+    
+    if (!authLoading) {
+      loadData();
+    }
+  }, [user, authLoading]);
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'secondary' | 'default' | 'destructive' | 'success'> = {
-      draft: 'secondary',
-      generating: 'default',
-      preview: 'default',
-      published: 'success',
-      failed: 'destructive',
+      DRAFT: 'secondary',
+      GENERATING: 'default',
+      PREVIEW: 'default',
+      PUBLISHED: 'success',
+      FAILED: 'destructive',
     };
     return <Badge variant={variants[status] || 'secondary'}>{status}</Badge>;
   };
+
+  // Show login prompt if not authenticated
+  if (!authLoading && !user) {
+    return (
+      <div className="space-y-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold tracking-tight">Welcome to SiteForge AI</h1>
+          <p className="mt-2 text-muted-foreground">
+            AI-powered WordPress website generation with Elementor
+          </p>
+        </div>
+
+        <Card className="max-w-md mx-auto">
+          <CardHeader>
+            <CardTitle>Get Started</CardTitle>
+            <CardDescription>
+              Sign in to create and manage your WordPress website projects
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3">
+              <Button asChild className="w-full">
+                <Link href="/login">
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Sign In
+                </Link>
+              </Button>
+              <Button variant="outline" asChild className="w-full">
+                <Link href="/signup">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Create Account
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Features Overview */}
+        <div className="grid gap-6 md:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileStack className="h-5 w-5 text-primary" />
+                700+ Templates
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Access a library of Elementor templates for every industry and style.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wand2 className="h-5 w-5 text-primary" />
+                AI-Powered
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Generate professional content tailored to your business using AI.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5 text-primary" />
+                WordPress Ready
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Publish directly to WordPress with Elementor. Fully editable after.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {user ? `Welcome back, ${user.name || 'User'}` : 'Dashboard'}
+        </h1>
         <p className="text-muted-foreground">
           Manage your WordPress website projects
         </p>
@@ -221,9 +321,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <div className={cn(
-                'flex flex-col items-center text-center rounded-lg border p-4',
-              )}>
+              <div className="flex flex-col items-center text-center rounded-lg border p-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                   <span className="text-lg font-bold">1</span>
                 </div>
@@ -238,7 +336,7 @@ export default function DashboardPage() {
                 </div>
                 <h4 className="mt-3 font-semibold">Select Template</h4>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Choose from 700+ Elementor templates
+                  Choose from Elementor templates
                 </p>
               </div>
               <div className="flex flex-col items-center text-center rounded-lg border p-4">
@@ -267,7 +365,7 @@ export default function DashboardPage() {
                 <div className="text-sm text-blue-800">
                   <strong>Note:</strong> Before publishing, connect your WordPress site in{' '}
                   <Link href="/settings" className="font-medium underline">Settings</Link>.
-                  You'll need Elementor installed and an Application Password.
+                  You&apos;ll need Elementor installed and an Application Password.
                 </div>
               </div>
             </div>

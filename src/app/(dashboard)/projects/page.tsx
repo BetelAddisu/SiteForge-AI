@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth/context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ExternalLink, MoreVertical, Trash2, Edit, Eye } from 'lucide-react';
+import { Plus, ExternalLink, MoreVertical, Trash2, Edit, Eye, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Project {
@@ -17,43 +19,97 @@ interface Project {
   wordpressUrl?: string;
 }
 
-// Fetch projects from API
-async function getProjects(): Promise<Project[]> {
-  try {
-    const response = await fetch('/api/projects');
-    if (response.ok) {
-      const data = await response.json();
-      return data.projects || [];
-    }
-  } catch (err) {
-    console.error('Failed to fetch projects:', err);
-  }
-  return [];
-}
-
 export default function ProjectsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    async function load() {
-      const data = await getProjects();
-      setProjects(data);
-      setLoading(false);
+    if (!authLoading && !user) {
+      router.push('/login');
+      return;
     }
-    load();
-  }, []);
+
+    async function loadProjects() {
+      if (!user) return;
+      
+      try {
+        const response = await fetch('/api/projects');
+        if (response.ok) {
+          const data = await response.json();
+          setProjects(data.projects || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch projects:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    if (user) {
+      loadProjects();
+    }
+  }, [user, authLoading, router]);
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'secondary' | 'default' | 'destructive' | 'success'> = {
-      draft: 'secondary',
-      generating: 'default',
-      preview: 'default',
-      published: 'success',
-      failed: 'destructive',
+      DRAFT: 'secondary',
+      GENERATING: 'default',
+      PREVIEW: 'default',
+      PUBLISHED: 'success',
+      FAILED: 'destructive',
     };
     return <Badge variant={variants[status] || 'secondary'}>{status}</Badge>;
   };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this project?')) return;
+    
+    setDeletingId(id);
+    try {
+      const response = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setProjects(projects.filter(p => p.id !== id));
+      }
+    } catch (err) {
+      console.error('Failed to delete project:', err);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>Sign In Required</CardTitle>
+            <CardDescription>
+              Please sign in to view your projects
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full">
+              <Link href="/login">
+                <LogIn className="mr-2 h-4 w-4" />
+                Sign In
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -104,7 +160,7 @@ export default function ProjectsPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-lg">{project.businessName}</CardTitle>
-                    <CardDescription className="capitalize">{project.industry}</CardDescription>
+                    <CardDescription className="capitalize">{project.industry || 'No industry'}</CardDescription>
                   </div>
                   {getStatusBadge(project.status)}
                 </div>
@@ -120,7 +176,7 @@ export default function ProjectsPage() {
                       View
                     </Link>
                   </Button>
-                  {project.wordpressUrl && (
+                  {project.status === 'PUBLISHED' && project.wordpressUrl && (
                     <Button variant="outline" size="sm" asChild>
                       <a href={project.wordpressUrl} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="mr-2 h-4 w-4" />
@@ -128,6 +184,14 @@ export default function ProjectsPage() {
                       </a>
                     </Button>
                   )}
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => handleDelete(project.id)}
+                    disabled={deletingId === project.id}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
