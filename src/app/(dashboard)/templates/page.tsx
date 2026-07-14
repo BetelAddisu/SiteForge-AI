@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -171,11 +173,12 @@ function CompatibilityBadge({ score }: { score: number }) {
 
 function TemplateCard({ template, view }: { template: Template; view: 'grid' | 'list' }) {
   const [isFavorite, setIsFavorite] = useState(template.isFavorite);
+  const router = useRouter();
 
   if (view === 'list') {
     return (
       <Card className="flex overflow-hidden">
-        <div className="w-64 flex-shrink-0">
+        <div className="w-64 flex-shrink-0 cursor-pointer" onClick={() => router.push(`/templates/${template.id}`)}>
           <img
             src={template.previewImage || '/placeholder.png'}
             alt={template.name}
@@ -185,8 +188,8 @@ function TemplateCard({ template, view }: { template: Template; view: 'grid' | '
         <div className="flex flex-1 flex-col">
           <CardHeader>
             <div className="flex items-start justify-between">
-              <div>
-                <CardTitle className="text-lg">{template.name}</CardTitle>
+              <div className="cursor-pointer" onClick={() => router.push(`/templates/${template.id}`)}>
+                <CardTitle className="text-lg hover:underline">{template.name}</CardTitle>
                 <CardDescription className="mt-1">
                   {template.industry && <span className="capitalize">{template.industry}</span>}
                   {template.style && <span> • <span className="capitalize">{template.style}</span></span>}
@@ -216,13 +219,17 @@ function TemplateCard({ template, view }: { template: Template; view: 'grid' | '
             </div>
           </CardContent>
           <CardFooter className="gap-2">
-            <Button variant="outline" size="sm">
-              <Eye className="mr-2 h-4 w-4" />
-              Preview
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/templates/${template.id}`}>
+                <Eye className="mr-2 h-4 w-4" />
+                Preview
+              </Link>
             </Button>
-            <Button size="sm">
-              <Copy className="mr-2 h-4 w-4" />
-              Use Template
+            <Button size="sm" asChild>
+              <Link href={`/projects/new?template=${template.id}`}>
+                <Copy className="mr-2 h-4 w-4" />
+                Use Template
+              </Link>
             </Button>
           </CardFooter>
         </div>
@@ -236,14 +243,18 @@ function TemplateCard({ template, view }: { template: Template; view: 'grid' | '
         <img
           src={template.previewImage || '/placeholder.png'}
           alt={template.name}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover cursor-pointer"
+          onClick={() => router.push(`/templates/${template.id}`)}
         />
         <div className="absolute right-2 top-2">
           <Button
             variant="secondary"
             size="icon"
             className="h-8 w-8 bg-white/90 hover:bg-white"
-            onClick={() => setIsFavorite(!isFavorite)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsFavorite(!isFavorite);
+            }}
           >
             <Heart className={cn('h-4 w-4', isFavorite && 'fill-red-500 text-red-500')} />
           </Button>
@@ -255,7 +266,12 @@ function TemplateCard({ template, view }: { template: Template; view: 'grid' | '
         )}
       </div>
       <CardHeader className="p-4">
-        <CardTitle className="text-base">{template.name}</CardTitle>
+        <CardTitle 
+          className="cursor-pointer text-base hover:underline"
+          onClick={() => router.push(`/templates/${template.id}`)}
+        >
+          {template.name}
+        </CardTitle>
         <CardDescription className="text-xs">
           {template.category} {template.industry && `• ${template.industry}`}
         </CardDescription>
@@ -270,12 +286,16 @@ function TemplateCard({ template, view }: { template: Template; view: 'grid' | '
         </div>
       </CardContent>
       <CardFooter className="gap-2 p-4 pt-0">
-        <Button variant="outline" size="sm" className="flex-1">
-          <Eye className="mr-2 h-4 w-4" />
-          Preview
+        <Button variant="outline" size="sm" className="flex-1" asChild>
+          <Link href={`/templates/${template.id}`}>
+            <Eye className="mr-2 h-4 w-4" />
+            Preview
+          </Link>
         </Button>
-        <Button size="sm" className="flex-1">
-          Use
+        <Button size="sm" className="flex-1" asChild>
+          <Link href={`/projects/new?template=${template.id}`}>
+            Use
+          </Link>
         </Button>
       </CardFooter>
     </Card>
