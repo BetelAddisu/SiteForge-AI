@@ -1,0 +1,357 @@
+// =============================================================================
+// SiteForge AI - Prisma Schema
+// =============================================================================
+// 
+// IMPORTANT: Auth separation
+// - Supabase Auth manages auth.users - Prisma NEVER touches that schema
+// - The User model stores only app-level data with supabaseId as FK
+// - This prevents broken migrations when Prisma manages Supabase internal tables
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// =============================================================================
+// USER & AUTH
+// =============================================================================
+
+model User {
+  id         String    @id @default(cuid())
+  supabaseId String    @unique // FK to auth.users.id - never synced by Prisma
+  email      String    @unique
+  name       String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  
+  // Relations
+  projects   Project[]
+  
+  @@index([supabaseId])
+  @@index([email])
+}
+
+// =============================================================================
+// PROJECT
+// =============================================================================
+
+model Project {
+  id           String        @id @default(cuid())
+  userId       String
+  businessName String
+  industry     String?
+  description  String?
+  logo         String?       // Supabase Storage URL
+  status       ProjectStatus @default(DRAFT)
+  stylePreset  String?       // modern, luxury, minimal, corporate, creative, friendly
+  brandColors  Json?         // { primary: "#...", secondary: "#...", accent: "#..." }
+  
+  // Brand tokens (extracted/applied)
+  brandTokens  Json?         // Full brand token set from Phase 9
+  
+  // Business info
+  businessInfo Json?         // Extracted or entered business information
+  
+  // Generation checkpoint
+  checkpoint   String?       // Last completed step (for pipeline resume)
+  
+  // Preview
+  previewImage String?       // Supabase Storage URL
+  
+  // Timestamps
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  // Relations
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assets       Asset[]
+  aiJobs       AIJob[]
+  deployments  Deployment[]
+  
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum ProjectStatus {
+  DRAFT
+  GENERATING
+  PREVIEW
+  PUBLISHED
+  FAILED
+}
+
+// =============================================================================
+// TEMPLATE
+// =============================================================================
+
+model Template {
+  id                  String       @id @default(cuid())
+  name                String
+  category            String       // hero, about, services, pricing, team, testimonial, footer
+  industry            String?      // technology, restaurant, medical, real-estate, etc.
+  style               String?      // modern, minimal, corporate, etc.
+  
+  // Storage
+  filePath            String       // Original ZIP path in Supabase Storage
+  extractedPath       String?      // Per-template extracted folder path
+  
+  // Preview
+  previewImage        String?      // Lazy-generated preview URL
+  
+  // Metadata
+  metadata            Json?        // Color palette, typography, section count, tags
+  tags                String[]     // Searchable tags
+  
+  // Global styles (extracted in Phase 3A)
+  globalStyles        Json?        // { colors: {...}, typography: {...}, spacing: {...} }
+  
+  // Import status
+  importStatus        ImportStatus @default(PENDING)
+  importError         String?
+  
+  // Compatibility (set by Phase 3B)
+  compatibilityScore  Int?         // 0-100
+  compatibilityNotes  Json?        // { greenWidgets: [...], yellowWidgets: [...], redWidgets: [...] }
+  
+  // Timestamps
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  
+  // Relations
+  sections            TemplateSection[]
+  versions            TemplateVersion[]
+  processingJobs      ProcessingJob[]
+  
+  @@index([category])
+  @@index([industry])
+  @@index([compatibilityScore])
+  @@index([importStatus])
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETE
+  FAILED
+  SKIPPED
+}
+
+// =============================================================================
+// TEMPLATE SECTION
+// =============================================================================
+
+model TemplateSection {
+  id          String   @id @default(cuid())
+  templateId  String
+  type        String   // hero, about, services, pricing, team, testimonial, FAQ, contact, footer
+  title       String?  // Section title for identification
+  content     Json     // Extracted widget content
+  metadata    Json?    // Additional section metadata
+  
+  // Relations
+  template    Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  @@index([templateId])
+  @@index([type])
+}
+
+// =============================================================================
+// TEMPLATE VERSION (Snapshots)
+// =============================================================================
+
+model TemplateVersion {
+  id         String   @id @default(cuid())
+  templateId String
+  version    Int
+  reason     String   // repair, ai-modification, manual, import
+  snapshot   Json     // Full _elementor_data at this version
+  metadata   Json?    // Additional version info
+  
+  createdAt  DateTime @default(now())
+  
+  // Relations
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  @@unique([templateId, version])
+  @@index([templateId])
+}
+
+// =============================================================================
+// ASSET
+// =============================================================================
+
+model Asset {
+  id         String    @id @default(cuid())
+  projectId  String
+  type       AssetType
+  url        String    // Supabase Storage URL
+  filename   String?   // Original filename
+  mimeType   String?
+  size       Int?     // File size in bytes
+  metadata   Json?    // Additional metadata (alt text, dimensions, etc.)
+  
+  createdAt  DateTime  @default(now())
+  
+  // Relations
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@index([projectId])
+  @@index([type])
+}
+
+enum AssetType {
+  LOGO
+  IMAGE
+  GENERATED_IMAGE
+  PREVIEW
+  DOCUMENT
+}
+
+// =============================================================================
+// AI JOB
+// =============================================================================
+
+model AIJob {
+  id         String    @id @default(cuid())
+  projectId  String?
+  type       String    // generateHomepage, generateAbout, generateServices, etc.
+  status     JobStatus @default(PENDING)
+  
+  // Input/Output
+  input      Json?     // Job input parameters
+  output     Json?     // Job output (checkpoint data)
+  error      String?   // Error message if failed
+  
+  // Timestamps
+  createdAt  DateTime  @default(now())
+  startedAt  DateTime?
+  completedAt DateTime?
+  
+  // Relations
+  project    Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  usageLogs  AIUsage[]
+  
+  @@index([projectId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETE
+  FAILED
+}
+
+// =============================================================================
+// AI USAGE (Cost Tracking)
+// =============================================================================
+
+model AIUsage {
+  id           String   @id @default(cuid())
+  aiJobId      String
+  provider     String   // "gemini" | "openai" | "anthropic"
+  model        String   // "gemini-2.0-flash", "claude-sonnet-4-5", etc.
+  inputTokens  Int
+  outputTokens Int
+  costUsd      Float    // Computed from token counts + model pricing
+  latencyMs    Int?     // Request latency
+  
+  createdAt    DateTime @default(now())
+  
+  // Relations
+  aiJob        AIJob    @relation(fields: [aiJobId], references: [id], onDelete: Cascade)
+  
+  @@index([aiJobId])
+  @@index([createdAt])
+  @@index([provider])
+}
+
+// =============================================================================
+// PROCESSING JOB (Template Import/Repair)
+// =============================================================================
+
+model ProcessingJob {
+  id          String     @id @default(cuid())
+  templateId  String?
+  stage       String     // extract, analyze, repair, preview
+  status      JobStatus  @default(PENDING)
+  progress    Int?       // 0-100 percentage
+  error       String?
+  
+  createdAt   DateTime   @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  
+  // Relations
+  template    Template?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  
+  @@index([templateId])
+  @@index([stage])
+  @@index([status])
+}
+
+// =============================================================================
+// DEPLOYMENT (WordPress Publish)
+// =============================================================================
+
+model Deployment {
+  id          String    @id @default(cuid())
+  projectId   String
+  wordpressUrl String   // Published site URL
+  pageId      String?   // WordPress page ID
+  status      JobStatus @default(PENDING)
+  logs        Json?     // Deployment logs
+  error       String?
+  
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  
+  // Relations
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@index([projectId])
+  @@index([status])
+}
+
+// =============================================================================
+// WORDPRESS CONNECTION (Stored Credentials)
+// =============================================================================
+
+model WordPressConnection {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  siteUrl     String
+  username    String   // Application Password username
+  appPassword String   // Encrypted application password
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+// =============================================================================
+// PROMPT TEMPLATE (Deferred - MVP uses code-based prompts)
+// =============================================================================
+// NOTE: PromptTemplate table is deferred post-MVP.
+// For MVP, prompts live in code and use git for version history.
+// This model is a placeholder for future implementation.
+
+// model PromptTemplate {
+//   id        String   @id @default(cuid())
+//   name      String   @unique
+//   type      String   // homepage, about, services, etc.
+//   template  String   // The prompt template
+//   version   Int      @default(1)
+//   
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+// }
