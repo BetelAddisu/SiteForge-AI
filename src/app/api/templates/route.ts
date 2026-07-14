@@ -1,33 +1,41 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { prisma } from '@/lib/prisma';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-export async function GET() {
-  if (!supabaseUrl || !supabaseKey) {
-    return NextResponse.json(
-      { error: 'Supabase not configured' },
-      { status: 500 }
-    );
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseKey);
-
+export async function GET(request: Request) {
   try {
-    const { data, error } = await supabase
-      .from('Template')
-      .select('*')
-      .order('createdAt', { ascending: false });
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get('category');
+    const industry = searchParams.get('industry');
+    const search = searchParams.get('search');
 
-    if (error) throw error;
+    const where: Record<string, unknown> = {
+      importStatus: 'COMPLETE', // Only show fully imported templates
+    };
 
-    return NextResponse.json({ templates: data || [] });
-  } catch (err) {
-    console.error('Error:', err);
-    return NextResponse.json(
-      { error: 'Failed to fetch templates' },
-      { status: 500 }
-    );
+    if (category) {
+      where.category = category;
+    }
+
+    if (industry) {
+      where.industry = industry;
+    }
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { tags: { has: search } },
+      ];
+    }
+
+    const templates = await prisma.template.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 50, // Limit to 50 templates for performance
+    });
+
+    return NextResponse.json({ templates });
+  } catch (error) {
+    console.error('Error fetching templates:', error);
+    return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 });
   }
 }

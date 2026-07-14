@@ -5,19 +5,14 @@ import { Topbar } from './topbar';
 
 interface ShellProps {
   children: React.ReactNode;
-  user?: {
-    name: string;
-    email: string;
-    avatar?: string;
-  };
 }
 
-export function Shell({ children, user }: ShellProps) {
+export function Shell({ children }: ShellProps) {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar user={user} />
+        <Topbar />
         <main className="flex-1 overflow-y-auto bg-background p-6">
           {children}
         </main>
