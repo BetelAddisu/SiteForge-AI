@@ -589,11 +589,76 @@ export default function NewProjectPage() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Redirect to projects page
-    router.push('/projects');
+    try {
+      // Generate and download website
+      const response = await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: formData.businessName,
+          industry: formData.industry,
+          description: formData.description,
+          tagline: `Professional ${formData.industry} services`,
+          sections: [
+            {
+              type: 'hero',
+              title: `Welcome to ${formData.businessName}`,
+              subtitle: formData.description,
+            },
+            {
+              type: 'services',
+              title: 'Our Services',
+              items: formData.services.map(s => ({ title: s, description: `Professional ${s.toLowerCase()} services` })),
+            },
+            {
+              type: 'about',
+              title: 'About Us',
+              content: formData.description,
+            },
+            {
+              type: 'contact',
+              title: 'Contact Us',
+            },
+          ],
+          brandColors: {
+            primary: formData.primaryColor || '#3B82F6',
+            secondary: formData.secondaryColor || '#1E40AF',
+            accent: '#F59E0B',
+          },
+          contact: {
+            email: formData.email,
+            phone: formData.phone,
+            address: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        // Download the file
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${formData.businessName.toLowerCase().replace(/\s+/g, '-')}-website.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        // Show success message
+        alert(`Website exported successfully! Upload the HTML file to any hosting provider.`);
+        
+        // Redirect to projects page
+        router.push('/projects');
+      } else {
+        throw new Error('Export failed');
+      }
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Failed to generate website. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStep = () => {
