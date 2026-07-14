@@ -28,7 +28,6 @@ git clone https://github.com/your-org/siteforge-ai.git
 cd siteforge-ai
 
 # Install dependencies
-cd siteforge-ai
 npm install
 
 # Copy environment variables
@@ -52,22 +51,37 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 ```
 siteforge-ai/
-├── prisma/           # Database schema
-├── scripts/          # Build and import scripts
+├── prisma/                    # Database schema
+├── scripts/                   # CLI scripts
+│   ├── bulk-import.ts        # Template bulk import
+│   └── phase0/               # Feasibility spike scripts
 ├── src/
-│   ├── app/          # Next.js app router pages
-│   │   ├── (auth)/  # Auth pages (login, register)
-│   │   └── (dashboard)/ # Dashboard pages
-│   ├── components/   # Reusable UI components
-│   │   ├── ui/      # shadcn/ui primitives
-│   │   └── layout/  # Layout components
-│   ├── features/     # Feature modules
-│   └── lib/          # Core libraries
-│       ├── elementor/ # Elementor parsing/modification
-│       ├── database/ # Supabase client
-│       └── prisma/   # Prisma client
-└── scripts/          # CLI scripts
-    └── bulk-import.ts # Template bulk import
+│   ├── app/                  # Next.js app router pages
+│   │   ├── (dashboard)/     # Dashboard pages
+│   │   │   ├── admin/       # Admin dashboard
+│   │   │   ├── dashboard/   # Main dashboard
+│   │   │   ├── projects/    # Project pages
+│   │   │   └── templates/   # Template library
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   └── providers.tsx
+│   ├── components/
+│   │   ├── ui/              # shadcn/ui primitives
+│   │   └── layout/           # Layout components
+│   └── lib/                  # Core libraries
+│       ├── elementor/        # Elementor parsing/modification
+│       ├── generator/        # Generation pipeline
+│       ├── media/            # Media processing
+│       ├── preview/          # Preview system
+│       ├── wordpress/        # WordPress connector
+│       └── business-miner/   # Business info mining
+├── .env.example
+├── .gitignore
+├── docker-compose.yml
+├── next.config.js
+├── package.json
+├── tailwind.config.ts
+└── tsconfig.json
 ```
 
 ## Features
