@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Filter, FileStack, Eye, ChevronRight } from 'lucide-react';
+import { Search, Filter, FileStack, Eye, ChevronRight, RefreshCw, Download, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Template {
@@ -15,8 +15,10 @@ interface Template {
   name: string;
   category: string;
   industry: string | null;
+  kitName?: string;
   style: string | null;
   previewImage: string | null;
+  screenshotUrl?: string | null;
   tags: string[];
   metadata: Record<string, unknown> | null;
 }
@@ -30,6 +32,7 @@ const CATEGORIES = [
   { value: 'testimonial', label: 'Testimonials' },
   { value: 'contact', label: 'Contact' },
   { value: 'footer', label: 'Footer' },
+  { value: 'section', label: 'Sections' },
 ];
 
 const INDUSTRIES = [
@@ -53,17 +56,17 @@ export default function TemplatesPage() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  useEffect(() => {
-    loadTemplates();
-  }, []);
-
-  const loadTemplates = async () => {
+  const loadTemplates = async (forceRefresh = false) => {
     try {
+      setLoading(true);
       const params = new URLSearchParams();
       if (selectedCategory) params.set('category', selectedCategory);
       if (selectedIndustry) params.set('industry', selectedIndustry);
       if (search) params.set('search', search);
+      if (forceRefresh) params.set('refresh', 'true');
       
       const response = await fetch(`/api/templates?${params}`);
       if (response.ok) {
@@ -77,9 +80,49 @@ export default function TemplatesPage() {
     }
   };
 
+  const handleImport = async () => {
+    try {
+      setImporting(true);
+      setImportResult(null);
+      
+      const response = await fetch('/api/templates/import', { method: 'POST' });
+      const data = await response.json();
+      
+      if (response.ok) {
+        setImportResult({
+          success: true,
+          message: `Imported ${data.results?.templatesImported || 0} templates!`,
+        });
+        // Refresh templates list
+        await loadTemplates(true);
+      } else {
+        setImportResult({
+          success: false,
+          message: data.error || 'Import failed',
+        });
+      }
+    } catch (err) {
+      setImportResult({
+        success: false,
+        message: 'Failed to connect to server',
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   useEffect(() => {
     loadTemplates();
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadTemplates();
+    }, 300);
+    return () => clearTimeout(timer);
   }, [selectedCategory, selectedIndustry, search]);
+
+  const showEmptyState = !loading && templates.length === 0 && !search && !selectedCategory && !selectedIndustry;
 
   return (
     <div className="space-y-6">
@@ -91,7 +134,39 @@ export default function TemplatesPage() {
             {templates.length} Elementor templates ready for your projects
           </p>
         </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => loadTemplates(true)} disabled={loading}>
+            <RefreshCw className={cn('mr-2 h-4 w-4', loading && 'animate-spin')} />
+            Refresh
+          </Button>
+          {showEmptyState && (
+            <Button onClick={handleImport} disabled={importing}>
+              {importing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Import Templates
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Import Result */}
+      {importResult && (
+        <Card className={importResult.success ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}>
+          <CardContent className="py-3">
+            <p className={importResult.success ? 'text-green-700' : 'text-red-700'}>
+              {importResult.message}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Search and Filters */}
       <div className="flex flex-col gap-4 md:flex-row">
@@ -143,8 +218,23 @@ export default function TemplatesPage() {
             <p className="mt-2 text-center text-sm text-muted-foreground">
               {search || selectedCategory || selectedIndustry
                 ? 'Try adjusting your search or filters.'
-                : 'Templates will appear here once they are imported into the system.'}
+                : 'Click "Import Templates" to load templates from Supabase storage.'}
             </p>
+            {!search && !selectedCategory && !selectedIndustry && (
+              <Button className="mt-4" onClick={handleImport} disabled={importing}>
+                {importing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Importing from Supabase...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Import Templates
+                  </>
+                )}
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -152,11 +242,14 @@ export default function TemplatesPage() {
           {templates.map((template) => (
             <Card key={template.id} className="overflow-hidden">
               <div className="aspect-video bg-muted">
-                {template.previewImage ? (
+                {template.previewImage || template.screenshotUrl ? (
                   <img
-                    src={template.previewImage}
+                    src={template.previewImage || template.screenshotUrl || ''}
                     alt={template.name}
                     className="h-full w-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center">
@@ -169,7 +262,7 @@ export default function TemplatesPage() {
                   <div>
                     <CardTitle className="text-lg">{template.name}</CardTitle>
                     <CardDescription className="capitalize">
-                      {template.industry || 'General'}
+                      {template.industry || template.kitName || 'General'}
                     </CardDescription>
                   </div>
                 </div>
