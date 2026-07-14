@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,106 +9,124 @@ import {
   FileStack, 
   FolderOpen, 
   Wand2, 
-  TrendingUp,
-  Zap,
   Globe,
-  Clock
+  Clock,
+  Plus,
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
-const stats = [
-  {
-    title: 'Templates',
-    value: '342',
-    description: 'Total templates in library',
-    icon: FileStack,
-    trend: '+12 this week',
-  },
-  {
-    title: 'Projects',
-    value: '28',
-    description: 'Active projects',
-    icon: FolderOpen,
-    trend: '5 in progress',
-  },
-  {
-    title: 'AI Generations',
-    value: '156',
-    description: 'This month',
-    icon: Wand2,
-    trend: '+23% from last month',
-  },
-  {
-    title: 'Deployments',
-    value: '12',
-    description: 'Live websites',
-    icon: Globe,
-    trend: 'All healthy',
-  },
-];
+interface DashboardStats {
+  templates: number;
+  projects: number;
+  deployments: number;
+}
 
-const recentProjects = [
-  {
-    id: '1',
-    name: 'Acme Corp Website',
-    status: 'generating',
-    progress: 65,
-    lastActivity: '2 hours ago',
-  },
-  {
-    id: '2',
-    name: 'TechStart Landing Page',
-    status: 'preview',
-    progress: 100,
-    lastActivity: '5 hours ago',
-  },
-  {
-    id: '3',
-    name: 'Green Valley Landscaping',
-    status: 'draft',
-    progress: 25,
-    lastActivity: '1 day ago',
-  },
-];
-
-const aiUsageToday = [
-  { label: 'Content Generation', usage: 45000, limit: 100000, unit: 'tokens' },
-  { label: 'Template Matching', usage: 12000, limit: 50000, unit: 'calls' },
-  { label: 'Image Alt Text', usage: 8500, limit: 20000, unit: 'images' },
-];
+interface Project {
+  id: string;
+  businessName: string;
+  status: string;
+  createdAt: string;
+}
 
 export default function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats>({ templates: 0, projects: 0, deployments: 0 });
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        // Fetch templates count
+        const templatesRes = await fetch('/api/templates');
+        const templatesData = await templatesRes.json();
+        
+        // Fetch projects count
+        const projectsRes = await fetch('/api/projects');
+        const projectsData = await projectsRes.json();
+        
+        setStats({
+          templates: templatesData.templates?.length || 0,
+          projects: projectsData.projects?.length || 0,
+          deployments: projectsData.projects?.filter((p: Project) => p.status === 'published').length || 0,
+        });
+        
+        setProjects(projectsData.projects?.slice(0, 5) || []);
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, 'secondary' | 'default' | 'destructive' | 'success'> = {
+      draft: 'secondary',
+      generating: 'default',
+      preview: 'default',
+      published: 'success',
+      failed: 'destructive',
+    };
+    return <Badge variant={variants[status] || 'secondary'}>{status}</Badge>;
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
-          Welcome back! Here&apos;s what&apos;s happening with your projects.
+          Manage your WordPress website projects
         </p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <stat.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">{stat.description}</p>
-              <div className="mt-2 flex items-center gap-1 text-xs text-green-600">
-                <TrendingUp className="h-3 w-3" />
-                {stat.trend}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Templates</CardTitle>
+            <FileStack className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{loading ? '...' : stats.templates}</div>
+            <p className="text-xs text-muted-foreground">
+              Elementor templates in library
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Projects</CardTitle>
+            <FolderOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{loading ? '...' : stats.projects}</div>
+            <p className="text-xs text-muted-foreground">
+              Website projects created
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Deployments</CardTitle>
+            <Globe className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{loading ? '...' : stats.deployments}</div>
+            <p className="text-xs text-muted-foreground">
+              Published to WordPress
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Main Content Grid */}
+      {/* Main Content */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Recent Projects */}
         <Card>
@@ -120,66 +141,45 @@ export default function DashboardPage() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {recentProjects.map((project) => (
-              <div
-                key={project.id}
-                className="flex items-center justify-between rounded-lg border p-4"
-              >
-                <div className="space-y-1">
-                  <p className="font-medium">{project.name}</p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    {project.lastActivity}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge
-                    variant={
-                      project.status === 'preview'
-                        ? 'success'
-                        : project.status === 'generating'
-                        ? 'warning'
-                        : 'secondary'
-                    }
+          <CardContent>
+            {loading ? (
+              <div className="flex h-32 items-center justify-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <FolderOpen className="h-12 w-12 text-muted-foreground" />
+                <p className="mt-4 text-sm text-muted-foreground">
+                  No projects yet. Create your first WordPress website!
+                </p>
+                <Button className="mt-4" asChild>
+                  <Link href="/projects/new">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Project
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {projects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="flex items-center justify-between rounded-lg border p-3"
                   >
-                    {project.status}
-                  </Badge>
-                  <div className="w-16 text-right">
-                    <span className="text-xs font-medium">{project.progress}%</span>
+                    <div className="space-y-1">
+                      <p className="font-medium">{project.businessName}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {new Date(project.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(project.status)}
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* AI Usage */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>AI Usage Today</CardTitle>
-                <CardDescription>Resource consumption</CardDescription>
-              </div>
-              <Badge variant="outline" className="font-normal">
-                <Zap className="mr-1 h-3 w-3" />
-                Gemini 2.0 Flash
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {aiUsageToday.map((metric) => (
-              <div key={metric.label} className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{metric.label}</span>
-                  <span className="text-muted-foreground">
-                    {metric.usage.toLocaleString()} / {metric.limit.toLocaleString()} {metric.unit}
-                  </span>
-                </div>
-                <Progress value={(metric.usage / metric.limit) * 100} />
-              </div>
-            ))}
+            )}
           </CardContent>
         </Card>
 
@@ -187,13 +187,13 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common tasks and shortcuts</CardDescription>
+            <CardDescription>Get started with your next project</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3">
+          <CardContent className="space-y-3">
             <Button className="w-full justify-start" asChild>
-              <Link href="/generator">
+              <Link href="/projects/new">
                 <Wand2 className="mr-2 h-4 w-4" />
-                Generate New Website
+                Create New Project
               </Link>
             </Button>
             <Button variant="outline" className="w-full justify-start" asChild>
@@ -203,37 +203,73 @@ export default function DashboardPage() {
               </Link>
             </Button>
             <Button variant="outline" className="w-full justify-start" asChild>
-              <Link href="/projects/new">
-                <FolderOpen className="mr-2 h-4 w-4" />
-                Create New Project
+              <Link href="/generator">
+                <Wand2 className="mr-2 h-4 w-4" />
+                View Generator
               </Link>
             </Button>
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
-        <Card>
+        {/* Getting Started */}
+        <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest actions across your account</CardDescription>
+            <CardTitle>Getting Started with WordPress</CardTitle>
+            <CardDescription>
+              Follow these steps to publish your first website
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                { action: 'Template imported', detail: 'Modern Business Layout', time: '10 min ago' },
-                { action: 'AI generation complete', detail: 'Homepage content for TechStart', time: '2 hours ago' },
-                { action: 'Project created', detail: 'Green Valley Landscaping', time: '1 day ago' },
-                { action: 'Website deployed', detail: 'TechStart Landing Page', time: '2 days ago' },
-              ].map((activity, i) => (
-                <div key={i} className="flex items-start gap-3 text-sm">
-                  <div className="mt-1 h-2 w-2 rounded-full bg-primary" />
-                  <div className="flex-1">
-                    <p className="font-medium">{activity.action}</p>
-                    <p className="text-muted-foreground">{activity.detail}</p>
-                  </div>
-                  <span className="text-muted-foreground">{activity.time}</span>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className={cn(
+                'flex flex-col items-center text-center rounded-lg border p-4',
+              )}>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <span className="text-lg font-bold">1</span>
                 </div>
-              ))}
+                <h4 className="mt-3 font-semibold">Create Project</h4>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Tell us about your business
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center rounded-lg border p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <span className="text-lg font-bold">2</span>
+                </div>
+                <h4 className="mt-3 font-semibold">Select Template</h4>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Choose from 700+ Elementor templates
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center rounded-lg border p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <span className="text-lg font-bold">3</span>
+                </div>
+                <h4 className="mt-3 font-semibold">Generate Content</h4>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  AI creates professional copy
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center rounded-lg border p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-600">
+                  <span className="text-lg font-bold">4</span>
+                </div>
+                <h4 className="mt-3 font-semibold">Publish</h4>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Deploy directly to WordPress
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <div className="flex gap-3">
+                <AlertCircle className="h-5 w-5 flex-shrink-0 text-blue-600" />
+                <div className="text-sm text-blue-800">
+                  <strong>Note:</strong> Before publishing, connect your WordPress site in{' '}
+                  <Link href="/settings" className="font-medium underline">Settings</Link>.
+                  You'll need Elementor installed and an Application Password.
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
