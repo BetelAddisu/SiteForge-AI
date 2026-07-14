@@ -1,0 +1,291 @@
+{
+  "id": "digicy-digital-agency-elementor-template-kit-coming-soon",
+  "name": "Coming soon",
+  "category": "section",
+  "industry": "Technology",
+  "kitName": "Digicy - Digital Agency Elementor Template Kit",
+  "kitSlug": "digicy-digital-agency-elementor-template-kit",
+  "source": "templates/coming-soon.json",
+  "screenshot": "/templates/digicy-digital-agency-elementor-template-kit/coming-soon.jpg",
+  "type": "page",
+  "requiresElementorPro": false,
+  "content": {
+    "version": "0.4",
+    "title": "Coming soon",
+    "type": "page",
+    "metadata": {
+      "template_type": "single-page",
+      "include_in_zip": "1",
+      "elementor_pro_required": null,
+      "wp_page_template": "elementor_canvas"
+    },
+    "content": [
+      {
+        "id": "49da7bf3",
+        "settings": {
+          "background_background": "classic",
+          "background_image": {
+            "url": "http://kit.nirmanavisual.com/digicy/wp-content/uploads/sites/31/2023/08/Futurium-Gradient-Backgrounds-05.png",
+            "id": 1276,
+            "alt": "",
+            "source": "library"
+          },
+          "background_position": "center left",
+          "background_repeat": "no-repeat",
+          "background_size": "cover",
+          "background_attachment": "fixed",
+          "padding": {
+            "unit": "px",
+            "top": "400",
+            "right": "0",
+            "bottom": "400",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "7b772c17",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null,
+              "content_position": "center",
+              "align": "center",
+              "align_mobile": "center"
+            },
+            "elements": [
+              {
+                "id": "23a457f6",
+                "settings": {
+                  "title": "Stay tuned",
+                  "align": "center",
+                  "_element_custom_width": {
+                    "unit": "%",
+                    "size": 46,
+                    "sizes": []
+                  },
+                  "__globals__": {
+                    "typography_typography": "globals/typography?id=4d058d7"
+                  },
+                  "_animation": "fadeInDown",
+                  "_padding": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "010",
+                    "left": "0",
+                    "isLinked": false
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "239d553f",
+                "settings": {
+                  "editor": "Working on blogs about web development and security",
+                  "align": "center",
+                  "__globals__": {
+                    "typography_typography": "globals/typography?id=text"
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "text-editor",
+                "elType": "widget"
+              },
+              {
+                "id": "11215710",
+                "settings": {
+                  "ekit_countdown_timer_weeks_label": "Weeks",
+                  "ekit_countdown_timer_days_label": "Days",
+                  "ekit_countdown_timer_hours_label": "Hours",
+                  "ekit_countdown_timer_minutes_hours_label": "Minutes",
+                  "ekit_countdown_timer_seconds_hours_label": "Seconds",
+                  "ekit_countdown_timer_title": "Countdown is finished!",
+                  "ekit_countdown_timer_expiry_content": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry&#039;s standard dummy text ever since the 1500s",
+                  "ekit_countdown_timer_days_digits_color": "#FFFFFF",
+                  "ekit_countdown_timer_days_digits_typography_group_typography": "custom",
+                  "ekit_countdown_timer_days_digits_typography_group_font_family": "Kanit",
+                  "ekit_countdown_timer_days_digits_typography_group_font_size": {
+                    "unit": "px",
+                    "size": 64,
+                    "sizes": []
+                  },
+                  "ekit_countdown_timer_days_digits_typography_group_font_weight": "800",
+                  "ekit_countdown_timer_days_digits_typography_group_text_transform": "uppercase",
+                  "ekit_countdown_timer_days_digits_typography_group_line_height": {
+                    "unit": "px",
+                    "size": 64,
+                    "sizes": []
+                  },
+                  "ekit_countdown_timer_days_digits_typography_group_word_spacing": {
+                    "unit": "em",
+                    "size": "",
+                    "sizes": []
+                  },
+                  "ekit_countdown_timer_days_label_color": "#FFFFFF",
+                  "ekit_countdown_timer_days_label_typography_group_typography": "custom",
+                  "ekit_countdown_timer_days_label_typography_group_font_family": "Inter",
+                  "ekit_countdown_timer_days_label_typography_group_font_size": {
+                    "unit": "px",
+                    "size": 16,
+                    "sizes": []
+                  },
+                  "ekit_countdown_timer_days_label_typography_group_font_weight": "700",
+                  "ekit_countdown_timer_days_label_typography_group_text_transform": "capitalize",
+                  "ekit_countdown_timer_days_label_typography_group_line_height": {
+                    "unit": "px",
+                    "size": 20,
+                    "sizes": []
+                  },
+                  "ekit_countdown_timer_days_label_background_group_background": "classic",
+                  "ekit_countdown_timer_days_background_group_background": "classic",
+                  "ekit_countdown_timer_days_border_radious_open": {
+                    "unit": "px",
+                    "top": "15",
+                    "right": "15",
+                    "bottom": "15",
+                    "left": "15",
+                    "isLinked": true
+                  },
+                  "ekit_countdown_timer_hours_label_background_group_background": "classic",
+                  "ekit_countdown_timer_hours_background_background": "classic",
+                  "ekit_countdown_timer_hours_border_radious_open": {
+                    "unit": "px",
+                    "top": "15",
+                    "right": "15",
+                    "bottom": "15",
+                    "left": "15",
+                    "isLinked": true
+                  },
+                  "ekit_countdown_timer_minutes_background_background": "classic",
+                  "ekit_countdown_timer_minutes_border_radious_open": {
+                    "unit": "px",
+                    "top": "15",
+                    "right": "15",
+                    "bottom": "15",
+                    "left": "15",
+                    "isLinked": true
+                  },
+                  "ekit_countdown_timer_seconds_background_background": "classic",
+                  "ekit_countdown_timer_seconds_border_radious_open": {
+                    "unit": "px",
+                    "top": "15",
+                    "right": "15",
+                    "bottom": "15",
+                    "left": "15",
+                    "isLinked": true
+                  },
+                  "_element_width": "initial",
+                  "_element_custom_width": {
+                    "unit": "%",
+                    "size": 60
+                  },
+                  "__globals__": {
+                    "ekit_countdown_timer_days_digits_typography_group_typography": "globals/typography?id=4d058d7",
+                    "ekit_countdown_timer_days_digits_color": "globals/colors?id=primary",
+                    "ekit_countdown_timer_days_label_color": "globals/colors?id=primary",
+                    "ekit_countdown_timer_days_label_typography_group_typography": "globals/typography?id=secondary",
+                    "ekit_countdown_timer_days_label_background_group_color": "",
+                    "ekit_countdown_timer_days_background_group_color": "globals/colors?id=0947708",
+                    "ekit_countdown_timer_hours_background_color": "globals/colors?id=0947708",
+                    "ekit_countdown_timer_hours_digits_typography_group_typography": "globals/typography?id=4d058d7",
+                    "ekit_countdown_timer_hours_label_typography_group_typography": "globals/typography?id=secondary",
+                    "ekit_countdown_timer_hours_label_color": "globals/colors?id=primary",
+                    "ekit_countdown_timer_hours_digits_color": "globals/colors?id=primary",
+                    "ekit_countdown_timer_minutes_digits_typography_group_typography": "globals/typography?id=4d058d7",
+                    "ekit_countdown_timer_minutes_digits_color": "globals/colors?id=primary",
+                    "ekit_countdown_timer_minutes_label_typography_group_typography": "globals/typography?id=secondary",
+                    "ekit_countdown_timer_minutes_label_color": "globals/colors?id=primary",
+                    "ekit_countdown_timer_minutes_background_color": "globals/colors?id=0947708",
+                    "ekit_countdown_timer_seconds_digits_color": "globals/colors?id=primary",
+                    "ekit_countdown_timer_seconds_digits_typography_group_typography": "globals/typography?id=4d058d7",
+                    "ekit_countdown_timer_seconds_label_typography_group_typography": "globals/typography?id=secondary",
+                    "ekit_countdown_timer_seconds_label_color": "globals/colors?id=primary",
+                    "ekit_countdown_timer_seconds_background_color": "globals/colors?id=0947708"
+                  },
+                  "_padding": {
+                    "unit": "px",
+                    "top": "030",
+                    "right": "0",
+                    "bottom": "050",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "ekit_countdown_timer_due_time": "2023-11-17 00:00",
+                  "_padding_mobile": {
+                    "unit": "px",
+                    "top": "30",
+                    "right": "0",
+                    "bottom": "0",
+                    "left": "30",
+                    "isLinked": false
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "elementskit-countdown-timer",
+                "elType": "widget"
+              },
+              {
+                "id": "48dba79b",
+                "settings": {
+                  "editor": "Get notified when a new blog is published on the website",
+                  "align": "center",
+                  "__globals__": {
+                    "typography_typography": "globals/typography?id=text"
+                  },
+                  "_padding": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "020",
+                    "left": "0",
+                    "isLinked": false
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "text-editor",
+                "elType": "widget"
+              },
+              {
+                "id": "1aab8432",
+                "settings": {
+                  "mf_form_id": "1298***1692945366017",
+                  "_padding": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "280",
+                    "bottom": "0",
+                    "left": "280",
+                    "isLinked": false
+                  },
+                  "_padding_mobile": {
+                    "unit": "px",
+                    "top": "1",
+                    "right": "1",
+                    "bottom": "1",
+                    "left": "1",
+                    "isLinked": true
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "metform",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      }
+    ]
+  }
+}

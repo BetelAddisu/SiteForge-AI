@@ -1,0 +1,1823 @@
+{
+  "id": "saras-wine-template-kit-vineyards",
+  "name": "Vineyards",
+  "category": "section",
+  "industry": "Restaurant",
+  "kitName": "Saras - Wine Template Kit",
+  "kitSlug": "saras-wine-template-kit",
+  "source": "templates/vineyards.json",
+  "screenshot": "/templates/saras-wine-template-kit/vineyards.jpg",
+  "type": "section",
+  "requiresElementorPro": false,
+  "content": {
+    "version": "0.4",
+    "title": "Vineyards",
+    "type": "section",
+    "metadata": {
+      "template_type": "section-other",
+      "include_in_zip": "1",
+      "elementor_pro_required": null,
+      "wp_page_template": "default"
+    },
+    "content": [
+      {
+        "id": "4c113cd1",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": "750",
+            "sizes": []
+          },
+          "height": "min-height",
+          "custom_height": {
+            "unit": "vh",
+            "size": 100,
+            "sizes": []
+          },
+          "background_background": "classic",
+          "background_color": "#000000",
+          "background_color_b": "#00f2ff",
+          "background_color_b_stop": {
+            "unit": "%",
+            "size": "89",
+            "sizes": []
+          },
+          "background_gradient_angle": {
+            "unit": "deg",
+            "size": "130",
+            "sizes": []
+          },
+          "background_overlay_position": "center center",
+          "background_overlay_xpos": {
+            "unit": "px",
+            "size": "-133",
+            "sizes": []
+          },
+          "background_overlay_ypos": {
+            "unit": "px",
+            "size": "-89",
+            "sizes": []
+          },
+          "background_overlay_repeat": "no-repeat",
+          "background_overlay_size": "cover",
+          "background_overlay_opacity": {
+            "unit": "px",
+            "size": 0.3,
+            "sizes": []
+          },
+          "shape_divider_bottom_width": {
+            "unit": "%",
+            "size": "260",
+            "sizes": []
+          },
+          "shape_divider_bottom_height": {
+            "unit": "px",
+            "size": "120",
+            "sizes": []
+          },
+          "shape_divider_bottom_flip": "yes",
+          "custom_height_tablet": {
+            "unit": "px",
+            "size": "650",
+            "sizes": []
+          },
+          "shape_divider_bottom_height_tablet": {
+            "unit": "px",
+            "size": "195",
+            "sizes": []
+          },
+          "margin": {
+            "unit": "px",
+            "top": "",
+            "right": "0",
+            "bottom": "",
+            "left": "0",
+            "isLinked": "1"
+          },
+          "margin_mobile": {
+            "unit": "%",
+            "top": "",
+            "right": "0",
+            "bottom": "",
+            "left": "0",
+            "isLinked": "1"
+          },
+          "padding_tablet": {
+            "unit": "%",
+            "top": "0",
+            "right": "5",
+            "bottom": "0",
+            "left": "5",
+            "isLinked": ""
+          },
+          "padding_mobile": {
+            "unit": "%",
+            "top": "10",
+            "right": "5",
+            "bottom": "0",
+            "left": "5",
+            "isLinked": ""
+          },
+          "_title": "Hero",
+          "custom_height_mobile": {
+            "unit": "vh",
+            "size": 100,
+            "sizes": []
+          },
+          "_timestamp_": "v1cGFlU2pBMWFYM3pyZVN4VnNoMExTZz09",
+          "layout": "full_width",
+          "background_image": {
+            "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/vineyards.jpg",
+            "id": 3340
+          },
+          "background_overlay_background": "classic",
+          "background_overlay_color": "#000000",
+          "background_position": "center center",
+          "background_size": "cover"
+        },
+        "elements": [
+          {
+            "id": "2c9a7e52",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null
+            },
+            "elements": [
+              {
+                "id": "7937d82",
+                "settings": {
+                  "title": "Vineyard",
+                  "header_size": "h1",
+                  "align": "center",
+                  "title_color": "#FFFFFF",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Prata",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 4,
+                    "sizes": []
+                  },
+                  "typography_line_height": {
+                    "unit": "em",
+                    "size": 1.3,
+                    "sizes": []
+                  },
+                  "typography_font_size_mobile": {
+                    "unit": "rem",
+                    "size": 3,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": "",
+        "elType": "section"
+      },
+      {
+        "id": "64696cc8",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": 1200,
+            "sizes": []
+          },
+          "padding": {
+            "unit": "em",
+            "top": "7",
+            "right": "0",
+            "bottom": "7",
+            "left": "0",
+            "isLinked": false
+          },
+          "padding_mobile": {
+            "unit": "em",
+            "top": "3",
+            "right": "0",
+            "bottom": "3",
+            "left": "0",
+            "isLinked": false
+          },
+          "structure": "30",
+          "background_background": "classic",
+          "background_color": "#FFFFFF",
+          "padding_tablet": {
+            "unit": "em",
+            "top": "3",
+            "right": "0",
+            "bottom": "3",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "60a55b1f",
+            "settings": {
+              "_column_size": 33,
+              "_inline_size": 25,
+              "align": "center",
+              "_inline_size_tablet": 10
+            },
+            "elements": [],
+            "isInner": false,
+            "elType": "column"
+          },
+          {
+            "id": "30af7c62",
+            "settings": {
+              "_column_size": 33,
+              "_inline_size": 49.664,
+              "background_background": "classic",
+              "background_image": {
+                "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/topography-background.jpg",
+                "id": 3379
+              },
+              "background_repeat": "no-repeat",
+              "background_size": "cover",
+              "padding": {
+                "unit": "%",
+                "top": "10",
+                "right": "10",
+                "bottom": "10",
+                "left": "10",
+                "isLinked": true
+              },
+              "_inline_size_tablet": 80,
+              "padding_mobile": {
+                "unit": "%",
+                "top": "10",
+                "right": "10",
+                "bottom": "10",
+                "left": "10",
+                "isLinked": true
+              }
+            },
+            "elements": [
+              {
+                "id": "32aab8a7",
+                "settings": {
+                  "title": "Built with passion for winemaking and respect for the land",
+                  "align": "left",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Prata",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 3,
+                    "sizes": []
+                  },
+                  "typography_line_height": {
+                    "unit": "em",
+                    "size": 1.3,
+                    "sizes": []
+                  },
+                  "_element_custom_width": {
+                    "unit": "px",
+                    "size": 520,
+                    "sizes": []
+                  },
+                  "typography_font_size_mobile": {
+                    "unit": "rem",
+                    "size": 2,
+                    "sizes": []
+                  },
+                  "_element_width_tablet": "initial",
+                  "_element_custom_width_tablet": {
+                    "unit": "%",
+                    "size": 90,
+                    "sizes": []
+                  },
+                  "title_color": "#000000",
+                  "_padding_mobile": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "0",
+                    "left": "0",
+                    "isLinked": true
+                  },
+                  "_element_width_mobile": "inherit"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "4153ea37",
+                "settings": {
+                  "width": {
+                    "unit": "px",
+                    "size": 60,
+                    "sizes": []
+                  },
+                  "align": "left",
+                  "text": "Divider",
+                  "color": "#DCBE84",
+                  "gap": {
+                    "unit": "px",
+                    "size": 30,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "divider",
+                "elType": "widget"
+              },
+              {
+                "id": "2d3b45de",
+                "settings": {
+                  "editor": "<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc maximus eleifend nisi in finibus. In id augue in urna facilisis accumsan. Cras aliquet lorem in erat pellentesque, sit amet sagittis nulla placerat. Sed et erat tortor.</p><p>Duis at lacus commodo, lacinia libero facilisis, gravida dolor.</p>"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "text-editor",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          },
+          {
+            "id": "16b7cd75",
+            "settings": {
+              "_column_size": 33,
+              "_inline_size": 25,
+              "_inline_size_tablet": 10
+            },
+            "elements": [],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "35cb84d2",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": 1200,
+            "sizes": []
+          },
+          "gap": "no",
+          "background_background": "gradient",
+          "background_color": "#FFFFFF",
+          "background_color_stop": {
+            "unit": "%",
+            "size": 50,
+            "sizes": []
+          },
+          "background_color_b": "#F1F1F1",
+          "background_color_b_stop": {
+            "unit": "%",
+            "size": 50,
+            "sizes": []
+          }
+        },
+        "elements": [
+          {
+            "id": "4141174a",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null
+            },
+            "elements": [
+              {
+                "id": "2cb9b05e",
+                "settings": {
+                  "carousel": [
+                    {
+                      "id": 3383,
+                      "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/vineyards-and-winery.jpg"
+                    },
+                    {
+                      "id": 3384,
+                      "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/vineyards-in-california-usa-1.jpg"
+                    }
+                  ],
+                  "thumbnail_size": "custom",
+                  "thumbnail_custom_dimension": {
+                    "width": "1400",
+                    "height": "600"
+                  },
+                  "slides_to_show": "1",
+                  "autoplay": "no",
+                  "arrows_position": "outside",
+                  "arrows_size": {
+                    "unit": "px",
+                    "size": 20,
+                    "sizes": []
+                  },
+                  "arrows_color": "#000000"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "image-carousel",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "5b9db319",
+        "settings": {
+          "structure": "30",
+          "padding": {
+            "unit": "em",
+            "top": "7",
+            "right": "0",
+            "bottom": "7",
+            "left": "0",
+            "isLinked": false
+          },
+          "padding_tablet": {
+            "unit": "em",
+            "top": "03",
+            "right": "0",
+            "bottom": "3",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "7b77a3bc",
+            "settings": {
+              "_column_size": 33,
+              "_inline_size": 25,
+              "_inline_size_tablet": 10
+            },
+            "elements": [],
+            "isInner": false,
+            "elType": "column"
+          },
+          {
+            "id": "28645ca1",
+            "settings": {
+              "_column_size": 33,
+              "_inline_size": 49.332,
+              "space_between_widgets": 0,
+              "_inline_size_tablet": 80
+            },
+            "elements": [
+              {
+                "id": "6c5039f1",
+                "settings": {
+                  "title": "Local vineyard",
+                  "align": "center",
+                  "header_size": "h1",
+                  "typography_typography": "custom",
+                  "typography_font_size_mobile": {
+                    "unit": "rem",
+                    "size": 3,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "4d66572",
+                "settings": {
+                  "width": {
+                    "unit": "px",
+                    "size": 60,
+                    "sizes": []
+                  },
+                  "align": "center",
+                  "text": "Divider",
+                  "color": "#DCBE84",
+                  "gap": {
+                    "unit": "px",
+                    "size": 30,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "divider",
+                "elType": "widget"
+              },
+              {
+                "id": "58af7ff0",
+                "settings": {
+                  "editor": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc maximus eleifend nisi in finibus. In id augue in urna facilisis accumsa",
+                  "align": "center"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "text-editor",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          },
+          {
+            "id": "5bac0833",
+            "settings": {
+              "_column_size": 33,
+              "_inline_size": 25,
+              "_inline_size_tablet": 10
+            },
+            "elements": [],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "2e6df5ab",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": 1200,
+            "sizes": []
+          },
+          "content_position": "middle",
+          "structure": "20",
+          "background_background": "gradient",
+          "background_color": "#F1F1F1",
+          "background_color_stop": {
+            "unit": "%",
+            "size": 50,
+            "sizes": []
+          },
+          "background_color_b": "#000000",
+          "background_color_b_stop": {
+            "unit": "%",
+            "size": 50,
+            "sizes": []
+          }
+        },
+        "elements": [
+          {
+            "id": "7bbb78da",
+            "settings": {
+              "_column_size": 50,
+              "_inline_size": null,
+              "space_between_widgets": 15,
+              "background_background": "classic",
+              "background_color": "#FFFFFF",
+              "padding": {
+                "unit": "%",
+                "top": "10",
+                "right": "10",
+                "bottom": "10",
+                "left": "10",
+                "isLinked": true
+              }
+            },
+            "elements": [
+              {
+                "id": "5238148b",
+                "settings": {
+                  "title": "Our pride",
+                  "header_size": "p",
+                  "align": "left",
+                  "title_color": "#777777",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Muli",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 0.625,
+                    "sizes": []
+                  },
+                  "typography_font_weight": "normal",
+                  "typography_text_transform": "uppercase",
+                  "typography_letter_spacing": {
+                    "unit": "px",
+                    "size": 3,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "2e8db2b8",
+                "settings": {
+                  "title": "Saras Vineyard",
+                  "align": "left",
+                  "header_size": "h3",
+                  "typography_typography": "custom",
+                  "typography_line_height": {
+                    "unit": "em",
+                    "size": 1.3,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "1ea4fd22",
+                "settings": {
+                  "editor": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc maximus eleifend nisi in finibus. In id augue in urna facilisis accumsan",
+                  "align": "left",
+                  "_margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "45",
+                    "left": "0",
+                    "isLinked": false
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "text-editor",
+                "elType": "widget"
+              },
+              {
+                "id": "79c45d83",
+                "settings": {
+                  "gap": "no",
+                  "content_position": "middle",
+                  "structure": "30",
+                  "margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": 0,
+                    "bottom": "10",
+                    "left": 0,
+                    "isLinked": false
+                  }
+                },
+                "elements": [
+                  {
+                    "id": "421d8ac6",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": null
+                    },
+                    "elements": [
+                      {
+                        "id": "767bcdda",
+                        "settings": {
+                          "title": "Region",
+                          "header_size": "p",
+                          "title_color": "#777777",
+                          "typography_typography": "custom",
+                          "typography_font_size": {
+                            "unit": "rem",
+                            "size": 0.625,
+                            "sizes": []
+                          },
+                          "typography_letter_spacing": {
+                            "unit": "px",
+                            "size": 3,
+                            "sizes": []
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "3564597",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": 18.958
+                    },
+                    "elements": [
+                      {
+                        "id": "4a811609",
+                        "settings": {
+                          "width": {
+                            "unit": "px",
+                            "size": 45,
+                            "sizes": []
+                          },
+                          "align": "left",
+                          "text": "Divider",
+                          "color": "#DCBE84"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "divider",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "e63081c",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": 47.373
+                    },
+                    "elements": [
+                      {
+                        "id": "7bffe7db",
+                        "settings": {
+                          "title": "Sonoma Valley\n",
+                          "header_size": "p"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  }
+                ],
+                "isInner": true,
+                "elType": "section"
+              },
+              {
+                "id": "4788937c",
+                "settings": {
+                  "gap": "no",
+                  "content_position": "middle",
+                  "structure": "30",
+                  "margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": 0,
+                    "bottom": "10",
+                    "left": 0,
+                    "isLinked": false
+                  }
+                },
+                "elements": [
+                  {
+                    "id": "4f283c76",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": null
+                    },
+                    "elements": [
+                      {
+                        "id": "613f4e7e",
+                        "settings": {
+                          "title": "Altitude",
+                          "header_size": "p",
+                          "title_color": "#777777",
+                          "typography_typography": "custom",
+                          "typography_font_size": {
+                            "unit": "rem",
+                            "size": 0.625,
+                            "sizes": []
+                          },
+                          "typography_letter_spacing": {
+                            "unit": "px",
+                            "size": 3,
+                            "sizes": []
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "12025905",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": 18.958
+                    },
+                    "elements": [
+                      {
+                        "id": "384a841a",
+                        "settings": {
+                          "width": {
+                            "unit": "px",
+                            "size": 45,
+                            "sizes": []
+                          },
+                          "align": "left",
+                          "text": "Divider",
+                          "color": "#DCBE84"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "divider",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "552d60de",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": 47.373
+                    },
+                    "elements": [
+                      {
+                        "id": "25af77b0",
+                        "settings": {
+                          "title": "555'",
+                          "header_size": "p"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  }
+                ],
+                "isInner": true,
+                "elType": "section"
+              },
+              {
+                "id": "582b45eb",
+                "settings": {
+                  "gap": "no",
+                  "content_position": "middle",
+                  "structure": "30",
+                  "margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": 0,
+                    "bottom": "10",
+                    "left": 0,
+                    "isLinked": false
+                  }
+                },
+                "elements": [
+                  {
+                    "id": "663011da",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": null
+                    },
+                    "elements": [
+                      {
+                        "id": "436126e0",
+                        "settings": {
+                          "title": "Latitude",
+                          "header_size": "p",
+                          "title_color": "#777777",
+                          "typography_typography": "custom",
+                          "typography_font_size": {
+                            "unit": "rem",
+                            "size": 0.625,
+                            "sizes": []
+                          },
+                          "typography_letter_spacing": {
+                            "unit": "px",
+                            "size": 3,
+                            "sizes": []
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "7682c87a",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": 18.958
+                    },
+                    "elements": [
+                      {
+                        "id": "1dadecae",
+                        "settings": {
+                          "width": {
+                            "unit": "px",
+                            "size": 45,
+                            "sizes": []
+                          },
+                          "align": "left",
+                          "text": "Divider",
+                          "color": "#DCBE84"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "divider",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "7242fe96",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": 47.373
+                    },
+                    "elements": [
+                      {
+                        "id": "1066f793",
+                        "settings": {
+                          "title": "38° 25' 00.87``\n",
+                          "header_size": "p"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  }
+                ],
+                "isInner": true,
+                "elType": "section"
+              },
+              {
+                "id": "4667d0c9",
+                "settings": {
+                  "gap": "no",
+                  "content_position": "middle",
+                  "structure": "30",
+                  "margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": 0,
+                    "bottom": "10",
+                    "left": 0,
+                    "isLinked": false
+                  }
+                },
+                "elements": [
+                  {
+                    "id": "2078496e",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": null
+                    },
+                    "elements": [
+                      {
+                        "id": "5ccafda2",
+                        "settings": {
+                          "title": "Longitude",
+                          "header_size": "p",
+                          "title_color": "#777777",
+                          "typography_typography": "custom",
+                          "typography_font_size": {
+                            "unit": "rem",
+                            "size": 0.625,
+                            "sizes": []
+                          },
+                          "typography_letter_spacing": {
+                            "unit": "px",
+                            "size": 3,
+                            "sizes": []
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "7e30b5a4",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": 18.958
+                    },
+                    "elements": [
+                      {
+                        "id": "67e4aa45",
+                        "settings": {
+                          "width": {
+                            "unit": "px",
+                            "size": 45,
+                            "sizes": []
+                          },
+                          "align": "left",
+                          "text": "Divider",
+                          "color": "#DCBE84"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "divider",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "27a3c8d7",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": 47.373
+                    },
+                    "elements": [
+                      {
+                        "id": "6f94a78d",
+                        "settings": {
+                          "title": "122°32'32.08``\n",
+                          "header_size": "p"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  }
+                ],
+                "isInner": true,
+                "elType": "section"
+              },
+              {
+                "id": "67b38e2",
+                "settings": {
+                  "gap": "no",
+                  "content_position": "middle",
+                  "structure": "30",
+                  "margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": 0,
+                    "bottom": "10",
+                    "left": 0,
+                    "isLinked": false
+                  }
+                },
+                "elements": [
+                  {
+                    "id": "d88b6f6",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": null
+                    },
+                    "elements": [
+                      {
+                        "id": "4505707",
+                        "settings": {
+                          "title": "Planted Varietals\n",
+                          "header_size": "p",
+                          "title_color": "#777777",
+                          "typography_typography": "custom",
+                          "typography_font_size": {
+                            "unit": "rem",
+                            "size": 0.625,
+                            "sizes": []
+                          },
+                          "typography_letter_spacing": {
+                            "unit": "px",
+                            "size": 3,
+                            "sizes": []
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "5351800f",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": 18.958
+                    },
+                    "elements": [
+                      {
+                        "id": "6c4ea80d",
+                        "settings": {
+                          "width": {
+                            "unit": "px",
+                            "size": 45,
+                            "sizes": []
+                          },
+                          "align": "left",
+                          "text": "Divider",
+                          "color": "#DCBE84"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "divider",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "5ba83443",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": 47.373
+                    },
+                    "elements": [
+                      {
+                        "id": "2631534d",
+                        "settings": {
+                          "title": "Merlot, Zinfandel\n",
+                          "header_size": "p"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  }
+                ],
+                "isInner": true,
+                "elType": "section"
+              },
+              {
+                "id": "3e260a06",
+                "settings": {
+                  "gap": "no",
+                  "content_position": "middle",
+                  "structure": "30",
+                  "margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": 0,
+                    "bottom": "10",
+                    "left": 0,
+                    "isLinked": false
+                  }
+                },
+                "elements": [
+                  {
+                    "id": "6dcdfcf9",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": null
+                    },
+                    "elements": [
+                      {
+                        "id": "4b66809a",
+                        "settings": {
+                          "title": "Climate",
+                          "header_size": "p",
+                          "title_color": "#777777",
+                          "typography_typography": "custom",
+                          "typography_font_size": {
+                            "unit": "rem",
+                            "size": 0.625,
+                            "sizes": []
+                          },
+                          "typography_letter_spacing": {
+                            "unit": "px",
+                            "size": 3,
+                            "sizes": []
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "3a3c5168",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": 18.958
+                    },
+                    "elements": [
+                      {
+                        "id": "484ad8c1",
+                        "settings": {
+                          "width": {
+                            "unit": "px",
+                            "size": 45,
+                            "sizes": []
+                          },
+                          "align": "left",
+                          "text": "Divider",
+                          "color": "#DCBE84"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "divider",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "36905428",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": 47.373
+                    },
+                    "elements": [
+                      {
+                        "id": "4010f376",
+                        "settings": {
+                          "title": "Morning fog and warm afternoons\n",
+                          "header_size": "p"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  }
+                ],
+                "isInner": true,
+                "elType": "section"
+              },
+              {
+                "id": "6e83c84c",
+                "settings": {
+                  "gap": "no",
+                  "content_position": "middle",
+                  "structure": "30"
+                },
+                "elements": [
+                  {
+                    "id": "22f5ecdb",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": null
+                    },
+                    "elements": [
+                      {
+                        "id": "67b57197",
+                        "settings": {
+                          "title": "Soil",
+                          "header_size": "p",
+                          "title_color": "#777777",
+                          "typography_typography": "custom",
+                          "typography_font_size": {
+                            "unit": "rem",
+                            "size": 0.625,
+                            "sizes": []
+                          },
+                          "typography_letter_spacing": {
+                            "unit": "px",
+                            "size": 3,
+                            "sizes": []
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "6b6cde6a",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": 18.958
+                    },
+                    "elements": [
+                      {
+                        "id": "4f6a29d0",
+                        "settings": {
+                          "width": {
+                            "unit": "px",
+                            "size": 45,
+                            "sizes": []
+                          },
+                          "align": "left",
+                          "text": "Divider",
+                          "color": "#DCBE84"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "divider",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "1440664c",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": 47.373
+                    },
+                    "elements": [
+                      {
+                        "id": "2ba701a6",
+                        "settings": {
+                          "title": "Rocky soil upper block\n",
+                          "header_size": "p"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  }
+                ],
+                "isInner": true,
+                "elType": "section"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          },
+          {
+            "id": "6a649d80",
+            "settings": {
+              "_column_size": 50,
+              "_inline_size": null,
+              "background_background": "classic",
+              "background_color": "#FFFFFF",
+              "padding": {
+                "unit": "%",
+                "top": "10",
+                "right": "10",
+                "bottom": "10",
+                "left": "10",
+                "isLinked": true
+              }
+            },
+            "elements": [
+              {
+                "id": "3ad8ddc5",
+                "settings": {
+                  "image": {
+                    "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/map-celeste.jpg",
+                    "id": 3395
+                  },
+                  "image_size": "full"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "image",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "82799ea",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": 1200,
+            "sizes": []
+          },
+          "background_background": "classic",
+          "background_color": "#000000",
+          "padding": {
+            "unit": "em",
+            "top": "07",
+            "right": "0",
+            "bottom": "7",
+            "left": "0",
+            "isLinked": false
+          },
+          "padding_tablet": {
+            "unit": "em",
+            "top": "3",
+            "right": "0",
+            "bottom": "3",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "655afb81",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null
+            },
+            "elements": [
+              {
+                "id": "6b403f6a",
+                "settings": {
+                  "title": "Discover more",
+                  "align": "center",
+                  "header_size": "h1",
+                  "title_color": "#FFFFFF"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "58d8a13f",
+                "settings": {
+                  "width": {
+                    "unit": "px",
+                    "size": 60,
+                    "sizes": []
+                  },
+                  "align": "center",
+                  "text": "Divider",
+                  "color": "#DCBE84",
+                  "gap": {
+                    "unit": "px",
+                    "size": 30,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "divider",
+                "elType": "widget"
+              },
+              {
+                "id": "59645aa4",
+                "settings": {
+                  "structure": "40",
+                  "padding": {
+                    "unit": "em",
+                    "top": "3",
+                    "right": "0",
+                    "bottom": "0",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "padding_tablet": {
+                    "unit": "em",
+                    "top": "1",
+                    "right": "0",
+                    "bottom": "0",
+                    "left": "0",
+                    "isLinked": false
+                  }
+                },
+                "elements": [
+                  {
+                    "id": "655be2c1",
+                    "settings": {
+                      "_column_size": 25,
+                      "_inline_size": null
+                    },
+                    "elements": [
+                      {
+                        "id": "4170b62b",
+                        "settings": {
+                          "ending_number": 128,
+                          "title": "Acres",
+                          "number_color": "#FFFFFF",
+                          "typography_number_typography": "custom",
+                          "typography_number_font_family": "Prata",
+                          "typography_number_font_size": {
+                            "unit": "rem",
+                            "size": 4,
+                            "sizes": []
+                          },
+                          "typography_number_font_size_tablet": {
+                            "unit": "rem",
+                            "size": 3,
+                            "sizes": []
+                          },
+                          "typography_number_font_weight": "300",
+                          "typography_number_letter_spacing": {
+                            "unit": "px",
+                            "size": -4,
+                            "sizes": []
+                          },
+                          "typography_number_letter_spacing_tablet": {
+                            "unit": "px",
+                            "size": -3,
+                            "sizes": []
+                          },
+                          "title_color": "#DCBE84",
+                          "typography_title_typography": "custom",
+                          "typography_title_font_family": "Muli",
+                          "typography_title_font_size": {
+                            "unit": "rem",
+                            "size": 0.625,
+                            "sizes": []
+                          },
+                          "typography_title_font_weight": "bold",
+                          "typography_title_text_transform": "uppercase",
+                          "typography_title_letter_spacing": {
+                            "unit": "px",
+                            "size": 3,
+                            "sizes": []
+                          },
+                          "counter-title": "Acres"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "counter",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "4c0d18f",
+                    "settings": {
+                      "_column_size": 25,
+                      "_inline_size": null
+                    },
+                    "elements": [
+                      {
+                        "id": "59a19841",
+                        "settings": {
+                          "ending_number": 780,
+                          "suffix": "<sup>mm</sup>",
+                          "thousand_separator_char": ".",
+                          "title": "ANNUAL RAIN",
+                          "number_color": "#FFFFFF",
+                          "typography_number_typography": "custom",
+                          "typography_number_font_family": "Prata",
+                          "typography_number_font_size": {
+                            "unit": "rem",
+                            "size": 4,
+                            "sizes": []
+                          },
+                          "typography_number_font_size_tablet": {
+                            "unit": "rem",
+                            "size": 3,
+                            "sizes": []
+                          },
+                          "typography_number_font_weight": "300",
+                          "typography_number_letter_spacing": {
+                            "unit": "px",
+                            "size": -4,
+                            "sizes": []
+                          },
+                          "typography_number_letter_spacing_tablet": {
+                            "unit": "px",
+                            "size": -3,
+                            "sizes": []
+                          },
+                          "title_color": "#DCBE84",
+                          "typography_title_typography": "custom",
+                          "typography_title_font_family": "Muli",
+                          "typography_title_font_size": {
+                            "unit": "rem",
+                            "size": 0.625,
+                            "sizes": []
+                          },
+                          "typography_title_font_weight": "bold",
+                          "typography_title_text_transform": "uppercase",
+                          "typography_title_letter_spacing": {
+                            "unit": "px",
+                            "size": 3,
+                            "sizes": []
+                          },
+                          "counter-title": "Acres"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "counter",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "6b8cbd39",
+                    "settings": {
+                      "_column_size": 25,
+                      "_inline_size": null
+                    },
+                    "elements": [
+                      {
+                        "id": "11c987dc",
+                        "settings": {
+                          "ending_number": 13,
+                          "suffix": "°",
+                          "thousand_separator_char": ".",
+                          "title": "AVERAGE TEMPERATURE",
+                          "number_color": "#FFFFFF",
+                          "typography_number_typography": "custom",
+                          "typography_number_font_family": "Prata",
+                          "typography_number_font_size": {
+                            "unit": "rem",
+                            "size": 4,
+                            "sizes": []
+                          },
+                          "typography_number_font_size_tablet": {
+                            "unit": "rem",
+                            "size": 3,
+                            "sizes": []
+                          },
+                          "typography_number_font_weight": "300",
+                          "typography_number_letter_spacing": {
+                            "unit": "px",
+                            "size": -4,
+                            "sizes": []
+                          },
+                          "typography_number_letter_spacing_tablet": {
+                            "unit": "px",
+                            "size": -3,
+                            "sizes": []
+                          },
+                          "title_color": "#DCBE84",
+                          "typography_title_typography": "custom",
+                          "typography_title_font_family": "Muli",
+                          "typography_title_font_size": {
+                            "unit": "rem",
+                            "size": 0.625,
+                            "sizes": []
+                          },
+                          "typography_title_font_weight": "bold",
+                          "typography_title_text_transform": "uppercase",
+                          "typography_title_letter_spacing": {
+                            "unit": "px",
+                            "size": 3,
+                            "sizes": []
+                          },
+                          "counter-title": "Acres"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "counter",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "6b69fde7",
+                    "settings": {
+                      "_column_size": 25,
+                      "_inline_size": null
+                    },
+                    "elements": [
+                      {
+                        "id": "161bea36",
+                        "settings": {
+                          "ending_number": 11,
+                          "thousand_separator_char": ".",
+                          "title": "GRAPE VARIETIES",
+                          "number_color": "#FFFFFF",
+                          "typography_number_typography": "custom",
+                          "typography_number_font_family": "Prata",
+                          "typography_number_font_size": {
+                            "unit": "rem",
+                            "size": 4,
+                            "sizes": []
+                          },
+                          "typography_number_font_size_tablet": {
+                            "unit": "rem",
+                            "size": 3,
+                            "sizes": []
+                          },
+                          "typography_number_font_weight": "300",
+                          "typography_number_letter_spacing": {
+                            "unit": "px",
+                            "size": -4,
+                            "sizes": []
+                          },
+                          "typography_number_letter_spacing_tablet": {
+                            "unit": "px",
+                            "size": -3,
+                            "sizes": []
+                          },
+                          "title_color": "#DCBE84",
+                          "typography_title_typography": "custom",
+                          "typography_title_font_family": "Muli",
+                          "typography_title_font_size": {
+                            "unit": "rem",
+                            "size": 0.625,
+                            "sizes": []
+                          },
+                          "typography_title_font_weight": "bold",
+                          "typography_title_text_transform": "uppercase",
+                          "typography_title_letter_spacing": {
+                            "unit": "px",
+                            "size": 3,
+                            "sizes": []
+                          },
+                          "counter-title": "Acres"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "counter",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  }
+                ],
+                "isInner": true,
+                "elType": "section"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "415a885b",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": 1200,
+            "sizes": []
+          },
+          "gap": "no",
+          "background_background": "classic",
+          "background_color": "#000000"
+        },
+        "elements": [
+          {
+            "id": "636a8c4d",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null
+            },
+            "elements": [
+              {
+                "id": "3895e8ce",
+                "settings": {
+                  "youtube_url": "https://www.youtube.com/watch?v=r0_TWfsiWJ0",
+                  "vimeo_url": "https://vimeo.com/235215203",
+                  "dailymotion_url": "",
+                  "start": 10,
+                  "controls": "",
+                  "yt_privacy": "yes"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "video",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      }
+    ],
+    "page_settings": {
+      "hide_title": "yes"
+    }
+  }
+}

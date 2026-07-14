@@ -1,0 +1,40 @@
+{
+  "name": "Saras - Wine Template Kit",
+  "slug": "saras-wine-template-kit",
+  "totalTemplates": 13,
+  "importedTemplates": 6,
+  "skippedTemplates": 7,
+  "importedAt": "2026-07-14T19:28:29.130Z",
+  "templates": [
+    {
+      "name": "Global Kit Styles",
+      "category": "section",
+      "source": "templates/global.json"
+    },
+    {
+      "name": "Home",
+      "category": "hero",
+      "source": "templates/home.json"
+    },
+    {
+      "name": "Who we are",
+      "category": "about",
+      "source": "templates/who-we-are.json"
+    },
+    {
+      "name": "Visit us",
+      "category": "section",
+      "source": "templates/visit-us.json"
+    },
+    {
+      "name": "Vineyards",
+      "category": "section",
+      "source": "templates/vineyards.json"
+    },
+    {
+      "name": "Contact",
+      "category": "contact",
+      "source": "templates/contact.json"
+    }
+  ]
+}

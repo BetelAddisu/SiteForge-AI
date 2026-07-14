@@ -1,0 +1,75 @@
+{
+  "name": "Digicy - Digital Agency Elementor Template Kit",
+  "slug": "digicy-digital-agency-elementor-template-kit",
+  "totalTemplates": 15,
+  "importedTemplates": 13,
+  "skippedTemplates": 2,
+  "importedAt": "2026-07-14T19:29:57.857Z",
+  "templates": [
+    {
+      "name": "Global Kit Styles",
+      "category": "section",
+      "source": "templates/global.json"
+    },
+    {
+      "name": "Footer",
+      "category": "footer",
+      "source": "templates/footer.json"
+    },
+    {
+      "name": "Header",
+      "category": "header",
+      "source": "templates/header.json"
+    },
+    {
+      "name": "Contact",
+      "category": "contact",
+      "source": "templates/contact.json"
+    },
+    {
+      "name": "Coming soon",
+      "category": "section",
+      "source": "templates/coming-soon.json"
+    },
+    {
+      "name": "Faq",
+      "category": "faq",
+      "source": "templates/faq.json"
+    },
+    {
+      "name": "News",
+      "category": "section",
+      "source": "templates/news.json"
+    },
+    {
+      "name": "404",
+      "category": "error",
+      "source": "templates/404.json"
+    },
+    {
+      "name": "Team",
+      "category": "team",
+      "source": "templates/team.json"
+    },
+    {
+      "name": "Services Detail",
+      "category": "services",
+      "source": "templates/services-detail.json"
+    },
+    {
+      "name": "Services",
+      "category": "services",
+      "source": "templates/services.json"
+    },
+    {
+      "name": "About us",
+      "category": "about",
+      "source": "templates/about-us.json"
+    },
+    {
+      "name": "Home",
+      "category": "hero",
+      "source": "templates/home.json"
+    }
+  ]
+}
