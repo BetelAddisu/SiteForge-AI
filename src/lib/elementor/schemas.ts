@@ -18,7 +18,7 @@ import { z } from 'zod';
 
 export const ContentReplacementSchema = z.object({
   heading: z.string().min(1).max(200).describe('Replacement heading text'),
-  subheading: z.string().optional().max(300).describe('Optional subheading'),
+  subheading: z.string().max(300).optional().describe('Optional subheading'),
   paragraphs: z.array(z.string().min(10).max(1000)).min(1).max(5),
   callToAction: z.object({
     text: z.string().min(1).max(50),
@@ -120,7 +120,7 @@ const GEMINI_PRICING: Record<string, { inputPer1M: number; outputPer1M: number }
   'gemini-2.0-flash': { inputPer1M: 0.10, outputPer1M: 0.40 },
   'gemini-2.0-flash-lite': { inputPer1M: 0.075, outputPer1M: 0.30 },
   'gemini-1.5-pro': { inputPer1M: 1.25, outputPer1M: 5.00 },
-  'gemini-1.5-flash': { inputPer1M: 0.075, outputPerM: 0.30 },
+  'gemini-1.5-flash': { inputPer1M: 0.075, outputPer1M: 0.30 },
 };
 
 export function estimateTokenCost(
@@ -190,7 +190,7 @@ export class AIContentEngine {
           contents: prompt,
           config: {
             responseMimeType: 'application/json',
-            responseSchema: schema,
+            responseSchema: schema as unknown as Record<string, unknown>,
             safetySettings,
             systemInstruction: options.systemInstruction ? { text: options.systemInstruction } : undefined,
           },
