@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { prisma } from '@/lib/prisma';
+import JSZip from 'jszip';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -86,6 +87,38 @@ function detectIndustry(kitName: string): string | null {
   return null;
 }
 
+async function fetchTemplatesFromDatabase() {
+  try {
+    const templates = await prisma.template.findMany({
+      where: { importStatus: 'COMPLETE' },
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        industry: true,
+        previewImage: true,
+        compatibilityScore: true,
+        metadata: true,
+      },
+    });
+
+    return templates.map(t => ({
+      id: t.id,
+      name: t.name,
+      category: t.category,
+      industry: t.industry,
+      kitName: (t.metadata as { kitName?: string })?.kitName || '',
+      kitSlug: (t.metadata as { kitSlug?: string })?.kitSlug || '',
+      previewImage: t.previewImage,
+      screenshotUrl: t.previewImage,
+      compatibilityScore: t.compatibilityScore || 85,
+    }));
+  } catch (error) {
+    console.log('Database not available, falling back to Supabase storage');
+    return null;
+  }
+}
+
 async function fetchTemplatesFromSupabase() {
   if (!supabaseUrl || !supabaseServiceKey) {
     console.log('Supabase not configured');
@@ -115,7 +148,6 @@ async function fetchTemplatesFromSupabase() {
         if (downloadError || !zipData) continue;
 
         const arrayBuffer = await zipData.arrayBuffer();
-        const JSZip = (await import('jszip')).default;
         const zip = await JSZip.loadAsync(arrayBuffer);
 
         const manifestFile = zip.file('manifest.json');
@@ -129,10 +161,11 @@ async function fetchTemplatesFromSupabase() {
           if (template.elementor_pro_required) continue;
           const templateSlug = slugify(template.name);
 
+          // Try to get screenshot from template-screenshots bucket
           let screenshotUrl: string | null = null;
           try {
-            const screenshotPath = zipFile.name.replace('.zip', `/${template.screenshot}`);
-            const { data: screenshotData } = supabase.storage.from('templates').getPublicUrl(screenshotPath);
+            const screenshotPath = `${kitSlug}/${templateSlug}.jpg`;
+            const { data: screenshotData } = supabase.storage.from('template-screenshots').getPublicUrl(screenshotPath);
             screenshotUrl = screenshotData.publicUrl;
           } catch {}
 
@@ -143,7 +176,7 @@ async function fetchTemplatesFromSupabase() {
             industry: detectIndustry(manifest.title),
             kitName: manifest.title,
             kitSlug,
-            previewImage: null,
+            previewImage: screenshotUrl,
             screenshotUrl,
             compatibilityScore: 85,
           });
@@ -161,10 +194,20 @@ async function fetchTemplatesFromSupabase() {
 
 async function getTemplates() {
   const now = Date.now();
+  
+  // Check cache first
   if (templateCache && (now - templateCache.updatedAt) < CACHE_TTL) {
     return templateCache.templates;
   }
 
+  // Try database first
+  const dbTemplates = await fetchTemplatesFromDatabase();
+  if (dbTemplates && dbTemplates.length > 0) {
+    templateCache = { templates: dbTemplates, updatedAt: now };
+    return dbTemplates;
+  }
+
+  // Fall back to Supabase storage
   const templates = await fetchTemplatesFromSupabase();
   templateCache = { templates, updatedAt: now };
   return templates;
