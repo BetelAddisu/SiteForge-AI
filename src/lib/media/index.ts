@@ -185,7 +185,7 @@ Return valid JSON matching the schema.`;
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
-        responseSchema: AltTextSchema,
+        responseSchema: AltTextSchema as unknown as Record<string, unknown>,
       },
     });
     
@@ -222,7 +222,7 @@ export async function uploadImage(
       .from(bucket)
       .upload(path, buffer, {
         contentType: options?.contentType ?? 'image/webp',
-        cacheControl: options?.cacheControl ?? 31536000, // 1 year
+        cacheControl: options?.cacheControl ? String(options.cacheControl) : '31536000', // 1 year
         upsert: true,
       });
     
@@ -306,16 +306,21 @@ export async function searchUnsplash(
     
     const data = await response.json();
     
-    const images: StockImage[] = data.results.map((photo: Record<string, unknown>) => ({
-      id: photo.id as string,
-      url: photo.urls.regular as string,
-      thumbnailUrl: photo.urls.thumb as string,
-      photographer: (photo.user as Record<string, unknown>).name as string,
-      photographerUrl: (photo.user as Record<string, unknown>).links as string,
-      altDescription: photo.alt_description as string | undefined,
-      width: photo.width as number,
-      height: photo.height as number,
-    }));
+    const images: StockImage[] = data.results.map((photo: Record<string, unknown>) => {
+      const urls = photo.urls as Record<string, string>;
+      const user = photo.user as Record<string, unknown>;
+      const links = user.links as Record<string, string>;
+      return {
+        id: photo.id as string,
+        url: urls.regular,
+        thumbnailUrl: urls.thumb,
+        photographer: user.name as string,
+        photographerUrl: links.html,
+        altDescription: photo.alt_description as string | undefined,
+        width: photo.width as number,
+        height: photo.height as number,
+      };
+    });
     
     return { success: true, images };
   } catch (error) {

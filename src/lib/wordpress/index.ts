@@ -205,8 +205,9 @@ export class WordPressClient {
         headers: {
           'Authorization': this.authHeader,
           'Content-Disposition': `attachment; filename="${filename}"`,
+          'Content-Type': mimeType,
         },
-        body: buffer,
+        body: new Uint8Array(buffer),
       });
 
       if (!response.ok) {
