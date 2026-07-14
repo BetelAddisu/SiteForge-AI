@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,6 +52,8 @@ interface Template {
   style?: string;
   previewImage?: string;
   compatibilityScore?: number;
+  importStatus?: string;
+  metadata?: Record<string, unknown>;
   tags: string[];
   isFavorite: boolean;
 }
@@ -66,74 +68,19 @@ interface TemplateFilters {
 }
 
 // ============================================================================
-// Mock Data
+// Default templates (when no Supabase connection)
 // ============================================================================
 
-const MOCK_TEMPLATES: Template[] = [
+const DEFAULT_TEMPLATES: Template[] = [
   {
-    id: '1',
-    name: 'Modern Business Hero',
+    id: 'demo-1',
+    name: 'Demo Business Hero',
     category: 'hero',
-    industry: 'technology',
+    industry: 'business',
     style: 'modern',
     previewImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop',
     compatibilityScore: 95,
-    tags: ['hero', 'modern', 'tech'],
-    isFavorite: true,
-  },
-  {
-    id: '2',
-    name: 'Classic Services Section',
-    category: 'services',
-    industry: 'consulting',
-    style: 'corporate',
-    previewImage: 'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=600&h=400&fit=crop',
-    compatibilityScore: 88,
-    tags: ['services', 'corporate', 'classic'],
-    isFavorite: false,
-  },
-  {
-    id: '3',
-    name: 'Minimal Portfolio',
-    category: 'portfolio',
-    industry: 'creative',
-    style: 'minimal',
-    previewImage: 'https://images.unsplash.com/photo-1559028012-481c04fa702d?w=600&h=400&fit=crop',
-    compatibilityScore: 92,
-    tags: ['portfolio', 'minimal', 'creative'],
-    isFavorite: true,
-  },
-  {
-    id: '4',
-    name: 'Restaurant Menu Layout',
-    category: 'menu',
-    industry: 'restaurant',
-    style: 'elegant',
-    previewImage: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop',
-    compatibilityScore: 75,
-    tags: ['restaurant', 'menu', 'food'],
-    isFavorite: false,
-  },
-  {
-    id: '5',
-    name: 'Medical Services',
-    category: 'services',
-    industry: 'medical',
-    style: 'clean',
-    previewImage: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600&h=400&fit=crop',
-    compatibilityScore: 98,
-    tags: ['medical', 'healthcare', 'clean'],
-    isFavorite: false,
-  },
-  {
-    id: '6',
-    name: 'E-commerce Homepage',
-    category: 'homepage',
-    industry: 'retail',
-    style: 'modern',
-    previewImage: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=400&fit=crop',
-    compatibilityScore: 65,
-    tags: ['ecommerce', 'shop', 'modern'],
+    tags: ['hero', 'modern', 'business'],
     isFavorite: false,
   },
 ];
@@ -414,6 +361,8 @@ function FilterPanel({ filters, onChange }: { filters: TemplateFilters; onChange
 
 export default function TemplatesPage() {
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [templates, setTemplates] = useState<Template[]>(DEFAULT_TEMPLATES);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<TemplateFilters>({
     search: '',
     category: 'all',
@@ -423,8 +372,42 @@ export default function TemplatesPage() {
     compatibilityMax: 100,
   });
 
+  // Fetch templates from API
+  useEffect(() => {
+    async function fetchTemplates() {
+      try {
+        const response = await fetch('/api/templates');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.templates && data.templates.length > 0) {
+            // Transform Supabase data to our format
+            const transformed = data.templates.map((t: Record<string, unknown>) => ({
+              id: t.id as string,
+              name: t.name as string,
+              category: t.category as string,
+              industry: t.industry as string | undefined,
+              style: t.style as string | undefined,
+              previewImage: t.previewImage as string | undefined,
+              compatibilityScore: t.compatibilityScore as number | undefined,
+              importStatus: t.importStatus as string | undefined,
+              metadata: t.metadata as Record<string, unknown> | undefined,
+              tags: (t.metadata as Record<string, unknown>)?.tags as string[] || [],
+              isFavorite: false,
+            }));
+            setTemplates(transformed);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch templates:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchTemplates();
+  }, []);
+
   // Filter templates
-  const filteredTemplates = MOCK_TEMPLATES.filter((template) => {
+  const filteredTemplates = templates.filter((template) => {
     if (filters.search && !template.name.toLowerCase().includes(filters.search.toLowerCase())) {
       return false;
     }
@@ -458,7 +441,7 @@ export default function TemplatesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Template Library</h1>
           <p className="text-muted-foreground">
-            Browse and select from {MOCK_TEMPLATES.length} templates
+            {loading ? 'Loading...' : `Browse and select from ${templates.length} templates`}
           </p>
         </div>
         <Button>
@@ -532,14 +515,14 @@ export default function TemplatesPage() {
           <div className="h-3 w-3 rounded-full bg-green-500" />
           <span>High compatibility (80-100)</span>
           <span className="text-muted-foreground">
-            ({MOCK_TEMPLATES.filter((t) => (t.compatibilityScore || 0) >= 80).length})
+            ({templates.filter((t) => (t.compatibilityScore || 0) >= 80).length})
           </span>
         </div>
         <div className="flex items-center gap-2">
           <div className="h-3 w-3 rounded-full bg-yellow-500" />
           <span>Medium compatibility (50-79)</span>
           <span className="text-muted-foreground">
-            ({MOCK_TEMPLATES.filter((t) => {
+            ({templates.filter((t) => {
               const score = t.compatibilityScore || 0;
               return score >= 50 && score < 80;
             }).length})
@@ -549,7 +532,7 @@ export default function TemplatesPage() {
           <div className="h-3 w-3 rounded-full bg-red-500" />
           <span>Low compatibility (0-49)</span>
           <span className="text-muted-foreground">
-            ({MOCK_TEMPLATES.filter((t) => (t.compatibilityScore || 0) < 50).length})
+            ({templates.filter((t) => (t.compatibilityScore || 0) < 50).length})
           </span>
         </div>
       </div>
