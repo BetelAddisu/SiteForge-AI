@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth/context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,31 +12,138 @@ import { Badge } from '@/components/ui/badge';
 import { 
   User, 
   Key, 
-  Palette, 
-  Type, 
   Globe, 
   Shield, 
   Check,
   AlertCircle,
-  ExternalLink,
-  Save
+  Save,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function SettingsPage() {
+  const { user, loading: authLoading, updateProfile } = useAuth();
+  const router = useRouter();
+  
+  // Profile state
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  
+  // WordPress state
   const [wordpressUrl, setWordpressUrl] = useState('');
   const [wordpressUsername, setWordpressUsername] = useState('');
   const [wordpressAppPassword, setWordpressAppPassword] = useState('');
   const [wpConnected, setWpConnected] = useState(false);
-  const [testing, setTesting] = useState(false);
+  const [testingWp, setTestingWp] = useState(false);
+  const [savingWp, setSavingWp] = useState(false);
+  
+  // API Keys state
+  const [geminiKey, setGeminiKey] = useState('');
+  const [unsplashKey, setUnsplashKey] = useState('');
+  const [savingKeys, setSavingKeys] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+      return;
+    }
+    
+    if (user) {
+      setName(user.name || '');
+      setEmail(user.email);
+      
+      // Load saved settings
+      loadSettings();
+    }
+  }, [user, authLoading, router]);
+
+  const loadSettings = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.settings) {
+          setWordpressUrl(data.settings.wordpressUrl || '');
+          setWpConnected(!!data.settings.wordpressConnected);
+        }
+        if (data.apiKeys) {
+          // Don't show actual keys, just indicate they exist
+          setGeminiKey(data.apiKeys.gemini ? '••••••••••••' : '');
+          setUnsplashKey(data.apiKeys.unsplash ? '••••••••••••' : '');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    const result = await updateProfile({ name, email });
+    setSavingProfile(false);
+    
+    if (!result.error) {
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 3000);
+    }
+  };
 
   const testWordPressConnection = async () => {
-    setTesting(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setWpConnected(true);
-    setTesting(false);
+    setTestingWp(true);
+    try {
+      const response = await fetch('/api/integrations/wordpress/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: wordpressUrl, username: wordpressUsername, appPassword: wordpressAppPassword }),
+      });
+      
+      if (response.ok) {
+        setWpConnected(true);
+        // Save the connection
+        await fetch('/api/settings/wordpress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: wordpressUrl, username: wordpressUsername, appPassword: wordpressAppPassword }),
+        });
+      }
+    } catch (err) {
+      console.error('WordPress test failed:', err);
+    } finally {
+      setTestingWp(false);
+    }
   };
+
+  const handleSaveApiKeys = async () => {
+    setSavingKeys(true);
+    try {
+      await fetch('/api/settings/api-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          gemini: geminiKey !== '••••••••••••' ? geminiKey : undefined,
+          unsplash: unsplashKey !== '••••••••••••' ? unsplashKey : undefined,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to save API keys:', err);
+    } finally {
+      setSavingKeys(false);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
@@ -74,16 +183,47 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
-                <Input id="name" placeholder="Your name" />
+                <Input 
+                  id="name" 
+                  placeholder="Your name" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="your@email.com" />
+                <Input 
+                  id="email" 
+                  type="email" 
+                  placeholder="your@email.com" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled
+                />
+                <p className="text-xs text-muted-foreground">
+                  Email cannot be changed. Contact support if you need to update it.
+                </p>
               </div>
-              <Button>
-                <Save className="mr-2 h-4 w-4" />
-                Save Changes
-              </Button>
+              <div className="flex items-center gap-4">
+                <Button onClick={handleSaveProfile} disabled={savingProfile}>
+                  {savingProfile ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : profileSaved ? (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Saved!
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -161,18 +301,18 @@ export default function SettingsPage() {
                   onChange={(e) => setWordpressAppPassword(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Create an Application Password in WordPress → Users → Personal Settings → Application Passwords.
+                  Create an Application Password in WordPress → Users → Profile → Application Passwords.
                 </p>
               </div>
 
               {/* Test Connection */}
               <Button 
                 onClick={testWordPressConnection} 
-                disabled={testing || !wordpressUrl || !wordpressUsername || !wordpressAppPassword}
+                disabled={testingWp || !wordpressUrl || !wordpressUsername || !wordpressAppPassword}
               >
-                {testing ? (
+                {testingWp ? (
                   <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Testing...
                   </>
                 ) : (
@@ -216,7 +356,9 @@ export default function SettingsPage() {
                 <Input 
                   id="gemini" 
                   type="password"
-                  placeholder="AIza..."
+                  placeholder={geminiKey || "Enter your API key"}
+                  value={geminiKey}
+                  onChange={(e) => setGeminiKey(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
                   Get your API key from{' '}
@@ -231,7 +373,9 @@ export default function SettingsPage() {
                 <Input 
                   id="unsplash" 
                   type="password"
-                  placeholder="Access Key"
+                  placeholder={unsplashKey || "Enter your API key"}
+                  value={unsplashKey}
+                  onChange={(e) => setUnsplashKey(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
                   Get your API key from{' '}
@@ -241,15 +385,26 @@ export default function SettingsPage() {
                 </p>
               </div>
 
+              <div className="flex items-center gap-4">
+                <Button onClick={handleSaveApiKeys} disabled={savingKeys}>
+                  {savingKeys ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save API Keys
+                    </>
+                  )}
+                </Button>
+              </div>
+
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Shield className="h-4 w-4" />
                 API keys are encrypted and stored securely.
               </div>
-
-              <Button>
-                <Save className="mr-2 h-4 w-4" />
-                Save API Keys
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>

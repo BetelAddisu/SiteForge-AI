@@ -5,14 +5,5 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <Shell
-      user={{
-        name: 'Demo User',
-        email: 'demo@siteforge.ai',
-      }}
-    >
-      {children}
-    </Shell>
-  );
+  return <Shell>{children}</Shell>;
 }

@@ -2,437 +2,84 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
-import {
-  Search,
-  Filter,
-  Grid,
-  List,
-  Heart,
-  Eye,
-  Copy,
-  MoreVertical,
-  Star,
-  FileStack,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Search, Filter, FileStack, Eye, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-// ============================================================================
-// Types
-// ============================================================================
 
 interface Template {
   id: string;
   name: string;
   category: string;
-  industry?: string;
-  style?: string;
-  previewImage?: string;
-  compatibilityScore?: number;
-  importStatus?: string;
-  metadata?: Record<string, unknown>;
+  industry: string | null;
+  style: string | null;
+  previewImage: string | null;
   tags: string[];
-  isFavorite: boolean;
+  metadata: Record<string, unknown> | null;
 }
 
-interface TemplateFilters {
-  search: string;
-  category: string;
-  industry: string;
-  style: string;
-  compatibilityMin: number;
-  compatibilityMax: number;
-}
-
-// ============================================================================
-// Default templates (when no Supabase connection)
-// ============================================================================
-
-const DEFAULT_TEMPLATES: Template[] = [
-  {
-    id: 'demo-1',
-    name: 'Demo Business Hero',
-    category: 'hero',
-    industry: 'business',
-    style: 'modern',
-    previewImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop',
-    compatibilityScore: 95,
-    tags: ['hero', 'modern', 'business'],
-    isFavorite: false,
-  },
+const CATEGORIES = [
+  { value: 'hero', label: 'Hero Sections' },
+  { value: 'about', label: 'About Us' },
+  { value: 'services', label: 'Services' },
+  { value: 'pricing', label: 'Pricing' },
+  { value: 'team', label: 'Team' },
+  { value: 'testimonial', label: 'Testimonials' },
+  { value: 'contact', label: 'Contact' },
+  { value: 'footer', label: 'Footer' },
 ];
 
-const CATEGORIES = ['all', 'hero', 'services', 'about', 'portfolio', 'pricing', 'team', 'testimonial', 'contact', 'footer'];
-const INDUSTRIES = ['all', 'technology', 'consulting', 'creative', 'restaurant', 'medical', 'retail', 'real-estate'];
-const STYLES = ['all', 'modern', 'minimal', 'corporate', 'elegant', 'clean', 'creative'];
-
-// ============================================================================
-// Components
-// ============================================================================
-
-function CompatibilityBadge({ score }: { score: number }) {
-  if (score >= 80) {
-    return (
-      <Badge variant="success" className="gap-1">
-        <CheckCircle2 className="h-3 w-3" />
-        {score}%
-      </Badge>
-    );
-  }
-  if (score >= 50) {
-    return (
-      <Badge variant="warning" className="gap-1">
-        <AlertTriangle className="h-3 w-3" />
-        {score}%
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="destructive" className="gap-1">
-      <XCircle className="h-3 w-3" />
-      {score}%
-    </Badge>
-  );
-}
-
-function TemplateCard({ template, view }: { template: Template; view: 'grid' | 'list' }) {
-  const [isFavorite, setIsFavorite] = useState(template.isFavorite);
-  const router = useRouter();
-
-  if (view === 'list') {
-    return (
-      <Card className="flex overflow-hidden">
-        <div className="w-64 flex-shrink-0 cursor-pointer" onClick={() => router.push(`/templates/${template.id}`)}>
-          <img
-            src={template.previewImage || '/placeholder.png'}
-            alt={template.name}
-            className="h-full w-full object-cover"
-          />
-        </div>
-        <div className="flex flex-1 flex-col">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="cursor-pointer" onClick={() => router.push(`/templates/${template.id}`)}>
-                <CardTitle className="text-lg hover:underline">{template.name}</CardTitle>
-                <CardDescription className="mt-1">
-                  {template.industry && <span className="capitalize">{template.industry}</span>}
-                  {template.style && <span> • <span className="capitalize">{template.style}</span></span>}
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                {template.compatibilityScore !== undefined && (
-                  <CompatibilityBadge score={template.compatibilityScore} />
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsFavorite(!isFavorite)}
-                >
-                  <Heart className={cn('h-4 w-4', isFavorite && 'fill-red-500 text-red-500')} />
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="flex-1">
-            <div className="flex flex-wrap gap-1">
-              {template.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-          <CardFooter className="gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/templates/${template.id}`}>
-                <Eye className="mr-2 h-4 w-4" />
-                Preview
-              </Link>
-            </Button>
-            <Button size="sm" asChild>
-              <Link href={`/projects/new?template=${template.id}`}>
-                <Copy className="mr-2 h-4 w-4" />
-                Use Template
-              </Link>
-            </Button>
-          </CardFooter>
-        </div>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="overflow-hidden">
-      <div className="relative aspect-[3/2]">
-        <img
-          src={template.previewImage || '/placeholder.png'}
-          alt={template.name}
-          className="h-full w-full object-cover cursor-pointer"
-          onClick={() => router.push(`/templates/${template.id}`)}
-        />
-        <div className="absolute right-2 top-2">
-          <Button
-            variant="secondary"
-            size="icon"
-            className="h-8 w-8 bg-white/90 hover:bg-white"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsFavorite(!isFavorite);
-            }}
-          >
-            <Heart className={cn('h-4 w-4', isFavorite && 'fill-red-500 text-red-500')} />
-          </Button>
-        </div>
-        {template.compatibilityScore !== undefined && (
-          <div className="absolute left-2 top-2">
-            <CompatibilityBadge score={template.compatibilityScore} />
-          </div>
-        )}
-      </div>
-      <CardHeader className="p-4">
-        <CardTitle 
-          className="cursor-pointer text-base hover:underline"
-          onClick={() => router.push(`/templates/${template.id}`)}
-        >
-          {template.name}
-        </CardTitle>
-        <CardDescription className="text-xs">
-          {template.category} {template.industry && `• ${template.industry}`}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-4 pt-0">
-        <div className="flex flex-wrap gap-1">
-          {template.tags.slice(0, 3).map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-xs">
-              {tag}
-            </Badge>
-          ))}
-        </div>
-      </CardContent>
-      <CardFooter className="gap-2 p-4 pt-0">
-        <Button variant="outline" size="sm" className="flex-1" asChild>
-          <Link href={`/templates/${template.id}`}>
-            <Eye className="mr-2 h-4 w-4" />
-            Preview
-          </Link>
-        </Button>
-        <Button size="sm" className="flex-1" asChild>
-          <Link href={`/projects/new?template=${template.id}`}>
-            Use
-          </Link>
-        </Button>
-      </CardFooter>
-    </Card>
-  );
-}
-
-function FilterPanel({ filters, onChange }: { filters: TemplateFilters; onChange: (filters: TemplateFilters) => void }) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <label className="text-sm font-medium">Category</label>
-        <Select
-          value={filters.category}
-          onValueChange={(value) => onChange({ ...filters, category: value })}
-        >
-          <SelectTrigger className="mt-1">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {CATEGORIES.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {cat === 'all' ? 'All Categories' : cat.charAt(0).toUpperCase() + cat.slice(1)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <label className="text-sm font-medium">Industry</label>
-        <Select
-          value={filters.industry}
-          onValueChange={(value) => onChange({ ...filters, industry: value })}
-        >
-          <SelectTrigger className="mt-1">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {INDUSTRIES.map((ind) => (
-              <SelectItem key={ind} value={ind}>
-                {ind === 'all' ? 'All Industries' : ind.charAt(0).toUpperCase() + ind.slice(1)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <label className="text-sm font-medium">Style</label>
-        <Select
-          value={filters.style}
-          onValueChange={(value) => onChange({ ...filters, style: value })}
-        >
-          <SelectTrigger className="mt-1">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STYLES.map((style) => (
-              <SelectItem key={style} value={style}>
-                {style === 'all' ? 'All Styles' : style.charAt(0).toUpperCase() + style.slice(1)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <label className="text-sm font-medium">Compatibility</label>
-        <div className="mt-2 space-y-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Min: {filters.compatibilityMin}%</span>
-            <span>Max: {filters.compatibilityMax}%</span>
-          </div>
-          <div className="flex gap-2">
-            <Input
-              type="number"
-              min="0"
-              max="100"
-              value={filters.compatibilityMin}
-              onChange={(e) => onChange({ ...filters, compatibilityMin: parseInt(e.target.value) || 0 })}
-              className="w-20"
-            />
-            <Input
-              type="number"
-              min="0"
-              max="100"
-              value={filters.compatibilityMax}
-              onChange={(e) => onChange({ ...filters, compatibilityMax: parseInt(e.target.value) || 100 })}
-              className="w-20"
-            />
-          </div>
-        </div>
-      </div>
-
-      <Button
-        variant="outline"
-        className="w-full"
-        onClick={() => onChange({
-          search: '',
-          category: 'all',
-          industry: 'all',
-          style: 'all',
-          compatibilityMin: 0,
-          compatibilityMax: 100,
-        })}
-      >
-        Reset Filters
-      </Button>
-    </div>
-  );
-}
-
-// ============================================================================
-// Main Page
-// ============================================================================
+const INDUSTRIES = [
+  'Technology',
+  'Healthcare',
+  'Finance',
+  'Restaurant',
+  'Real Estate',
+  'Creative',
+  'Education',
+  'Fitness',
+  'Legal',
+  'Travel',
+  'Non-Profit',
+  'E-commerce',
+];
 
 export default function TemplatesPage() {
-  const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [templates, setTemplates] = useState<Template[]>(DEFAULT_TEMPLATES);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<TemplateFilters>({
-    search: '',
-    category: 'all',
-    industry: 'all',
-    style: 'all',
-    compatibilityMin: 0,
-    compatibilityMax: 100,
-  });
+  const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
 
-  // Fetch templates from API
   useEffect(() => {
-    async function fetchTemplates() {
-      try {
-        const response = await fetch('/api/templates');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.templates && data.templates.length > 0) {
-            // Transform Supabase data to our format
-            const transformed = data.templates.map((t: Record<string, unknown>) => ({
-              id: t.id as string,
-              name: t.name as string,
-              category: t.category as string,
-              industry: t.industry as string | undefined,
-              style: t.style as string | undefined,
-              previewImage: t.previewImage as string | undefined,
-              compatibilityScore: t.compatibilityScore as number | undefined,
-              importStatus: t.importStatus as string | undefined,
-              metadata: t.metadata as Record<string, unknown> | undefined,
-              tags: (t.metadata as Record<string, unknown>)?.tags as string[] || [],
-              isFavorite: false,
-            }));
-            setTemplates(transformed);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch templates:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchTemplates();
+    loadTemplates();
   }, []);
 
-  // Filter templates
-  const filteredTemplates = templates.filter((template) => {
-    if (filters.search && !template.name.toLowerCase().includes(filters.search.toLowerCase())) {
-      return false;
+  const loadTemplates = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (selectedCategory) params.set('category', selectedCategory);
+      if (selectedIndustry) params.set('industry', selectedIndustry);
+      if (search) params.set('search', search);
+      
+      const response = await fetch(`/api/templates?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        setTemplates(data.templates || []);
+      }
+    } catch (err) {
+      console.error('Failed to load templates:', err);
+    } finally {
+      setLoading(false);
     }
-    if (filters.category !== 'all' && template.category !== filters.category) {
-      return false;
-    }
-    if (filters.industry !== 'all' && template.industry !== filters.industry) {
-      return false;
-    }
-    if (filters.style !== 'all' && template.style !== filters.style) {
-      return false;
-    }
-    if (template.compatibilityScore !== undefined) {
-      if (template.compatibilityScore < filters.compatibilityMin) return false;
-      if (template.compatibilityScore > filters.compatibilityMax) return false;
-    }
-    return true;
-  });
+  };
 
-  const activeFiltersCount = [
-    filters.category !== 'all',
-    filters.industry !== 'all',
-    filters.style !== 'all',
-    filters.compatibilityMin > 0 || filters.compatibilityMax < 100,
-  ].filter(Boolean).length;
+  useEffect(() => {
+    loadTemplates();
+  }, [selectedCategory, selectedIndustry, search]);
 
   return (
     <div className="space-y-6">
@@ -441,138 +88,132 @@ export default function TemplatesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Template Library</h1>
           <p className="text-muted-foreground">
-            {loading ? 'Loading...' : `Browse and select from ${templates.length} templates`}
+            {templates.length} Elementor templates ready for your projects
           </p>
         </div>
-        <Button>
-          <FileStack className="mr-2 h-4 w-4" />
-          Import Templates
-        </Button>
       </div>
 
       {/* Search and Filters */}
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="flex flex-col gap-4 md:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search templates..."
-            value={filters.search}
-            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
           />
         </div>
-        
         <div className="flex gap-2">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Filter className="h-4 w-4" />
-                Filters
-                {activeFiltersCount > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 text-xs">
-                    {activeFiltersCount}
-                  </Badge>
-                )}
-              </Button>
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader>
-                <SheetTitle>Filter Templates</SheetTitle>
-                <SheetDescription>
-                  Narrow down templates by category, industry, style, and compatibility.
-                </SheetDescription>
-              </SheetHeader>
-              <div className="mt-6">
-                <FilterPanel filters={filters} onChange={setFilters} />
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          <div className="flex rounded-md border">
-            <Button
-              variant={view === 'grid' ? 'secondary' : 'ghost'}
-              size="icon"
-              className="rounded-r-none"
-              onClick={() => setView('grid')}
-            >
-              <Grid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={view === 'list' ? 'secondary' : 'ghost'}
-              size="icon"
-              className="rounded-l-none"
-              onClick={() => setView('list')}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="flex gap-6 text-sm">
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-green-500" />
-          <span>High compatibility (80-100)</span>
-          <span className="text-muted-foreground">
-            ({templates.filter((t) => (t.compatibilityScore || 0) >= 80).length})
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-yellow-500" />
-          <span>Medium compatibility (50-79)</span>
-          <span className="text-muted-foreground">
-            ({templates.filter((t) => {
-              const score = t.compatibilityScore || 0;
-              return score >= 50 && score < 80;
-            }).length})
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-red-500" />
-          <span>Low compatibility (0-49)</span>
-          <span className="text-muted-foreground">
-            ({templates.filter((t) => (t.compatibilityScore || 0) < 50).length})
-          </span>
-        </div>
-      </div>
-
-      {/* Template Grid/List */}
-      {filteredTemplates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-          <FileStack className="h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-4 text-lg font-medium">No templates found</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Try adjusting your filters or search term
-          </p>
-          <Button
-            variant="outline"
-            className="mt-4"
-            onClick={() => setFilters({
-              search: '',
-              category: 'all',
-              industry: 'all',
-              style: 'all',
-              compatibilityMin: 0,
-              compatibilityMax: 100,
-            })}
+          <select
+            value={selectedCategory || ''}
+            onChange={(e) => setSelectedCategory(e.target.value || null)}
+            className="rounded-md border bg-background px-3 py-2 text-sm"
           >
-            Clear Filters
-          </Button>
+            <option value="">All Categories</option>
+            {CATEGORIES.map((cat) => (
+              <option key={cat.value} value={cat.value}>{cat.label}</option>
+            ))}
+          </select>
+          <select
+            value={selectedIndustry || ''}
+            onChange={(e) => setSelectedIndustry(e.target.value || null)}
+            className="rounded-md border bg-background px-3 py-2 text-sm"
+          >
+            <option value="">All Industries</option>
+            {INDUSTRIES.map((ind) => (
+              <option key={ind} value={ind}>{ind}</option>
+            ))}
+          </select>
         </div>
-      ) : view === 'grid' ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredTemplates.map((template) => (
-            <TemplateCard key={template.id} template={template} view={view} />
-          ))}
+      </div>
+
+      {/* Template Grid */}
+      {loading ? (
+        <div className="flex h-64 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
+      ) : templates.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="rounded-full bg-muted p-4">
+              <FileStack className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="mt-4 text-lg font-medium">No templates found</h3>
+            <p className="mt-2 text-center text-sm text-muted-foreground">
+              {search || selectedCategory || selectedIndustry
+                ? 'Try adjusting your search or filters.'
+                : 'Templates will appear here once they are imported into the system.'}
+            </p>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="space-y-4">
-          {filteredTemplates.map((template) => (
-            <TemplateCard key={template.id} template={template} view={view} />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {templates.map((template) => (
+            <Card key={template.id} className="overflow-hidden">
+              <div className="aspect-video bg-muted">
+                {template.previewImage ? (
+                  <img
+                    src={template.previewImage}
+                    alt={template.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <FileStack className="h-12 w-12 text-muted-foreground/50" />
+                  </div>
+                )}
+              </div>
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-lg">{template.name}</CardTitle>
+                    <CardDescription className="capitalize">
+                      {template.industry || 'General'}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap gap-1">
+                  <Badge variant="secondary" className="capitalize">
+                    {template.category}
+                  </Badge>
+                  {template.style && (
+                    <Badge variant="outline" className="capitalize">
+                      {template.style}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1" asChild>
+                    <Link href={`/templates/${template.id}`}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Preview
+                    </Link>
+                  </Button>
+                  <Button size="sm" className="flex-1" asChild>
+                    <Link href={`/projects/new?template=${template.id}`}>
+                      Use Template
+                      <ChevronRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
+
+      {/* Help Text */}
+      <Card className="bg-muted/50">
+        <CardContent className="py-4">
+          <p className="text-sm text-muted-foreground">
+            <strong>Tip:</strong> Templates are assembled from Elementor sections. When creating a project, 
+            the AI selects the best sections from multiple templates to create a cohesive website for your industry.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
