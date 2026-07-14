@@ -1,0 +1,2377 @@
+{
+  "id": "saras-wine-template-kit-who-we-are",
+  "name": "Who we are",
+  "category": "about",
+  "industry": "Restaurant",
+  "kitName": "Saras - Wine Template Kit",
+  "kitSlug": "saras-wine-template-kit",
+  "source": "templates/who-we-are.json",
+  "screenshot": "/templates/saras-wine-template-kit/who-we-are.jpg",
+  "type": "section",
+  "requiresElementorPro": false,
+  "content": {
+    "version": "0.4",
+    "title": "Who we are",
+    "type": "section",
+    "metadata": {
+      "template_type": "section-about",
+      "include_in_zip": "1",
+      "elementor_pro_required": null,
+      "wp_page_template": "default"
+    },
+    "content": [
+      {
+        "id": "180d8f5d",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": "750",
+            "sizes": []
+          },
+          "height": "min-height",
+          "custom_height": {
+            "unit": "vh",
+            "size": 100,
+            "sizes": []
+          },
+          "background_background": "classic",
+          "background_color": "#000000",
+          "background_color_b": "#00f2ff",
+          "background_color_b_stop": {
+            "unit": "%",
+            "size": "89",
+            "sizes": []
+          },
+          "background_gradient_angle": {
+            "unit": "deg",
+            "size": "130",
+            "sizes": []
+          },
+          "background_overlay_position": "center center",
+          "background_overlay_xpos": {
+            "unit": "px",
+            "size": "-133",
+            "sizes": []
+          },
+          "background_overlay_ypos": {
+            "unit": "px",
+            "size": "-89",
+            "sizes": []
+          },
+          "background_overlay_repeat": "no-repeat",
+          "background_overlay_size": "cover",
+          "background_overlay_opacity": {
+            "unit": "px",
+            "size": 0.2,
+            "sizes": []
+          },
+          "shape_divider_bottom_width": {
+            "unit": "%",
+            "size": "260",
+            "sizes": []
+          },
+          "shape_divider_bottom_height": {
+            "unit": "px",
+            "size": "120",
+            "sizes": []
+          },
+          "shape_divider_bottom_flip": "yes",
+          "custom_height_tablet": {
+            "unit": "px",
+            "size": "650",
+            "sizes": []
+          },
+          "shape_divider_bottom_height_tablet": {
+            "unit": "px",
+            "size": "195",
+            "sizes": []
+          },
+          "margin": {
+            "unit": "px",
+            "top": "",
+            "right": "0",
+            "bottom": "",
+            "left": "0",
+            "isLinked": "1"
+          },
+          "margin_mobile": {
+            "unit": "%",
+            "top": "",
+            "right": "0",
+            "bottom": "",
+            "left": "0",
+            "isLinked": "1"
+          },
+          "padding_tablet": {
+            "unit": "%",
+            "top": "0",
+            "right": "5",
+            "bottom": "0",
+            "left": "5",
+            "isLinked": ""
+          },
+          "padding_mobile": {
+            "unit": "%",
+            "top": "10",
+            "right": "5",
+            "bottom": "0",
+            "left": "5",
+            "isLinked": ""
+          },
+          "_title": "Hero",
+          "custom_height_mobile": {
+            "unit": "vh",
+            "size": 100,
+            "sizes": []
+          },
+          "_timestamp_": "v1cGFlU2pBMWFYM3pyZVN4VnNoMExTZz09",
+          "layout": "full_width",
+          "background_image": {
+            "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/red-wine-grapes-in-voiolet-basket-on-bllack-background-.jpg",
+            "id": 3547
+          },
+          "background_overlay_background": "classic",
+          "background_overlay_color": "#000000"
+        },
+        "elements": [
+          {
+            "id": "6b94ba97",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null
+            },
+            "elements": [
+              {
+                "id": "610e8b00",
+                "settings": {
+                  "title": "Who We Are",
+                  "header_size": "h1",
+                  "align": "center",
+                  "title_color": "#FFFFFF",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Prata",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 4,
+                    "sizes": []
+                  },
+                  "typography_line_height": {
+                    "unit": "em",
+                    "size": 1.3,
+                    "sizes": []
+                  },
+                  "typography_font_size_mobile": {
+                    "unit": "rem",
+                    "size": 3,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": "",
+        "elType": "section"
+      },
+      {
+        "id": "3eb71a4",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": 1200,
+            "sizes": []
+          },
+          "content_position": "middle",
+          "structure": "20",
+          "padding": {
+            "unit": "em",
+            "top": "7",
+            "right": "0",
+            "bottom": "7",
+            "left": "0",
+            "isLinked": false
+          },
+          "padding_mobile": {
+            "unit": "em",
+            "top": "3",
+            "right": "0",
+            "bottom": "3",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "5af2b0a4",
+            "settings": {
+              "_column_size": 50,
+              "_inline_size": null,
+              "background_background": "classic",
+              "background_image": {
+                "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/top-view-of-red-wine-bottle-macro-selective-focus-on-wine-cork.jpg",
+                "id": 3548
+              },
+              "background_repeat": "no-repeat",
+              "background_size": "cover",
+              "background_position_tablet": "center center"
+            },
+            "elements": [
+              {
+                "id": "6875642b",
+                "settings": {
+                  "space": {
+                    "unit": "px",
+                    "size": 700,
+                    "sizes": []
+                  },
+                  "space_mobile": {
+                    "unit": "px",
+                    "size": 500,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "spacer",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          },
+          {
+            "id": "6caa0738",
+            "settings": {
+              "_column_size": 50,
+              "_inline_size": null,
+              "space_between_widgets": 15,
+              "background_background": "classic",
+              "background_color": "#FFFFFF",
+              "padding": {
+                "unit": "%",
+                "top": "15",
+                "right": "15",
+                "bottom": "15",
+                "left": "15",
+                "isLinked": true
+              }
+            },
+            "elements": [
+              {
+                "id": "595c2c67",
+                "settings": {
+                  "title": "We are",
+                  "header_size": "p",
+                  "align": "left",
+                  "title_color": "#777777",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Muli",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 0.625,
+                    "sizes": []
+                  },
+                  "typography_font_weight": "normal",
+                  "typography_text_transform": "uppercase",
+                  "typography_letter_spacing": {
+                    "unit": "px",
+                    "size": 3,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "5718509",
+                "settings": {
+                  "title": "Producer of great wines since 1896",
+                  "align": "left",
+                  "header_size": "h1",
+                  "title_color": "#000000",
+                  "typography_typography": "custom",
+                  "typography_line_height": {
+                    "unit": "em",
+                    "size": 1.3,
+                    "sizes": []
+                  },
+                  "typography_font_size_mobile": {
+                    "unit": "rem",
+                    "size": 2.4,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "63505297",
+                "settings": {
+                  "width": {
+                    "unit": "px",
+                    "size": 60,
+                    "sizes": []
+                  },
+                  "align": "left",
+                  "text": "Divider",
+                  "color": "#DCBE84"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "divider",
+                "elType": "widget"
+              },
+              {
+                "id": "1f0d08f7",
+                "settings": {
+                  "editor": "<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras non lorem eget erat convallis lacinia a eget purus. Duis in lacinia orci, eget dictum libero.</p><p>Donec pretium libero purus, ut interdum velit venenatis ac. Quisque molestie eros aliquam, hendrerit tortor nec, sollicitudin ligula. Quisque magna diam, placerat at dictum at, accumsan et turpis.</p><p>Sed at risus lacus. Sed at luctus arcu. In pretium lacus ut libero pretium, nec commodo risus maximus.</p>"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "text-editor",
+                "elType": "widget"
+              },
+              {
+                "id": "44d4182",
+                "settings": {
+                  "text": "Meet our winemaker",
+                  "align": "left",
+                  "_margin": {
+                    "unit": "px",
+                    "top": "30",
+                    "right": "0",
+                    "bottom": "0",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "_padding": {
+                    "unit": "%",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "0",
+                    "left": "0",
+                    "isLinked": true
+                  },
+                  "align_mobile": "justify"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "button",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "5d1980ff",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": 1200,
+            "sizes": []
+          },
+          "gap": "no",
+          "structure": "20",
+          "background_background": "classic",
+          "background_color": "#000000"
+        },
+        "elements": [
+          {
+            "id": "607fff94",
+            "settings": {
+              "_column_size": 50,
+              "_inline_size": null,
+              "background_background": "classic",
+              "background_image": {
+                "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/red-wine-from-grapes-of-pinot-noir-varieties-poured-into-large-wine-glass-wine-tasting.jpg",
+                "id": 3549
+              },
+              "background_size": "cover",
+              "background_position": "center center"
+            },
+            "elements": [
+              {
+                "id": "2aab9e89",
+                "settings": {
+                  "space": {
+                    "unit": "px",
+                    "size": 700,
+                    "sizes": []
+                  },
+                  "space_mobile": {
+                    "unit": "px",
+                    "size": 500,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "spacer",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          },
+          {
+            "id": "5737967d",
+            "settings": {
+              "_column_size": 50,
+              "_inline_size": null,
+              "space_between_widgets": 15,
+              "background_background": "classic",
+              "background_color": "#FFFFFF",
+              "padding": {
+                "unit": "%",
+                "top": "15",
+                "right": "20",
+                "bottom": "15",
+                "left": "20",
+                "isLinked": false
+              }
+            },
+            "elements": [
+              {
+                "id": "3953fb41",
+                "settings": {
+                  "title": "01",
+                  "header_size": "p",
+                  "align": "left",
+                  "title_color": "#DCBE84",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Muli",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 0.625,
+                    "sizes": []
+                  },
+                  "typography_font_weight": "normal",
+                  "typography_text_transform": "uppercase",
+                  "typography_letter_spacing": {
+                    "unit": "px",
+                    "size": 3,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "497d499c",
+                "settings": {
+                  "title": "Our Philosophy",
+                  "align": "left",
+                  "header_size": "h3",
+                  "title_color": "#000000",
+                  "typography_typography": "custom",
+                  "typography_line_height": {
+                    "unit": "em",
+                    "size": 1.3,
+                    "sizes": []
+                  },
+                  "_margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "10",
+                    "left": "0",
+                    "isLinked": false
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "25b054fc",
+                "settings": {
+                  "editor": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras non lorem eget erat convallis lacinia a eget purus. Duis in lacinia orci, eget dictum libero."
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "text-editor",
+                "elType": "widget"
+              },
+              {
+                "id": "413fd946",
+                "settings": {
+                  "space": {
+                    "unit": "px",
+                    "size": 30,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "spacer",
+                "elType": "widget"
+              },
+              {
+                "id": "5de90182",
+                "settings": {
+                  "title": "02",
+                  "header_size": "p",
+                  "align": "left",
+                  "title_color": "#DCBE84",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Muli",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 0.625,
+                    "sizes": []
+                  },
+                  "typography_font_weight": "normal",
+                  "typography_text_transform": "uppercase",
+                  "typography_letter_spacing": {
+                    "unit": "px",
+                    "size": 3,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "44d6cfe4",
+                "settings": {
+                  "title": "Our Technique\n",
+                  "align": "left",
+                  "header_size": "h3",
+                  "title_color": "#000000",
+                  "typography_typography": "custom",
+                  "typography_line_height": {
+                    "unit": "em",
+                    "size": 1.3,
+                    "sizes": []
+                  },
+                  "_margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "10",
+                    "left": "0",
+                    "isLinked": false
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "67366686",
+                "settings": {
+                  "editor": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras non lorem eget erat convallis lacinia a eget purus. Duis in lacinia orci, eget dictum libero."
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "text-editor",
+                "elType": "widget"
+              },
+              {
+                "id": "d5941c",
+                "settings": {
+                  "space": {
+                    "unit": "px",
+                    "size": 30,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "spacer",
+                "elType": "widget"
+              },
+              {
+                "id": "a6e348e",
+                "settings": {
+                  "title": "03",
+                  "header_size": "p",
+                  "align": "left",
+                  "title_color": "#DCBE84",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Muli",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 0.625,
+                    "sizes": []
+                  },
+                  "typography_font_weight": "normal",
+                  "typography_text_transform": "uppercase",
+                  "typography_letter_spacing": {
+                    "unit": "px",
+                    "size": 3,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "5ab2f035",
+                "settings": {
+                  "title": "Green Practices",
+                  "align": "left",
+                  "header_size": "h3",
+                  "title_color": "#000000",
+                  "typography_typography": "custom",
+                  "typography_line_height": {
+                    "unit": "em",
+                    "size": 1.3,
+                    "sizes": []
+                  },
+                  "_margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "10",
+                    "left": "0",
+                    "isLinked": false
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "6c5eae29",
+                "settings": {
+                  "editor": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras non lorem eget erat convallis lacinia a eget purus. Duis in lacinia orci, eget dictum libero."
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "text-editor",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "340e962f",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": 1200,
+            "sizes": []
+          },
+          "padding": {
+            "unit": "em",
+            "top": "7",
+            "right": "0",
+            "bottom": "7",
+            "left": "0",
+            "isLinked": false
+          },
+          "padding_mobile": {
+            "unit": "em",
+            "top": "3",
+            "right": "0",
+            "bottom": "3",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "720427ea",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null,
+              "align": "center"
+            },
+            "elements": [
+              {
+                "id": "85eb84c",
+                "settings": {
+                  "title": "Explore\n",
+                  "header_size": "p",
+                  "align": "center",
+                  "title_color": "#777777",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Muli",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 0.625,
+                    "sizes": []
+                  },
+                  "typography_font_weight": "normal",
+                  "typography_text_transform": "uppercase",
+                  "typography_letter_spacing": {
+                    "unit": "px",
+                    "size": 3,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "49547d76",
+                "settings": {
+                  "title": "Our Story",
+                  "align": "center",
+                  "title_color": "#000000"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "73565257",
+                "settings": {
+                  "width": {
+                    "unit": "px",
+                    "size": 60,
+                    "sizes": []
+                  },
+                  "align": "center",
+                  "text": "Divider",
+                  "color": "#DCBE84"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "divider",
+                "elType": "widget"
+              },
+              {
+                "id": "1bcb0b1d",
+                "settings": {
+                  "title": "We have a great team who is enthusiastic and passionate about wine grapes",
+                  "header_size": "p",
+                  "align": "center",
+                  "title_color": "#000000",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Muli",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 1,
+                    "sizes": []
+                  },
+                  "typography_line_height": {
+                    "unit": "em",
+                    "size": 1.5,
+                    "sizes": []
+                  },
+                  "_element_width": "initial",
+                  "_element_custom_width": {
+                    "unit": "px",
+                    "size": 500,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "284219d4",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": 1200,
+            "sizes": []
+          },
+          "padding": {
+            "unit": "em",
+            "top": "0",
+            "right": "0",
+            "bottom": "7",
+            "left": "0",
+            "isLinked": false
+          },
+          "padding_mobile": {
+            "unit": "em",
+            "top": "0",
+            "right": "0",
+            "bottom": "3",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "4012fea1",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null
+            },
+            "elements": [
+              {
+                "id": "4757f406",
+                "settings": {
+                  "slides": [
+                    {
+                      "heading": "1912",
+                      "description": "<strong>Second generation</strong> <br>\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque dictum, justo malesuada elementum venenatis, mauris mi ullamcorper mi, pharetra fringilla nibh diam ut enim.\n",
+                      "button_text": "",
+                      "background_color": "#833ca3",
+                      "_id": "874505f",
+                      "background_image": {
+                        "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/history-1.jpg",
+                        "id": 3466
+                      },
+                      "background_size": "cover",
+                      "background_ken_burns": "",
+                      "zoom_direction": "in",
+                      "background_overlay": "yes",
+                      "background_overlay_color": "rgba(0,0,0,0.5)",
+                      "background_overlay_blend_mode": "",
+                      "link": {
+                        "url": "",
+                        "is_external": "",
+                        "nofollow": "",
+                        "custom_attributes": ""
+                      },
+                      "link_click": "slide",
+                      "custom_style": "",
+                      "horizontal_position": "",
+                      "vertical_position": "",
+                      "text_align": "",
+                      "content_color": "",
+                      "repeater_text_shadow_text_shadow_type": "",
+                      "repeater_text_shadow_text_shadow": {
+                        "horizontal": 0,
+                        "vertical": 0,
+                        "blur": 10,
+                        "color": "rgba(0,0,0,0.3)"
+                      }
+                    },
+                    {
+                      "heading": "1930",
+                      "description": "<strong>Third generation</strong> <br>\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque dictum, justo malesuada elementum venenatis, mauris mi ullamcorper mi, pharetra fringilla nibh diam ut enim.\n",
+                      "button_text": "",
+                      "background_color": "#833ca3",
+                      "background_image": {
+                        "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/history-2.jpg",
+                        "id": 3467
+                      },
+                      "background_size": "cover",
+                      "background_ken_burns": "",
+                      "zoom_direction": "in",
+                      "background_overlay": "yes",
+                      "background_overlay_color": "rgba(0,0,0,0.5)",
+                      "background_overlay_blend_mode": "",
+                      "link": {
+                        "url": "",
+                        "is_external": "",
+                        "nofollow": "",
+                        "custom_attributes": ""
+                      },
+                      "link_click": "slide",
+                      "custom_style": "",
+                      "horizontal_position": "",
+                      "vertical_position": "",
+                      "text_align": "",
+                      "content_color": "",
+                      "repeater_text_shadow_text_shadow_type": "",
+                      "repeater_text_shadow_text_shadow": {
+                        "horizontal": 0,
+                        "vertical": 0,
+                        "blur": 10,
+                        "color": "rgba(0,0,0,0.3)"
+                      },
+                      "_id": "2136927"
+                    }
+                  ],
+                  "slides_height": {
+                    "unit": "px",
+                    "size": 500,
+                    "sizes": []
+                  },
+                  "autoplay": "",
+                  "content_max_width": {
+                    "unit": "%",
+                    "size": 44,
+                    "sizes": []
+                  },
+                  "slides_padding": {
+                    "unit": "%",
+                    "top": "10",
+                    "right": "10",
+                    "bottom": "10",
+                    "left": "10",
+                    "isLinked": true
+                  },
+                  "slides_horizontal_position": "left",
+                  "slides_text_align": "left",
+                  "heading_color": "#FFFFFF",
+                  "heading_typography_typography": "custom",
+                  "heading_typography_font_family": "Prata",
+                  "heading_typography_font_size": {
+                    "unit": "rem",
+                    "size": 4,
+                    "sizes": []
+                  },
+                  "heading_typography_font_weight": "normal",
+                  "description_color": "#FFFFFF",
+                  "description_typography_typography": "custom",
+                  "description_typography_font_family": "Muli",
+                  "description_typography_font_size": {
+                    "unit": "rem",
+                    "size": 1,
+                    "sizes": []
+                  },
+                  "description_typography_line_height": {
+                    "unit": "em",
+                    "size": 1.5,
+                    "sizes": []
+                  },
+                  "arrows_position": "outside",
+                  "arrows_color": "#000000",
+                  "dots_position": "outside",
+                  "dots_color": "#000000",
+                  "content_max_width_tablet": {
+                    "unit": "%",
+                    "size": 75,
+                    "sizes": []
+                  },
+                  "content_max_width_mobile": {
+                    "unit": "%",
+                    "size": 100,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "slides",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "615fa76e",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": 1200,
+            "sizes": []
+          },
+          "background_background": "classic",
+          "background_image": {
+            "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/detail-of-vineyards-in-argentina.jpg",
+            "id": 3563
+          },
+          "background_size": "cover",
+          "padding": {
+            "unit": "%",
+            "top": "8",
+            "right": "0",
+            "bottom": "8",
+            "left": "0",
+            "isLinked": false
+          },
+          "padding_mobile": {
+            "unit": "em",
+            "top": "3",
+            "right": "0",
+            "bottom": "0",
+            "left": "0",
+            "isLinked": false
+          },
+          "background_position": "bottom center",
+          "background_overlay_background": "gradient",
+          "background_overlay_color": "#000000",
+          "background_overlay_color_stop": {
+            "unit": "%",
+            "size": 100,
+            "sizes": []
+          },
+          "background_overlay_color_b": "rgba(255, 255, 255, 0)",
+          "background_overlay_color_b_stop": {
+            "unit": "%",
+            "size": 0,
+            "sizes": []
+          },
+          "background_overlay_opacity": {
+            "unit": "px",
+            "size": 0.43,
+            "sizes": []
+          }
+        },
+        "elements": [
+          {
+            "id": "49ee5bd8",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null,
+              "align": "center"
+            },
+            "elements": [
+              {
+                "id": "3ac0e520",
+                "settings": {
+                  "title": "The Vineyards",
+                  "align": "center",
+                  "title_color": "#FFFFFF"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "e40f262",
+                "settings": {
+                  "title": "We have a great team who is enthusiastic and passionate about wine grapes",
+                  "header_size": "p",
+                  "align": "center",
+                  "title_color": "#FFFFFF",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Muli",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 1,
+                    "sizes": []
+                  },
+                  "typography_line_height": {
+                    "unit": "em",
+                    "size": 1.5,
+                    "sizes": []
+                  },
+                  "_element_width": "initial",
+                  "_element_custom_width": {
+                    "unit": "px",
+                    "size": 500,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "785087f4",
+                "settings": {
+                  "structure": "30",
+                  "padding": {
+                    "unit": "%",
+                    "top": "8",
+                    "right": "0",
+                    "bottom": "0",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "padding_mobile": {
+                    "unit": "em",
+                    "top": "3",
+                    "right": "0",
+                    "bottom": "0",
+                    "left": "0",
+                    "isLinked": false
+                  }
+                },
+                "elements": [
+                  {
+                    "id": "785fc712",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": null,
+                      "space_between_widgets": 15,
+                      "background_background": "classic",
+                      "background_image": {
+                        "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/tuscany-landscape-at-sunrise-tuscan-farm-house-vineyard-hills-.jpg",
+                        "id": 3558
+                      },
+                      "background_position": "top center",
+                      "background_size": "cover",
+                      "background_overlay_background": "gradient",
+                      "background_overlay_color": "rgba(255, 255, 255, 0)",
+                      "background_overlay_color_b": "#000000",
+                      "background_overlay_color_b_stop": {
+                        "unit": "%",
+                        "size": 80,
+                        "sizes": []
+                      },
+                      "background_overlay_opacity": {
+                        "unit": "px",
+                        "size": 1,
+                        "sizes": []
+                      },
+                      "margin": {
+                        "unit": "px",
+                        "top": "0",
+                        "right": "15",
+                        "bottom": "0",
+                        "left": "15",
+                        "isLinked": false
+                      },
+                      "margin_mobile": {
+                        "unit": "px",
+                        "top": "0",
+                        "right": "0",
+                        "bottom": "30",
+                        "left": "0",
+                        "isLinked": false
+                      },
+                      "padding_mobile": {
+                        "unit": "em",
+                        "top": "0",
+                        "right": "0",
+                        "bottom": "0",
+                        "left": "0",
+                        "isLinked": false
+                      }
+                    },
+                    "elements": [
+                      {
+                        "id": "7f8f79f5",
+                        "settings": {
+                          "space": {
+                            "unit": "px",
+                            "size": 350,
+                            "sizes": []
+                          },
+                          "space_tablet": {
+                            "unit": "px",
+                            "size": 300,
+                            "sizes": []
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "spacer",
+                        "elType": "widget"
+                      },
+                      {
+                        "id": "3c8c2fad",
+                        "settings": {
+                          "title": "In the north",
+                          "header_size": "p",
+                          "align": "center",
+                          "title_color": "#999999",
+                          "typography_typography": "custom",
+                          "typography_font_family": "Muli",
+                          "typography_font_size": {
+                            "unit": "rem",
+                            "size": 0.625,
+                            "sizes": []
+                          },
+                          "typography_font_weight": "normal",
+                          "typography_text_transform": "uppercase",
+                          "typography_letter_spacing": {
+                            "unit": "px",
+                            "size": 3,
+                            "sizes": []
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      },
+                      {
+                        "id": "70e2e372",
+                        "settings": {
+                          "title": "Celeste Vineyard",
+                          "align": "center",
+                          "title_color": "#FFFFFF",
+                          "header_size": "h5",
+                          "typography_typography": "custom",
+                          "typography_font_family": "Prata",
+                          "typography_font_size": {
+                            "unit": "rem",
+                            "size": "",
+                            "sizes": []
+                          },
+                          "_margin": {
+                            "unit": "px",
+                            "top": "0",
+                            "right": "0",
+                            "bottom": "15",
+                            "left": "0",
+                            "isLinked": false
+                          },
+                          "_padding": {
+                            "unit": "px",
+                            "top": "0",
+                            "right": "15",
+                            "bottom": "0",
+                            "left": "15",
+                            "isLinked": false
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      },
+                      {
+                        "id": "4167edaa",
+                        "settings": {
+                          "text": "Explore",
+                          "align": "justify",
+                          "_margin": {
+                            "unit": "px",
+                            "top": "0",
+                            "right": "0",
+                            "bottom": "15",
+                            "left": "0",
+                            "isLinked": false
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "button",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "356bcda6",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": null,
+                      "space_between_widgets": 15,
+                      "background_background": "classic",
+                      "background_image": {
+                        "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/vineyards-in-california-usa-3.jpg",
+                        "id": 3560
+                      },
+                      "background_position": "top center",
+                      "background_size": "cover",
+                      "background_overlay_background": "gradient",
+                      "background_overlay_color": "rgba(255, 255, 255, 0)",
+                      "background_overlay_color_b": "#000000",
+                      "background_overlay_color_b_stop": {
+                        "unit": "%",
+                        "size": 80,
+                        "sizes": []
+                      },
+                      "background_overlay_opacity": {
+                        "unit": "px",
+                        "size": 1,
+                        "sizes": []
+                      },
+                      "margin": {
+                        "unit": "px",
+                        "top": "0",
+                        "right": "15",
+                        "bottom": "0",
+                        "left": "15",
+                        "isLinked": false
+                      },
+                      "margin_mobile": {
+                        "unit": "px",
+                        "top": "0",
+                        "right": "0",
+                        "bottom": "30",
+                        "left": "0",
+                        "isLinked": false
+                      }
+                    },
+                    "elements": [
+                      {
+                        "id": "5f71262b",
+                        "settings": {
+                          "space": {
+                            "unit": "px",
+                            "size": 350,
+                            "sizes": []
+                          },
+                          "space_tablet": {
+                            "unit": "px",
+                            "size": 300,
+                            "sizes": []
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "spacer",
+                        "elType": "widget"
+                      },
+                      {
+                        "id": "4c7f32ed",
+                        "settings": {
+                          "title": "In the south",
+                          "header_size": "p",
+                          "align": "center",
+                          "title_color": "#999999",
+                          "typography_typography": "custom",
+                          "typography_font_family": "Muli",
+                          "typography_font_size": {
+                            "unit": "rem",
+                            "size": 0.625,
+                            "sizes": []
+                          },
+                          "typography_font_weight": "normal",
+                          "typography_text_transform": "uppercase",
+                          "typography_letter_spacing": {
+                            "unit": "px",
+                            "size": 3,
+                            "sizes": []
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      },
+                      {
+                        "id": "468047ba",
+                        "settings": {
+                          "title": "Lawrence Vineyard",
+                          "align": "center",
+                          "title_color": "#FFFFFF",
+                          "header_size": "h5",
+                          "typography_typography": "custom",
+                          "typography_font_family": "Prata",
+                          "typography_font_size": {
+                            "unit": "rem",
+                            "size": "",
+                            "sizes": []
+                          },
+                          "_margin": {
+                            "unit": "px",
+                            "top": "0",
+                            "right": "0",
+                            "bottom": "15",
+                            "left": "0",
+                            "isLinked": false
+                          },
+                          "_padding": {
+                            "unit": "px",
+                            "top": "0",
+                            "right": "15",
+                            "bottom": "0",
+                            "left": "15",
+                            "isLinked": false
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      },
+                      {
+                        "id": "7cdde2d5",
+                        "settings": {
+                          "text": "Explore",
+                          "align": "justify",
+                          "_margin": {
+                            "unit": "px",
+                            "top": "0",
+                            "right": "0",
+                            "bottom": "15",
+                            "left": "0",
+                            "isLinked": false
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "button",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "7413e3cc",
+                    "settings": {
+                      "_column_size": 33,
+                      "_inline_size": null,
+                      "space_between_widgets": 15,
+                      "background_background": "classic",
+                      "background_image": {
+                        "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/langhe-vineyards-sunset-panorama-castiglione-falletto-piedmont.jpg",
+                        "id": 3561
+                      },
+                      "background_position": "top center",
+                      "background_size": "cover",
+                      "background_overlay_background": "gradient",
+                      "background_overlay_color": "rgba(255, 255, 255, 0)",
+                      "background_overlay_color_b": "#000000",
+                      "background_overlay_color_b_stop": {
+                        "unit": "%",
+                        "size": 80,
+                        "sizes": []
+                      },
+                      "background_overlay_opacity": {
+                        "unit": "px",
+                        "size": 1,
+                        "sizes": []
+                      },
+                      "margin": {
+                        "unit": "px",
+                        "top": "0",
+                        "right": "15",
+                        "bottom": "0",
+                        "left": "15",
+                        "isLinked": false
+                      },
+                      "margin_mobile": {
+                        "unit": "px",
+                        "top": "0",
+                        "right": "0",
+                        "bottom": "30",
+                        "left": "0",
+                        "isLinked": false
+                      }
+                    },
+                    "elements": [
+                      {
+                        "id": "b964173",
+                        "settings": {
+                          "space": {
+                            "unit": "px",
+                            "size": 350,
+                            "sizes": []
+                          },
+                          "space_tablet": {
+                            "unit": "px",
+                            "size": 300,
+                            "sizes": []
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "spacer",
+                        "elType": "widget"
+                      },
+                      {
+                        "id": "3a8ca241",
+                        "settings": {
+                          "title": "In the east",
+                          "header_size": "p",
+                          "align": "center",
+                          "title_color": "#999999",
+                          "typography_typography": "custom",
+                          "typography_font_family": "Muli",
+                          "typography_font_size": {
+                            "unit": "rem",
+                            "size": 0.625,
+                            "sizes": []
+                          },
+                          "typography_font_weight": "normal",
+                          "typography_text_transform": "uppercase",
+                          "typography_letter_spacing": {
+                            "unit": "px",
+                            "size": 3,
+                            "sizes": []
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      },
+                      {
+                        "id": "65ff792a",
+                        "settings": {
+                          "title": "Vendal Vineyard",
+                          "align": "center",
+                          "title_color": "#FFFFFF",
+                          "header_size": "h5",
+                          "typography_typography": "custom",
+                          "typography_font_family": "Prata",
+                          "typography_font_size": {
+                            "unit": "rem",
+                            "size": "",
+                            "sizes": []
+                          },
+                          "_margin": {
+                            "unit": "px",
+                            "top": "0",
+                            "right": "0",
+                            "bottom": "15",
+                            "left": "0",
+                            "isLinked": false
+                          },
+                          "_padding": {
+                            "unit": "px",
+                            "top": "0",
+                            "right": "15",
+                            "bottom": "0",
+                            "left": "15",
+                            "isLinked": false
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "heading",
+                        "elType": "widget"
+                      },
+                      {
+                        "id": "2ae546a3",
+                        "settings": {
+                          "text": "Explore",
+                          "align": "justify",
+                          "_margin": {
+                            "unit": "px",
+                            "top": "0",
+                            "right": "0",
+                            "bottom": "15",
+                            "left": "0",
+                            "isLinked": false
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "button",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  }
+                ],
+                "isInner": true,
+                "elType": "section"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "3c88995f",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": 1200,
+            "sizes": []
+          },
+          "padding": {
+            "unit": "em",
+            "top": "7",
+            "right": "0",
+            "bottom": "07",
+            "left": "0",
+            "isLinked": false
+          },
+          "padding_mobile": {
+            "unit": "em",
+            "top": "3",
+            "right": "0",
+            "bottom": "3",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "68e7834a",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null,
+              "align": "center"
+            },
+            "elements": [
+              {
+                "id": "37ebffb9",
+                "settings": {
+                  "title": "Meet the",
+                  "header_size": "p",
+                  "align": "center",
+                  "title_color": "#777777",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Muli",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 0.625,
+                    "sizes": []
+                  },
+                  "typography_font_weight": "normal",
+                  "typography_text_transform": "uppercase",
+                  "typography_letter_spacing": {
+                    "unit": "px",
+                    "size": 3,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "5be00ef2",
+                "settings": {
+                  "title": "Winemaking Team",
+                  "align": "center",
+                  "title_color": "#000000"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "303c647b",
+                "settings": {
+                  "width": {
+                    "unit": "px",
+                    "size": 60,
+                    "sizes": []
+                  },
+                  "align": "center",
+                  "text": "Divider",
+                  "color": "#DCBE84"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "divider",
+                "elType": "widget"
+              },
+              {
+                "id": "43663fbc",
+                "settings": {
+                  "title": "We have a great team who is enthusiastic and passionate about wine grapes",
+                  "header_size": "p",
+                  "align": "center",
+                  "title_color": "#000000",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Muli",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 1,
+                    "sizes": []
+                  },
+                  "typography_line_height": {
+                    "unit": "em",
+                    "size": 1.5,
+                    "sizes": []
+                  },
+                  "_element_width": "initial",
+                  "_element_custom_width": {
+                    "unit": "px",
+                    "size": 500,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "5a32a429",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": 1200,
+            "sizes": []
+          },
+          "gap": "no",
+          "structure": "20",
+          "reverse_order_mobile": "reverse-mobile"
+        },
+        "elements": [
+          {
+            "id": "c99550a",
+            "settings": {
+              "_column_size": 50,
+              "_inline_size": null,
+              "background_background": "classic",
+              "background_size": "cover",
+              "padding": {
+                "unit": "%",
+                "top": "12",
+                "right": "0",
+                "bottom": "12",
+                "left": "0",
+                "isLinked": false
+              },
+              "background_color": "#000000",
+              "background_position": "initial",
+              "background_xpos": {
+                "unit": "px",
+                "size": 318,
+                "sizes": []
+              },
+              "background_repeat": "no-repeat",
+              "background_overlay_background": "classic",
+              "background_overlay_color": "#000000",
+              "background_overlay_opacity": {
+                "unit": "px",
+                "size": 0.1,
+                "sizes": []
+              },
+              "css_filters_css_filter": "custom",
+              "css_filters_saturate": {
+                "unit": "px",
+                "size": 110,
+                "sizes": []
+              }
+            },
+            "elements": [
+              {
+                "id": "3ac3ce31",
+                "settings": {
+                  "blockquote_skin": "quotation",
+                  "alignment": "center",
+                  "blockquote_content": "Accept what life offers you and try to drink from every cup. All wines should be tasted; some should only be sipped, but with others, drink the whole bottle.",
+                  "author_name": "John Saras",
+                  "tweet_button": "",
+                  "tweet_button_label": "Tweet",
+                  "content_text_color": "#FFFFFF",
+                  "content_typography_typography": "custom",
+                  "content_typography_font_family": "Prata",
+                  "content_typography_font_size": {
+                    "unit": "rem",
+                    "size": 2,
+                    "sizes": []
+                  },
+                  "content_typography_line_height": {
+                    "unit": "em",
+                    "size": 1.5,
+                    "sizes": []
+                  },
+                  "content_gap": {
+                    "unit": "px",
+                    "size": 30,
+                    "sizes": []
+                  },
+                  "author_text_color": "#DCBE84",
+                  "author_typography_typography": "custom",
+                  "author_typography_font_family": "Muli",
+                  "author_typography_font_size": {
+                    "unit": "rem",
+                    "size": 0.625,
+                    "sizes": []
+                  },
+                  "author_typography_font_weight": "bold",
+                  "author_typography_text_transform": "uppercase",
+                  "author_typography_letter_spacing": {
+                    "unit": "px",
+                    "size": 3,
+                    "sizes": []
+                  },
+                  "quote_text_color": "#DCBE84",
+                  "quote_gap": {
+                    "unit": "px",
+                    "size": 25,
+                    "sizes": []
+                  },
+                  "_padding": {
+                    "unit": "%",
+                    "top": "0",
+                    "right": "15",
+                    "bottom": "0",
+                    "left": "15",
+                    "isLinked": false
+                  },
+                  "_element_width": "inherit",
+                  "_element_width_mobile": "inherit",
+                  "_element_custom_width": {
+                    "unit": "%",
+                    "size": 50,
+                    "sizes": []
+                  },
+                  "_element_vertical_align": "center"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "blockquote",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          },
+          {
+            "id": "1f8dea87",
+            "settings": {
+              "_column_size": 50,
+              "_inline_size": null,
+              "background_background": "classic",
+              "background_image": {
+                "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/winemaker-tasting-wine.jpg",
+                "id": 3555
+              },
+              "background_position": "center center",
+              "background_repeat": "no-repeat",
+              "background_size": "cover"
+            },
+            "elements": [
+              {
+                "id": "38e78a93",
+                "settings": {
+                  "space": {
+                    "unit": "px",
+                    "size": 500,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "spacer",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "766a7ad9",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": 1200,
+            "sizes": []
+          },
+          "padding": {
+            "unit": "em",
+            "top": "7",
+            "right": "0",
+            "bottom": "7",
+            "left": "0",
+            "isLinked": false
+          },
+          "padding_mobile": {
+            "unit": "em",
+            "top": "3",
+            "right": "0",
+            "bottom": "3",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "4993a965",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null,
+              "align": "center"
+            },
+            "elements": [
+              {
+                "id": "3c4bb81a",
+                "settings": {
+                  "title": "We believe that the key to successful winemaking is teamwork, and we have assembled a team with unmatched experience and passion.",
+                  "align": "center",
+                  "header_size": "h5",
+                  "title_color": "#000000",
+                  "typography_typography": "custom",
+                  "typography_line_height": {
+                    "unit": "em",
+                    "size": 1.5,
+                    "sizes": []
+                  },
+                  "_margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "10",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "typography_font_family": "Prata",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": "",
+                    "sizes": []
+                  },
+                  "_element_width": "initial",
+                  "_element_custom_width": {
+                    "unit": "%",
+                    "size": 70,
+                    "sizes": []
+                  },
+                  "_element_width_mobile": "initial",
+                  "_element_custom_width_mobile": {
+                    "unit": "%",
+                    "size": 80,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "2231402b",
+        "settings": {
+          "content_width": {
+            "unit": "px",
+            "size": 1200,
+            "sizes": []
+          },
+          "gap": "no",
+          "structure": "30",
+          "padding": {
+            "unit": "em",
+            "top": "0",
+            "right": "0",
+            "bottom": "7",
+            "left": "0",
+            "isLinked": false
+          },
+          "padding_mobile": {
+            "unit": "em",
+            "top": "0",
+            "right": "0",
+            "bottom": "3",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "45365ef3",
+            "settings": {
+              "_column_size": 33,
+              "_inline_size": null,
+              "space_between_widgets": 15,
+              "background_background": "classic",
+              "background_color": "#FFFFFF",
+              "margin": {
+                "unit": "px",
+                "top": "0",
+                "right": "15",
+                "bottom": "0",
+                "left": "15",
+                "isLinked": false
+              },
+              "margin_mobile": {
+                "unit": "px",
+                "top": "0",
+                "right": "15",
+                "bottom": "30",
+                "left": "15",
+                "isLinked": false
+              },
+              "padding": {
+                "unit": "px",
+                "top": "0",
+                "right": "0",
+                "bottom": "0",
+                "left": "0",
+                "isLinked": true
+              }
+            },
+            "elements": [
+              {
+                "id": "58af33bf",
+                "settings": {
+                  "image": {
+                    "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/sommelier-checking-wine.jpg",
+                    "id": 3554
+                  },
+                  "_margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "30",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "image_size": "custom",
+                  "image_custom_dimension": {
+                    "width": "800",
+                    "height": "1000"
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "image",
+                "elType": "widget"
+              },
+              {
+                "id": "104de887",
+                "settings": {
+                  "title": "CHIEF WINEMAKER",
+                  "header_size": "p",
+                  "align": "left",
+                  "title_color": "#DCBE84",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Muli",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 0.625,
+                    "sizes": []
+                  },
+                  "typography_font_weight": "normal",
+                  "typography_text_transform": "uppercase",
+                  "typography_letter_spacing": {
+                    "unit": "px",
+                    "size": 3,
+                    "sizes": []
+                  },
+                  "_padding": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "30",
+                    "bottom": "0",
+                    "left": "30",
+                    "isLinked": false
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "2bd7cd60",
+                "settings": {
+                  "title": "Vendul Macanroi",
+                  "align": "left",
+                  "title_color": "#000000",
+                  "header_size": "h5",
+                  "_margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "45",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "_padding": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "30",
+                    "bottom": "0",
+                    "left": "30",
+                    "isLinked": false
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          },
+          {
+            "id": "67f68bcf",
+            "settings": {
+              "_column_size": 33,
+              "_inline_size": null,
+              "space_between_widgets": 15,
+              "background_background": "classic",
+              "background_color": "#FFFFFF",
+              "margin": {
+                "unit": "px",
+                "top": "0",
+                "right": "15",
+                "bottom": "0",
+                "left": "15",
+                "isLinked": false
+              },
+              "margin_mobile": {
+                "unit": "px",
+                "top": "0",
+                "right": "15",
+                "bottom": "30",
+                "left": "15",
+                "isLinked": false
+              },
+              "padding": {
+                "unit": "px",
+                "top": "0",
+                "right": "0",
+                "bottom": "0",
+                "left": "0",
+                "isLinked": true
+              }
+            },
+            "elements": [
+              {
+                "id": "304bc900",
+                "settings": {
+                  "image": {
+                    "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/young-girl-in-cafe.jpg",
+                    "id": 3551
+                  },
+                  "_margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "30",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "image_size": "custom",
+                  "image_custom_dimension": {
+                    "width": "800",
+                    "height": "1000"
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "image",
+                "elType": "widget"
+              },
+              {
+                "id": "79b03757",
+                "settings": {
+                  "title": "BRAND MANAGER",
+                  "header_size": "p",
+                  "align": "left",
+                  "title_color": "#DCBE84",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Muli",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 0.625,
+                    "sizes": []
+                  },
+                  "typography_font_weight": "normal",
+                  "typography_text_transform": "uppercase",
+                  "typography_letter_spacing": {
+                    "unit": "px",
+                    "size": 3,
+                    "sizes": []
+                  },
+                  "_padding": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "30",
+                    "bottom": "0",
+                    "left": "30",
+                    "isLinked": false
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "4d76e284",
+                "settings": {
+                  "title": "Elena Lou Saras",
+                  "align": "left",
+                  "title_color": "#000000",
+                  "header_size": "h5",
+                  "_margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "45",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "_padding": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "30",
+                    "bottom": "0",
+                    "left": "30",
+                    "isLinked": false
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          },
+          {
+            "id": "56c41868",
+            "settings": {
+              "_column_size": 33,
+              "_inline_size": null,
+              "space_between_widgets": 15,
+              "background_background": "classic",
+              "background_color": "#FFFFFF",
+              "margin": {
+                "unit": "px",
+                "top": "0",
+                "right": "15",
+                "bottom": "0",
+                "left": "15",
+                "isLinked": false
+              },
+              "margin_mobile": {
+                "unit": "px",
+                "top": "0",
+                "right": "15",
+                "bottom": "30",
+                "left": "15",
+                "isLinked": false
+              },
+              "padding": {
+                "unit": "px",
+                "top": "0",
+                "right": "0",
+                "bottom": "0",
+                "left": "0",
+                "isLinked": true
+              }
+            },
+            "elements": [
+              {
+                "id": "7710cac8",
+                "settings": {
+                  "image": {
+                    "url": "http://okthemes.com/templatekits/saras/wp-content/uploads/2020/04/group-of-people-tasting-red-wine-i-a-vineyard.jpg",
+                    "id": 3552
+                  },
+                  "_margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "30",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "image_size": "custom",
+                  "image_custom_dimension": {
+                    "width": "800",
+                    "height": "1000"
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "image",
+                "elType": "widget"
+              },
+              {
+                "id": "7ba280b1",
+                "settings": {
+                  "title": "WINEMAKER",
+                  "header_size": "p",
+                  "align": "left",
+                  "title_color": "#DCBE84",
+                  "typography_typography": "custom",
+                  "typography_font_family": "Muli",
+                  "typography_font_size": {
+                    "unit": "rem",
+                    "size": 0.625,
+                    "sizes": []
+                  },
+                  "typography_font_weight": "normal",
+                  "typography_text_transform": "uppercase",
+                  "typography_letter_spacing": {
+                    "unit": "px",
+                    "size": 3,
+                    "sizes": []
+                  },
+                  "_padding": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "30",
+                    "bottom": "0",
+                    "left": "30",
+                    "isLinked": false
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "6952da79",
+                "settings": {
+                  "title": "Lucretia Mafalou",
+                  "align": "left",
+                  "title_color": "#000000",
+                  "header_size": "h5",
+                  "_margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "45",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "_padding": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "30",
+                    "bottom": "0",
+                    "left": "30",
+                    "isLinked": false
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      }
+    ],
+    "page_settings": {
+      "hide_title": "yes"
+    }
+  }
+}

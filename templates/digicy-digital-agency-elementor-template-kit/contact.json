@@ -1,0 +1,406 @@
+{
+  "id": "digicy-digital-agency-elementor-template-kit-contact",
+  "name": "Contact",
+  "category": "contact",
+  "industry": "Technology",
+  "kitName": "Digicy - Digital Agency Elementor Template Kit",
+  "kitSlug": "digicy-digital-agency-elementor-template-kit",
+  "source": "templates/contact.json",
+  "screenshot": "/templates/digicy-digital-agency-elementor-template-kit/contact.jpg",
+  "type": "page",
+  "requiresElementorPro": false,
+  "content": {
+    "version": "0.4",
+    "title": "Contact",
+    "type": "page",
+    "metadata": {
+      "template_type": "single-page",
+      "include_in_zip": "1",
+      "elementor_pro_required": null,
+      "wp_page_template": "elementor_header_footer"
+    },
+    "content": [
+      {
+        "id": "5d56ece9",
+        "settings": {
+          "background_background": "classic",
+          "background_image": {
+            "url": "http://kit.nirmanavisual.com/digicy/wp-content/uploads/sites/31/2023/08/Abstract-Background-Set-GEO_FLOW.png",
+            "id": 558,
+            "alt": "",
+            "source": "library"
+          },
+          "background_position": "bottom center",
+          "background_repeat": "no-repeat",
+          "background_size": "cover",
+          "padding": {
+            "unit": "px",
+            "top": "0196",
+            "right": "0",
+            "bottom": "0196",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "788f22d1",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null
+            },
+            "elements": [
+              {
+                "id": "479e4313",
+                "settings": {
+                  "title": "contact",
+                  "align": "left",
+                  "__globals__": {
+                    "typography_typography": "globals/typography?id=73a6d48",
+                    "title_color": "globals/colors?id=primary"
+                  },
+                  "align_mobile": "center",
+                  "_animation": "fadeInLeft"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "19fe08f5",
+        "settings": {
+          "structure": "30",
+          "padding": {
+            "unit": "px",
+            "top": "080",
+            "right": "0",
+            "bottom": "0",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "1aa59e04",
+            "settings": {
+              "_column_size": 33,
+              "_inline_size": null
+            },
+            "elements": [
+              {
+                "id": "2e3e0515",
+                "settings": {
+                  "title": "Have question? get in touch!",
+                  "_padding": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "020",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "__globals__": {
+                    "typography_typography": "globals/typography?id=primary"
+                  },
+                  "_animation": "fadeInLeft",
+                  "align_mobile": "center"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "3fcd613",
+                "settings": {
+                  "editor": "<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>",
+                  "_padding": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "020",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "__globals__": {
+                    "typography_typography": "globals/typography?id=text",
+                    "text_color": "globals/colors?id=primary"
+                  },
+                  "_animation": "fadeInLeft",
+                  "align_mobile": "center"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "text-editor",
+                "elType": "widget"
+              },
+              {
+                "id": "48b0dde6",
+                "settings": {
+                  "text": "Contact Us Today",
+                  "size": "md",
+                  "selected_icon": {
+                    "value": "icon icon-right-arrow",
+                    "library": "ekiticons"
+                  },
+                  "icon_align": "right",
+                  "icon_indent": {
+                    "unit": "px",
+                    "size": 10,
+                    "sizes": []
+                  },
+                  "button_box_shadow_box_shadow_type": "yes",
+                  "button_box_shadow_box_shadow": {
+                    "horizontal": 0,
+                    "vertical": 5,
+                    "blur": 30,
+                    "spread": 0,
+                    "color": "#7000FF"
+                  },
+                  "_animation": "fadeInUp",
+                  "align_mobile": "center"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "button",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          },
+          {
+            "id": "61d66f72",
+            "settings": {
+              "_column_size": 33,
+              "_inline_size": 41.753
+            },
+            "elements": [],
+            "isInner": false,
+            "elType": "column"
+          },
+          {
+            "id": "5370ae3b",
+            "settings": {
+              "_column_size": 33,
+              "_inline_size": 24.552,
+              "content_position": "center",
+              "animation": "fadeInRight"
+            },
+            "elements": [
+              {
+                "id": "54e11462",
+                "settings": {
+                  "icon_list": [
+                    {
+                      "text": "Jalan Imam Bonjol 111, Bali",
+                      "selected_icon": {
+                        "value": "fas fa-map-marker-alt",
+                        "library": "fa-solid"
+                      },
+                      "_id": "fce69c5"
+                    },
+                    {
+                      "text": "+0361 234 567",
+                      "selected_icon": {
+                        "value": "fas fa-phone-alt",
+                        "library": "fa-solid"
+                      },
+                      "_id": "8f18ec3"
+                    },
+                    {
+                      "text": "Open 24/7 ",
+                      "selected_icon": {
+                        "value": "fas fa-clock",
+                        "library": "fa-solid"
+                      },
+                      "_id": "7b507c1"
+                    },
+                    {
+                      "_id": "2761735",
+                      "text": "email@example.com",
+                      "selected_icon": {
+                        "value": "fas fa-envelope",
+                        "library": "fa-solid"
+                      }
+                    }
+                  ],
+                  "space_between": {
+                    "unit": "px",
+                    "size": 15,
+                    "sizes": []
+                  },
+                  "__globals__": {
+                    "icon_typography_typography": "globals/typography?id=text",
+                    "text_color": "globals/colors?id=primary"
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "icon-list",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "6abc254e",
+        "settings": {
+          "padding": {
+            "unit": "px",
+            "top": "080",
+            "right": "0",
+            "bottom": "080",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "546365ae",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null,
+              "space_between_widgets": 0
+            },
+            "elements": [
+              {
+                "id": "404a53a0",
+                "settings": {
+                  "structure": "20",
+                  "background_background": "classic",
+                  "border_border": "solid",
+                  "border_width": {
+                    "unit": "px",
+                    "top": "1",
+                    "right": "1",
+                    "bottom": "1",
+                    "left": "1",
+                    "isLinked": true
+                  },
+                  "border_radius": {
+                    "unit": "px",
+                    "top": "35",
+                    "right": "35",
+                    "bottom": "35",
+                    "left": "35",
+                    "isLinked": true
+                  },
+                  "box_shadow_box_shadow_type": "yes",
+                  "box_shadow_box_shadow": {
+                    "horizontal": 0,
+                    "vertical": 0,
+                    "blur": 10,
+                    "spread": 0,
+                    "color": "#7000FF"
+                  },
+                  "padding": {
+                    "unit": "px",
+                    "top": "30",
+                    "right": "30",
+                    "bottom": "30",
+                    "left": "30",
+                    "isLinked": true
+                  },
+                  "__globals__": {
+                    "background_color": "",
+                    "border_color": "globals/colors?id=accent"
+                  },
+                  "animation": "fadeInUp"
+                },
+                "elements": [
+                  {
+                    "id": "15e6b647",
+                    "settings": {
+                      "_column_size": 50,
+                      "_inline_size": 33,
+                      "space_between_widgets": 0,
+                      "background_background": "classic",
+                      "background_image": {
+                        "url": "http://kit.nirmanavisual.com/digicy/wp-content/uploads/sites/31/2023/08/Beautiful-surprised-redhead-young-woman-keeps-mouth-opened-sees-something-unbelievable-amazes-by-une.png",
+                        "id": 108,
+                        "alt": "",
+                        "source": "library"
+                      },
+                      "background_position": "center center",
+                      "border_radius": {
+                        "unit": "px",
+                        "top": "24",
+                        "right": "24",
+                        "bottom": "24",
+                        "left": "24",
+                        "isLinked": true
+                      },
+                      "background_repeat": "no-repeat",
+                      "background_size": "cover"
+                    },
+                    "elements": [
+                      {
+                        "id": "6d7a94f5",
+                        "settings": {
+                          "space": {
+                            "unit": "px",
+                            "size": 421,
+                            "sizes": []
+                          }
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "spacer",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  },
+                  {
+                    "id": "6fc51391",
+                    "settings": {
+                      "_column_size": 50,
+                      "_inline_size": 67,
+                      "content_position": "center"
+                    },
+                    "elements": [
+                      {
+                        "id": "5cc568be",
+                        "settings": {
+                          "mf_form_id": "426***1692941034323"
+                        },
+                        "elements": [],
+                        "isInner": false,
+                        "widgetType": "metform",
+                        "elType": "widget"
+                      }
+                    ],
+                    "isInner": true,
+                    "elType": "column"
+                  }
+                ],
+                "isInner": true,
+                "elType": "section"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      }
+    ]
+  }
+}

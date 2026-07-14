@@ -1,0 +1,271 @@
+{
+  "id": "digicy-digital-agency-elementor-template-kit-news",
+  "name": "News",
+  "category": "section",
+  "industry": "Technology",
+  "kitName": "Digicy - Digital Agency Elementor Template Kit",
+  "kitSlug": "digicy-digital-agency-elementor-template-kit",
+  "source": "templates/news.json",
+  "screenshot": "/templates/digicy-digital-agency-elementor-template-kit/news.jpg",
+  "type": "page",
+  "requiresElementorPro": false,
+  "content": {
+    "version": "0.4",
+    "title": "News",
+    "type": "page",
+    "metadata": {
+      "template_type": "single-page",
+      "include_in_zip": "1",
+      "elementor_pro_required": null,
+      "wp_page_template": "elementor_header_footer"
+    },
+    "content": [
+      {
+        "id": "71fc1a5e",
+        "settings": {
+          "background_background": "classic",
+          "background_image": {
+            "url": "http://kit.nirmanavisual.com/digicy/wp-content/uploads/sites/31/2023/08/Abstract-Background-Set-GEO_FLOW.png",
+            "id": 558,
+            "alt": "",
+            "source": "library"
+          },
+          "background_position": "bottom center",
+          "background_repeat": "no-repeat",
+          "background_size": "cover",
+          "padding": {
+            "unit": "px",
+            "top": "0196",
+            "right": "0",
+            "bottom": "0196",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "40373708",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null
+            },
+            "elements": [
+              {
+                "id": "3abb8d3a",
+                "settings": {
+                  "title": "News",
+                  "align": "left",
+                  "__globals__": {
+                    "typography_typography": "globals/typography?id=73a6d48"
+                  },
+                  "align_mobile": "center",
+                  "_animation": "fadeInLeft"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      },
+      {
+        "id": "41f5b81a",
+        "settings": {
+          "padding": {
+            "unit": "px",
+            "top": "080",
+            "right": "0",
+            "bottom": "0",
+            "left": "0",
+            "isLinked": false
+          }
+        },
+        "elements": [
+          {
+            "id": "4931f319",
+            "settings": {
+              "_column_size": 100,
+              "_inline_size": null,
+              "align": "center"
+            },
+            "elements": [
+              {
+                "id": "24292dc",
+                "settings": {
+                  "title": "Quality Article For Reliable Media",
+                  "align": "center",
+                  "__globals__": {
+                    "typography_typography": "globals/typography?id=primary"
+                  },
+                  "_animation": "fadeInDown",
+                  "_element_width": "initial",
+                  "_element_custom_width": {
+                    "unit": "%",
+                    "size": 38.212
+                  },
+                  "_padding_mobile": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "30",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "_element_custom_width_mobile": {
+                    "unit": "px",
+                    "size": 286,
+                    "sizes": []
+                  }
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "heading",
+                "elType": "widget"
+              },
+              {
+                "id": "30900e3c",
+                "settings": {
+                  "ekit_blog_posts_layout_style": "elementskit-post-image-card",
+                  "ekit_blog_posts_num": 6,
+                  "ekit_blog_posts_cats": [
+                    "1"
+                  ],
+                  "ekit_blog_posts_btn_text": "Learn more ",
+                  "ekit_blog_posts_background_background": "classic",
+                  "ekit_blog_posts_background_color": "#311073",
+                  "ekit_blog_posts_margin": {
+                    "unit": "px",
+                    "top": "030",
+                    "right": "0",
+                    "bottom": "0",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "ekit_blog_posts_meta_icon_size": {
+                    "unit": "px",
+                    "size": 6,
+                    "sizes": []
+                  },
+                  "ekit_blog_posts_title_typography_typography": "custom",
+                  "ekit_blog_posts_title_typography_font_family": "Inter",
+                  "ekit_blog_posts_title_typography_font_size": {
+                    "unit": "px",
+                    "size": 16,
+                    "sizes": []
+                  },
+                  "ekit_blog_posts_title_typography_font_weight": "700",
+                  "ekit_blog_posts_title_typography_text_transform": "capitalize",
+                  "ekit_blog_posts_title_typography_line_height": {
+                    "unit": "px",
+                    "size": 20,
+                    "sizes": []
+                  },
+                  "ekit_blog_posts_title_color": "#FFFFFF",
+                  "ekit_blog_posts_title_margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "11",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "ekit_blog_posts_content_color": "#FFFFFF",
+                  "ekit_blog_posts_content_typography_typography": "custom",
+                  "ekit_blog_posts_content_typography_font_family": "Inter",
+                  "ekit_blog_posts_content_typography_font_size": {
+                    "unit": "px",
+                    "size": 16,
+                    "sizes": []
+                  },
+                  "ekit_blog_posts_content_typography_font_weight": "400",
+                  "ekit_blog_posts_content_typography_line_height": {
+                    "unit": "px",
+                    "size": 20,
+                    "sizes": []
+                  },
+                  "ekit_blog_posts_content_margin": {
+                    "unit": "px",
+                    "top": "0",
+                    "right": "0",
+                    "bottom": "20",
+                    "left": "0",
+                    "isLinked": false
+                  },
+                  "ekit_blog_posts_btn_text_padding": {
+                    "unit": "px",
+                    "top": "08",
+                    "right": "016",
+                    "bottom": "08",
+                    "left": "016",
+                    "isLinked": false
+                  },
+                  "ekit_blog_posts_btn_typography_typography": "custom",
+                  "ekit_blog_posts_btn_typography_font_family": "Inter",
+                  "ekit_blog_posts_btn_typography_font_size": {
+                    "unit": "px",
+                    "size": 14,
+                    "sizes": []
+                  },
+                  "ekit_blog_posts_btn_typography_font_weight": "600",
+                  "ekit_blog_posts_btn_typography_line_height": {
+                    "unit": "px",
+                    "size": 24,
+                    "sizes": []
+                  },
+                  "ekit_blog_posts_btn_text_color": "#FFFFFF",
+                  "ekit_blog_posts_btn_bg_color_background": "classic",
+                  "ekit_blog_posts_btn_bg_color_color": "#7000FF",
+                  "ekit_blog_posts_btn_bg_hover_color_background": "classic",
+                  "ekit_blog_posts_btn_border_radius": {
+                    "unit": "px",
+                    "top": "999",
+                    "right": "999",
+                    "bottom": "999",
+                    "left": "999",
+                    "isLinked": true
+                  },
+                  "ekit_blog_posts_btn_box_shadow_group_box_shadow": {
+                    "horizontal": -12,
+                    "vertical": 12,
+                    "blur": 40,
+                    "spread": 0,
+                    "color": "#7000FF"
+                  },
+                  "__globals__": {
+                    "ekit_blog_posts_background_color": "globals/colors?id=secondary",
+                    "ekit_blog_posts_btn_typography_typography": "globals/typography?id=accent",
+                    "ekit_blog_posts_btn_text_color": "globals/colors?id=primary",
+                    "ekit_blog_posts_btn_bg_color_color": "globals/colors?id=accent",
+                    "ekit_blog_posts_title_color": "globals/colors?id=primary",
+                    "ekit_blog_posts_title_typography_typography": "globals/typography?id=secondary",
+                    "ekit_blog_posts_content_color": "globals/colors?id=primary",
+                    "ekit_blog_posts_content_typography_typography": "globals/typography?id=text",
+                    "ekit_blog_posts_content_color_hover": "",
+                    "ekit_blog_posts_title_hover_color": "globals/colors?id=primary",
+                    "ekit_blog_posts_btn_hover_color": "globals/colors?id=secondary",
+                    "ekit_blog_posts_btn_bg_hover_color_color": "globals/colors?id=primary"
+                  },
+                  "_animation": "fadeInUp"
+                },
+                "elements": [],
+                "isInner": false,
+                "widgetType": "elementskit-blog-posts",
+                "elType": "widget"
+              }
+            ],
+            "isInner": false,
+            "elType": "column"
+          }
+        ],
+        "isInner": false,
+        "elType": "section"
+      }
+    ]
+  }
+}
