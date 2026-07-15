@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Users, 
   FolderOpen, 
@@ -14,10 +13,9 @@ import {
   Activity,
   AlertCircle,
   CheckCircle,
-  Clock,
-  TrendingUp
+  XCircle,
+  Loader2,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface AdminStats {
   users: number;
@@ -26,23 +24,20 @@ interface AdminStats {
   deployments: number;
 }
 
-interface RecentActivity {
-  id: string;
-  type: 'user_signup' | 'project_created' | 'deployment' | 'template_import';
-  description: string;
-  timestamp: string;
-}
-
-interface TemplateUsage {
-  name: string;
-  uses: number;
-  category: string;
+interface SystemStatus {
+  database: { connected: boolean; error: string | null };
+  supabaseStorage: { connected: boolean; error: string | null; bucketExists: boolean };
+  geminiApi: { configured: boolean };
+  unsplashApi: { configured: boolean };
+  wordpress: { configured: boolean };
+  healthy: boolean;
 }
 
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<AdminStats>({ users: 0, projects: 0, templates: 0, deployments: 0 });
+  const [status, setStatus] = useState<SystemStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,10 +49,11 @@ export default function AdminPage() {
     async function loadStats() {
       try {
         // Load all stats in parallel
-        const [usersRes, projectsRes, templatesRes] = await Promise.all([
+        const [usersRes, projectsRes, templatesRes, statusRes] = await Promise.all([
           fetch('/api/admin/users/count'),
           fetch('/api/projects'),
-          fetch('/api/templates'),
+          fetch('/api/templates?refresh=true'),
+          fetch('/api/admin/status'),
         ]);
 
         let userCount = 0;
@@ -87,6 +83,12 @@ export default function AdminPage() {
           templates: templateCount,
           deployments: deploymentCount,
         });
+
+        // Load system status
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          setStatus(statusData);
+        }
       } catch (err) {
         console.error('Failed to load admin stats:', err);
       } finally {
@@ -102,7 +104,7 @@ export default function AdminPage() {
   if (authLoading || loading) {
     return (
       <div className="flex h-96 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -182,6 +184,11 @@ export default function AdminPage() {
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
             System Status
+            {status?.healthy ? (
+              <Badge variant="success" className="ml-2">All Systems Operational</Badge>
+            ) : (
+              <Badge variant="destructive" className="ml-2">Issues Detected</Badge>
+            )}
           </CardTitle>
           <CardDescription>
             Current state of SiteForge AI services
@@ -189,31 +196,56 @@ export default function AdminPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {/* Database */}
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-green-600" />
+                {status?.database?.connected ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-600" />
+                )}
                 <div>
                   <p className="font-medium">Database</p>
-                  <p className="text-sm text-muted-foreground">Connected to Supabase</p>
+                  <p className="text-sm text-muted-foreground">
+                    {status?.database?.connected 
+                      ? 'Connected to Supabase' 
+                      : status?.database?.error || 'Connection failed'}
+                  </p>
                 </div>
               </div>
-              <Badge variant="success">Operational</Badge>
+              <Badge variant={status?.database?.connected ? 'success' : 'destructive'}>
+                {status?.database?.connected ? 'Operational' : 'Error'}
+              </Badge>
             </div>
 
+            {/* Supabase Storage */}
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-green-600" />
+                {status?.supabaseStorage?.connected ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-600" />
+                )}
                 <div>
                   <p className="font-medium">Supabase Storage</p>
-                  <p className="text-sm text-muted-foreground">Template bucket accessible</p>
+                  <p className="text-sm text-muted-foreground">
+                    {status?.supabaseStorage?.connected 
+                      ? status?.supabaseStorage?.bucketExists 
+                        ? 'Template bucket accessible'
+                        : 'Buckets accessible (no templates bucket)'
+                      : status?.supabaseStorage?.error || 'Connection failed'}
+                  </p>
                 </div>
               </div>
-              <Badge variant="success">Operational</Badge>
+              <Badge variant={status?.supabaseStorage?.connected ? 'success' : 'destructive'}>
+                {status?.supabaseStorage?.connected ? 'Operational' : 'Error'}
+              </Badge>
             </div>
 
+            {/* AI Service */}
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="flex items-center gap-3">
-                {process.env.NEXT_PUBLIC_SUPABASE_URL ? (
+                {status?.geminiApi?.configured ? (
                   <CheckCircle className="h-5 w-5 text-green-600" />
                 ) : (
                   <AlertCircle className="h-5 w-5 text-yellow-600" />
@@ -221,20 +253,21 @@ export default function AdminPage() {
                 <div>
                   <p className="font-medium">AI Service</p>
                   <p className="text-sm text-muted-foreground">
-                    {process.env.GEMINI_API_KEY 
+                    {status?.geminiApi?.configured 
                       ? 'Gemini API configured' 
                       : 'Gemini API key not configured'}
                   </p>
                 </div>
               </div>
-              <Badge variant={process.env.GEMINI_API_KEY ? 'success' : 'secondary'}>
-                {process.env.GEMINI_API_KEY ? 'Configured' : 'Not Set'}
+              <Badge variant={status?.geminiApi?.configured ? 'success' : 'secondary'}>
+                {status?.geminiApi?.configured ? 'Configured' : 'Not Set'}
               </Badge>
             </div>
 
+            {/* Stock Images */}
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="flex items-center gap-3">
-                {process.env.UNSPLASH_ACCESS_KEY ? (
+                {status?.unsplashApi?.configured ? (
                   <CheckCircle className="h-5 w-5 text-green-600" />
                 ) : (
                   <AlertCircle className="h-5 w-5 text-yellow-600" />
@@ -242,48 +275,38 @@ export default function AdminPage() {
                 <div>
                   <p className="font-medium">Stock Images</p>
                   <p className="text-sm text-muted-foreground">
-                    {process.env.UNSPLASH_ACCESS_KEY 
+                    {status?.unsplashApi?.configured 
                       ? 'Unsplash API configured' 
                       : 'Unsplash API key not configured'}
                   </p>
                 </div>
               </div>
-              <Badge variant={process.env.UNSPLASH_ACCESS_KEY ? 'success' : 'secondary'}>
-                {process.env.UNSPLASH_ACCESS_KEY ? 'Configured' : 'Not Set'}
+              <Badge variant={status?.unsplashApi?.configured ? 'success' : 'secondary'}>
+                {status?.unsplashApi?.configured ? 'Configured' : 'Not Set'}
               </Badge>
             </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Environment Configuration</CardTitle>
-          <CardDescription>
-            Required environment variables for production
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {[
-              { name: 'NEXT_PUBLIC_SUPABASE_URL', label: 'Supabase URL', critical: true },
-              { name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', label: 'Supabase Anon Key', critical: true },
-              { name: 'SUPABASE_SERVICE_ROLE_KEY', label: 'Supabase Service Role Key', critical: true },
-              { name: 'DATABASE_URL', label: 'Prisma Database URL', critical: true },
-              { name: 'GEMINI_API_KEY', label: 'Gemini API Key', critical: false },
-              { name: 'UNSPLASH_ACCESS_KEY', label: 'Unsplash Access Key', critical: false },
-            ].map((env) => (
-              <div key={env.name} className="flex items-center justify-between rounded-lg border p-3">
+            {/* WordPress */}
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="flex items-center gap-3">
+                {status?.wordpress?.configured ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-yellow-600" />
+                )}
                 <div>
-                  <code className="text-sm font-mono">{env.name}</code>
-                  <p className="text-xs text-muted-foreground">{env.label}</p>
+                  <p className="font-medium">WordPress Integration</p>
+                  <p className="text-sm text-muted-foreground">
+                    {status?.wordpress?.configured 
+                      ? 'WordPress credentials configured' 
+                      : 'Not configured (add in Settings)'}
+                  </p>
                 </div>
-                <Badge variant={process.env[env.name as keyof typeof process.env] ? 'success' : 'secondary'}>
-                  {process.env[env.name as keyof typeof process.env] ? 'Set' : 'Not Set'}
-                </Badge>
               </div>
-            ))}
+              <Badge variant={status?.wordpress?.configured ? 'success' : 'secondary'}>
+                {status?.wordpress?.configured ? 'Configured' : 'Not Set'}
+              </Badge>
+            </div>
           </div>
         </CardContent>
       </Card>

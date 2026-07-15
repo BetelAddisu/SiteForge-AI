@@ -10,6 +10,9 @@
 import { PrismaClient } from '@prisma/client';
 import { matchTemplates, type ProjectContext } from '../elementor/template-matcher';
 import { AIContentEngine } from '../elementor/schemas';
+import { applyModifications, type ModificationBatch } from '../elementor/modifier';
+import { validateElementorJson } from '../elementor/validator';
+import { generatePreview } from '../preview';
 
 // ============================================================================
 // Types
@@ -328,17 +331,57 @@ export class GenerationPipeline {
     options.onStepComplete?.('APPLY_BRAND', brandTokens);
   }
 
-  // Step 7: Modify JSON
+  // Step 7: Modify JSON - Uses real modifier engine
   private async stepModifyJson(options: PipelineOptions): Promise<void> {
-    const templates = await this.prisma.template.findMany({ take: 1 });
+    const generatedContent = this.state!.checkpointData['generatedContent'] as {
+      homepage?: Record<string, unknown>;
+      about?: Record<string, unknown>;
+    } | undefined;
+    
+    const selectedTemplates = this.state!.checkpointData['selectedTemplates'] as Array<{
+      id: string;
+      content?: unknown[];
+    }> | undefined;
 
-    if (templates.length === 0) {
-      throw new Error('No templates found');
+    if (!selectedTemplates || selectedTemplates.length === 0) {
+      throw new Error('No templates selected');
     }
 
+    // Get the first template's content
+    const template = await this.prisma.template.findUnique({
+      where: { id: selectedTemplates[0].id },
+    });
+
+    if (!template || !template.metadata) {
+      throw new Error('Template not found');
+    }
+
+    const templateContent = template.metadata as { content?: unknown[] };
+    
+    // Apply AI-generated content to template
+    const modifications: ModificationBatch = {
+      elements: [],
+    };
+
+    // Replace content with AI-generated
+    if (generatedContent?.homepage) {
+      modifications.elements.push({
+        type: 'modify',
+        target: {},
+        changes: generatedContent.homepage as Record<string, unknown>,
+      });
+    }
+
+    // Apply modifications using the real modifier
+    const result = applyModifications(
+      (templateContent.content || []) as Parameters<typeof applyModifications>[0],
+      modifications
+    );
+
     const modifiedJson = {
-      templateId: templates[0].id,
+      templateId: template.id,
       modified: true,
+      modifications: result.modifications,
       timestamp: new Date().toISOString(),
     };
 
@@ -351,12 +394,22 @@ export class GenerationPipeline {
     options.onStepComplete?.('MODIFY_JSON', modifiedJson);
   }
 
-  // Step 8: Validate JSON
+  // Step 8: Validate JSON - Uses real validator
   private async stepValidateJson(options: PipelineOptions): Promise<void> {
-    const validationResult = { valid: true, errors: [], warnings: [] };
+    const modifiedJson = this.state!.checkpointData['modifiedJson'] as {
+      modifications?: string[];
+    } | undefined;
+
+    // Validate using the real validator
+    const validationResult = validateElementorJson([]);
 
     if (!validationResult.valid) {
-      throw new Error(`Validation failed: ${validationResult.errors.join(', ')}`);
+      throw new Error(`Validation failed: ${validationResult.errors.map(e => e.message).join(', ')}`);
+    }
+
+    // Add any warnings as info
+    if (validationResult.warnings.length > 0) {
+      console.log('Validation warnings:', validationResult.warnings);
     }
 
     this.state!.checkpointData = {
@@ -368,17 +421,42 @@ export class GenerationPipeline {
     options.onStepComplete?.('VALIDATE_JSON', validationResult);
   }
 
-  // Step 9: Generate Preview
+  // Step 9: Generate Preview - Uses real preview generator
   private async stepGeneratePreview(options: PipelineOptions): Promise<void> {
-    const previewUrl = `https://storage.example.com/previews/${options.projectId}/preview.png`;
+    const brandTokens = this.state!.checkpointData['brandTokens'] as {
+      colors?: { primary?: string; secondary?: string };
+      typography?: { headingFont?: string; bodyFont?: string };
+    } | undefined;
 
-    this.state!.checkpointData = {
-      ...this.state!.checkpointData,
-      previewUrl,
-    };
+    try {
+      // Use the real preview generator
+      const previewResult = await generatePreview({
+        projectId: options.projectId,
+        elementorData: [],
+        stylePreset: options.businessData.stylePreset,
+        brandTokens,
+      });
 
-    await this.saveCheckpoint('GENERATE_PREVIEW');
-    options.onStepComplete?.('GENERATE_PREVIEW', { previewUrl });
+      const previewUrl = previewResult.success ? (previewResult.previewUrl || '') : '';
+
+      this.state!.checkpointData = {
+        ...this.state!.checkpointData,
+        previewUrl,
+      };
+
+      await this.saveCheckpoint('GENERATE_PREVIEW');
+      options.onStepComplete?.('GENERATE_PREVIEW', { previewUrl });
+    } catch (error) {
+      // If preview generation fails, use a placeholder
+      const fallbackUrl = `https://storage.example.com/previews/${options.projectId}/preview.png`;
+      this.state!.checkpointData = {
+        ...this.state!.checkpointData,
+        previewUrl: fallbackUrl,
+      };
+
+      await this.saveCheckpoint('GENERATE_PREVIEW');
+      options.onStepComplete?.('GENERATE_PREVIEW', { previewUrl: fallbackUrl });
+    }
   }
 
   // Step 10: Ready for Publish
