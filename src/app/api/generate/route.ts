@@ -6,28 +6,59 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { prisma } from '@/lib/prisma';
-import { GenerationPipeline, createPipeline, getPipelineProgress } from '@/lib/generator/pipeline';
-import { applyModifications, type ModificationBatch } from '@/lib/elementor/modifier';
-import { validateElementorJson } from '@/lib/elementor/validator';
+import { cookies } from 'next/headers';
+import { createPipeline, getPipelineProgress } from '@/lib/generator/pipeline';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const geminiApiKey = process.env.GEMINI_API_KEY || '';
 
-function getSupabaseAdmin() {
-  return createClient(supabaseUrl, supabaseServiceKey);
+// Create Supabase server client that reads from cookies
+async function createServerSupabaseClient() {
+  const cookieStore = await cookies();
+
+  return createServerClient(
+    supabaseUrl,
+    supabaseAnonKey,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            try {
+              cookieStore.set(name, value, options);
+            } catch {
+              // Ignore errors in read-only context
+            }
+          });
+        },
+      },
+    }
+  );
 }
 
 export async function POST(request: Request) {
   try {
     // Get user from auth
-    const supabase = getSupabaseAdmin();
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = await createServerSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    console.log('POST /api/generate - Auth check:', { 
+      hasUser: !!user, 
+      userId: user?.id,
+      authError: authError?.message 
+    });
+    
+    if (authError || !user) {
+      return NextResponse.json({ 
+        error: 'Unauthorized', 
+        message: 'Please sign in to generate a website',
+        code: 'AUTH_REQUIRED'
+      }, { status: 401 });
     }
 
     const body = await request.json();
