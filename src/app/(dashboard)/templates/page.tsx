@@ -127,37 +127,6 @@ export default function TemplatesPage() {
       })
       .catch(err => {
         console.error('Failed to load templates:', err);
-        // Try fallback to flat templates
-        if (data?.templates) {
-          const flatTemplates = data.templates as TemplateItem[];
-          // Group by kitSlug
-          const kitMap = new Map<string, TemplateKit>();
-          for (const t of flatTemplates) {
-            if (!kitMap.has(t.kitSlug)) {
-              kitMap.set(t.kitSlug, {
-                id: t.kitSlug,
-                name: t.kitName,
-                slug: t.kitSlug,
-                industry: t.industry,
-                style: null,
-                previewImage: t.previewImage,
-                thumbnailImage: null,
-                templateCount: 0,
-                categories: [],
-                templates: [],
-              });
-            }
-            const kit = kitMap.get(t.kitSlug)!;
-            kit.templates.push(t);
-            kit.templateCount = kit.templates.length;
-            if (!kit.categories.includes(t.category)) {
-              kit.categories.push(t.category);
-            }
-          }
-          const groupedKits = Array.from(kitMap.values());
-          setKits(groupedKits);
-          setFilteredKits(groupedKits);
-        }
       })
       .finally(() => setLoading(false));
   };
