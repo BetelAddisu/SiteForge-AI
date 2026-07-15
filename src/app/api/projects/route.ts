@@ -4,30 +4,25 @@ import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 
 // Create Supabase server client that reads from cookies
-function createServerSupabaseClient() {
-  const cookieStore = cookies();
+async function createServerSupabaseClient() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value, ...options });
-          } catch {
-            // Ignore errors in read-only context
-          }
-        },
-        remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: '', ...options });
-          } catch {
-            // Ignore errors in read-only context
-          }
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            try {
+              cookieStore.set(name, value, options);
+            } catch {
+              // Ignore errors in read-only context
+            }
+          });
         },
       },
     }
@@ -43,7 +38,7 @@ interface ErrorResponse {
 
 export async function GET(request: Request) {
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     
     // Get authenticated user from session
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -95,7 +90,7 @@ export async function POST(request: Request) {
   let appUserId: string | null = null;
   
   try {
-    const supabase = createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     
     // Get authenticated user from session
     const { data: { user }, error: authError } = await supabase.auth.getUser();
