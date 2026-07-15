@@ -161,22 +161,29 @@ async function fetchTemplatesFromSupabase() {
           if (template.elementor_pro_required) continue;
           const templateSlug = slugify(template.name);
 
-          // Try to get screenshot from template-screenshots bucket
-          let screenshotUrl: string | null = null;
+          // Use our screenshot API endpoint
+          const templateId = `${kitSlug}-${templateSlug}`;
+          const screenshotUrl = `/api/templates/screenshot?id=${templateId}`;
+
+          // Try to get screenshot from template-screenshots bucket first (for imported ones)
+          let previewImage: string | null = null;
           try {
             const screenshotPath = `${kitSlug}/${templateSlug}.jpg`;
             const { data: screenshotData } = supabase.storage.from('template-screenshots').getPublicUrl(screenshotPath);
-            screenshotUrl = screenshotData.publicUrl;
+            // Only use if it's a valid URL (not a placeholder)
+            if (screenshotData.publicUrl && !screenshotData.publicUrl.includes('localhost')) {
+              previewImage = screenshotData.publicUrl;
+            }
           } catch {}
 
           templates.push({
-            id: `${kitSlug}-${templateSlug}`,
+            id: templateId,
             name: template.name,
             category: detectCategory(template.name),
             industry: detectIndustry(manifest.title),
             kitName: manifest.title,
             kitSlug,
-            previewImage: screenshotUrl,
+            previewImage: previewImage || screenshotUrl, // Use our API as fallback
             screenshotUrl,
             compatibilityScore: 85,
           });
