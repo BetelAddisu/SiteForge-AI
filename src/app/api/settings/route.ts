@@ -1,26 +1,55 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { prisma } from '@/lib/prisma';
+import { cookies } from 'next/headers';
 
-function getSupabaseClient() {
-  return createClient(
+async function createServerSupabaseClient() {
+  const cookieStore = await cookies();
+
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            try {
+              cookieStore.set(name, value, options);
+            } catch {
+              // Ignore errors in read-only context
+            }
+          });
+        },
+      },
+    }
   );
 }
 
 export async function GET() {
   try {
-    const supabase = getSupabaseClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = await createServerSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    console.log('GET /api/settings - Auth check:', { 
+      hasUser: !!user, 
+      userId: user?.id,
+      authError: authError?.message 
+    });
+    
+    if (authError || !user) {
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        message: 'Please sign in to access settings',
+        code: 'AUTH_REQUIRED'
+      }, { status: 401 });
     }
 
     // Get WordPress connection
     const wpConnection = await prisma.wordPressConnection.findUnique({
-      where: { userId: user.id },
+      where: { supabaseId: user.id },
     });
 
     return NextResponse.json({
