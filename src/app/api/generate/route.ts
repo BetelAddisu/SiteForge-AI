@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const project = await prisma.project.findUnique({
+    const project = await prisma.project.findFirst({
       where: { id: projectId, userId: appUser.id },
     });
 

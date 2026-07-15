@@ -5,7 +5,7 @@
  */
 
 import { createHash } from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../prisma';
 
 // ============================================================================
 // Types
@@ -262,7 +262,6 @@ export async function saveWordPressConnection(
   username: string,
   appPassword: string
 ): Promise<void> {
-  const prisma = new PrismaClient();
   
   await prisma.wordPressConnection.upsert({
     where: { userId },
@@ -284,7 +283,6 @@ export async function saveWordPressConnection(
  * Get WordPress connection for a user
  */
 export async function getWordPressConnection(userId: string): Promise<WordPressConfig | null> {
-  const prisma = new PrismaClient();
   
   const connection = await prisma.wordPressConnection.findUnique({
     where: { userId },
@@ -303,7 +301,6 @@ export async function getWordPressConnection(userId: string): Promise<WordPressC
  * Remove WordPress connection
  */
 export async function removeWordPressConnection(userId: string): Promise<void> {
-  const prisma = new PrismaClient();
   
   await prisma.wordPressConnection.delete({
     where: { userId },
@@ -346,8 +343,7 @@ export async function publishToWordPress(
     if (result.success && result.pageUrl) {
       publishedPages.push({ title: page.title, url: result.pageUrl });
       
-      const prisma = new PrismaClient();
-      await prisma.deployment.create({
+          await prisma.deployment.create({
         data: {
           projectId,
           wordpressUrl: result.pageUrl,

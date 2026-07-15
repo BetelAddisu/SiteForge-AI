@@ -9,7 +9,7 @@
  * - Actions: regenerate section, change style, revert to previous
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../prisma';
 
 // ============================================================================
 // Types
@@ -74,7 +74,6 @@ export async function generatePreview(options: PreviewOptions): Promise<{
   const previewUrl = `https://storage.example.com/previews/${projectId}/desktop.png`;
 
   // Save to database
-  const prisma = new PrismaClient();
   await prisma.project.update({
     where: { id: projectId },
     data: {
@@ -120,7 +119,6 @@ export async function getCachedPreview(projectId: string): Promise<{
   timestamp?: Date;
   error?: string;
 }> {
-  const prisma = new PrismaClient();
   
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -141,7 +139,6 @@ export async function getCachedPreview(projectId: string): Promise<{
  * Check if preview needs regeneration
  */
 export async function isPreviewStale(projectId: string, maxAgeHours = 24): Promise<boolean> {
-  const prisma = new PrismaClient();
   
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -157,7 +154,6 @@ export async function isPreviewStale(projectId: string, maxAgeHours = 24): Promi
  * Invalidate cached preview
  */
 export async function invalidatePreview(projectId: string): Promise<void> {
-  const prisma = new PrismaClient();
   
   await prisma.project.update({
     where: { id: projectId },
@@ -207,7 +203,6 @@ export async function createPreviewVersion(
   projectId: string,
   reason: string
 ): Promise<{ success: boolean; versionId?: string; error?: string }> {
-  const prisma = new PrismaClient();
   
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) return { success: false, error: 'Project not found' };
@@ -240,7 +235,6 @@ export async function getPreviewVersions(projectId: string): Promise<Array<{
   reason: string;
   createdAt: Date;
 }>> {
-  const prisma = new PrismaClient();
   
   return prisma.templateVersion.findMany({
     where: { templateId: projectId },
