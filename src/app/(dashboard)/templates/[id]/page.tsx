@@ -6,49 +6,27 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Eye, Copy, CheckCircle2, AlertTriangle, XCircle, Smartphone, Tablet, Monitor } from 'lucide-react';
+import { ArrowLeft, Eye, Copy, CheckCircle2, AlertTriangle, XCircle, Smartphone, Tablet, Monitor, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface Template {
   id: string;
   name: string;
   category: string;
-  industry?: string;
+  industry?: string | null;
+  kitName?: string;
   style?: string;
-  previewImage?: string;
+  previewImage?: string | null;
+  screenshotUrl?: string | null;
   compatibilityScore?: number;
   tags: string[];
   metadata?: {
     colorPalette?: string[];
     sectionCount?: number;
+    kitName?: string;
+    kitSlug?: string;
   };
 }
-
-// Mock data for demo
-const MOCK_TEMPLATES: Record<string, Template> = {
-  '1': {
-    id: '1',
-    name: 'Modern Business Hero',
-    category: 'hero',
-    industry: 'technology',
-    style: 'modern',
-    previewImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1200&h=800&fit=crop',
-    compatibilityScore: 95,
-    tags: ['hero', 'modern', 'tech'],
-    metadata: { colorPalette: ['#3B82F6', '#1E40AF', '#F8FAFC'], sectionCount: 5 },
-  },
-  '2': {
-    id: '2',
-    name: 'Classic Services Section',
-    category: 'services',
-    industry: 'consulting',
-    style: 'corporate',
-    previewImage: 'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=1200&h=800&fit=crop',
-    compatibilityScore: 88,
-    tags: ['services', 'corporate', 'classic'],
-    metadata: { sectionCount: 3 },
-  },
-};
 
 export default function TemplateDetailPage() {
   const params = useParams();
@@ -58,24 +36,33 @@ export default function TemplateDetailPage() {
   const [previewSize, setPreviewSize] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
 
   useEffect(() => {
-    // In production, fetch from Supabase
-    const id = params.id as string;
-    const found = MOCK_TEMPLATES[id] || {
-      id,
-      name: 'Template ' + id,
-      category: 'section',
-      compatibilityScore: 80,
-      tags: [],
-      previewImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1200&h=800&fit=crop',
+    const fetchTemplate = async () => {
+      const id = params.id as string;
+      
+      try {
+        const response = await fetch(`/api/templates/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setTemplate(data.template);
+        } else {
+          // Template not found
+          setTemplate(null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch template:', err);
+        setTemplate(null);
+      } finally {
+        setLoading(false);
+      }
     };
-    setTemplate(found);
-    setLoading(false);
+
+    fetchTemplate();
   }, [params.id]);
 
   if (loading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <div className="text-muted-foreground">Loading template...</div>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -84,6 +71,7 @@ export default function TemplateDetailPage() {
     return (
       <div className="flex h-[50vh] flex-col items-center justify-center gap-4">
         <h2 className="text-2xl font-bold">Template not found</h2>
+        <p className="text-muted-foreground">The template you&apos;re looking for doesn&apos;t exist.</p>
         <Button asChild>
           <Link href="/templates">Back to Library</Link>
         </Button>
@@ -106,15 +94,18 @@ export default function TemplateDetailPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{template.name}</h1>
             <p className="text-muted-foreground">
+              {template.kitName && <span>{template.kitName} • </span>}
               {template.category} {template.industry && `• ${template.industry}`} {template.style && `• ${template.style}`}
             </p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
-            <Link href="/projects/new">Create Project</Link>
+            <Link href={`/projects/new?template=${template.id}`}>Create Project</Link>
           </Button>
-          <Button>Use Template</Button>
+          <Button asChild>
+            <Link href={`/generator?template=${template.id}`}>Use Template</Link>
+          </Button>
         </div>
       </div>
 
@@ -191,11 +182,17 @@ export default function TemplateDetailPage() {
           className="overflow-hidden rounded-lg border-2 border-border transition-all duration-300"
           style={{ width: previewWidth, maxWidth: '100%' }}
         >
-          <img
-            src={template.previewImage || '/placeholder.png'}
-            alt={template.name}
-            className="w-full"
-          />
+          {template.previewImage || template.screenshotUrl ? (
+            <img
+              src={template.previewImage || template.screenshotUrl || ''}
+              alt={template.name}
+              className="w-full"
+            />
+          ) : (
+            <div className="flex h-64 items-center justify-center bg-muted">
+              <p className="text-muted-foreground">No preview available</p>
+            </div>
+          )}
         </div>
       </div>
 
