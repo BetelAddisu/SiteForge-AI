@@ -17,19 +17,43 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Check, ArrowLeft, ArrowRight, Building2, Palette, Globe, Users, Sparkles, Briefcase, FileText } from 'lucide-react';
+import { Upload, Check, ArrowLeft, ArrowRight, Building2, Palette, Globe, Users, Sparkles, Briefcase, FileText, AlertCircle, X, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ContentPreferencesEditor, DEFAULT_CONTENT_PREFERENCES, DEFAULT_WEBSITE_FEATURES, DEFAULT_DESIGN_PREFERENCES } from '@/components/content/content-preferences';
 import { ColorManager, DEFAULT_PALETTES } from '@/components/color/color-manager';
 import { FontManager } from '@/components/font/font-manager';
 import type { ContentPreferences, WebsiteFeatures, DesignPreferences, ColorPalette, FontConfig, LogoData } from '@/lib/types';
 
-function TemplateParamHandler({ children, onTemplateId }: { children: React.ReactNode; onTemplateId: (id: string) => void }) {
+// Error display interface
+interface ErrorDisplay {
+  error: string;
+  message: string;
+  code?: string;
+}
+
+interface TemplateParamHandlerProps {
+  children: React.ReactNode;
+  onTemplateId: (id: string) => void;
+  onKitId: (id: string) => void;
+  onSource: (source: 'template' | 'kit' | null) => void;
+}
+
+function TemplateParamHandler({ children, onTemplateId, onKitId, onSource }: TemplateParamHandlerProps) {
   const searchParams = useSearchParams();
   useEffect(() => {
     const templateId = searchParams.get('template');
-    if (templateId) onTemplateId(templateId);
-  }, [searchParams, onTemplateId]);
+    const kitId = searchParams.get('kit');
+    
+    if (templateId) {
+      onTemplateId(templateId);
+      onSource('template');
+    } else if (kitId) {
+      onKitId(kitId);
+      onSource('kit');
+    } else {
+      onSource(null);
+    }
+  }, [searchParams, onTemplateId, onKitId, onSource]);
   return <>{children}</>;
 }
 
@@ -272,6 +296,9 @@ export default function NewProjectPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [templateId, setTemplateId] = useState<string | null>(null);
+  const [kitId, setKitId] = useState<string | null>(null);
+  const [templateSource, setTemplateSource] = useState<'template' | 'kit' | null>(null);
+  const [error, setError] = useState<ErrorDisplay | null>(null);
 
   const [formData, setFormData] = useState<ProjectFormData>({
     businessName: '', industry: '', description: '', website: '',
@@ -290,7 +317,9 @@ export default function NewProjectPage() {
 
   useEffect(() => {
     if (templateId) console.log('Template selected:', templateId);
-  }, [templateId]);
+    if (kitId) console.log('Kit selected:', kitId);
+    if (templateSource) console.log('Template source:', templateSource);
+  }, [templateId, kitId, templateSource]);
 
   const canProceed = () => {
     switch (currentStep) {
@@ -301,11 +330,42 @@ export default function NewProjectPage() {
     }
   };
 
-  const handleNext = () => { if (currentStep < STEPS.length) setCurrentStep(currentStep + 1); };
-  const handleBack = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
+  const handleNext = () => { 
+    setError(null);
+    if (currentStep < STEPS.length) setCurrentStep(currentStep + 1); 
+  };
+  const handleBack = () => { 
+    setError(null);
+    if (currentStep > 1) setCurrentStep(currentStep - 1); 
+  };
 
-	  const handleSubmit = async () => {
+  const handleDismissError = () => {
+    setError(null);
+  };
+
+  const getHumanReadableError = (errorData: ErrorDisplay): string => {
+    switch (errorData.code) {
+      case 'AUTH_REQUIRED':
+        return 'You need to sign in to create a project. Please sign in and try again.';
+      case 'CONFIG_ERROR':
+        return 'The application is not properly configured. Please contact support.';
+      case 'VALIDATION_ERROR':
+        return errorData.message || 'Please check your input and try again.';
+      case 'DB_CONNECTION_ERROR':
+        return 'Unable to connect to the database. Please try again in a few moments.';
+      case 'DUPLICATE_ERROR':
+        return 'A project with this name already exists.';
+      case 'FETCH_ERROR':
+        return 'Unable to save your project. Please try again.';
+      default:
+        return errorData.message || 'An unexpected error occurred. Please try again.';
+    }
+  };
+
+  const handleSubmit = async () => {
+    setError(null);
     setIsSubmitting(true);
+    
     try {
       // Create project via API
       const response = await fetch('/api/projects', {
@@ -317,6 +377,8 @@ export default function NewProjectPage() {
           description: formData.description,
           stylePreset: formData.stylePreset,
           templateId: templateId,
+          kitId: kitId,
+          templateSource: templateSource,
           services: formData.services,
           mainService: formData.mainService,
           contact: {
@@ -332,7 +394,25 @@ export default function NewProjectPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create project');
+        const errorData = await response.json().catch(() => ({ 
+          error: 'Unknown error', 
+          message: 'Failed to create project',
+          code: 'UNKNOWN_ERROR'
+        }));
+        
+        console.error('Project creation failed:', {
+          status: response.status,
+          error: errorData.error,
+          message: errorData.message,
+          code: errorData.code,
+        });
+        
+        setError({
+          error: errorData.error || 'Failed to create project',
+          message: getHumanReadableError(errorData),
+          code: errorData.code,
+        });
+        return;
       }
 
       const data = await response.json();
@@ -345,8 +425,12 @@ export default function NewProjectPage() {
         router.push('/projects');
       }
     } catch (err) {
-      console.error('Error:', err);
-      alert('Failed to create project. Please try again.');
+      console.error('Network or unexpected error:', err);
+      setError({
+        error: 'Connection error',
+        message: 'Unable to connect to the server. Please check your internet connection and try again.',
+        code: 'NETWORK_ERROR',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -366,12 +450,68 @@ export default function NewProjectPage() {
 
   return (
     <Suspense fallback={<div className="flex h-96 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>}>
-    <TemplateParamHandler onTemplateId={setTemplateId}>
+    <TemplateParamHandler 
+      onTemplateId={setTemplateId}
+      onKitId={setKitId}
+      onSource={setTemplateSource}
+    >
     <div className="mx-auto max-w-3xl py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Create New Project</h1>
         <p className="mt-2 text-muted-foreground">Build your professional WordPress website with Elementor</p>
       </div>
+
+      {/* Workflow Info Banner */}
+      {templateSource === 'template' && (
+        <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-blue-100 p-2">
+              <Layers className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-blue-900">Template Selected</h3>
+              <p className="text-sm text-blue-700 mt-1">
+                You're creating a project using a specific template. Our AI will personalize it 
+                based on your business information.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {templateSource === 'kit' && (
+        <div className="mb-6 rounded-lg border border-purple-200 bg-purple-50 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-purple-100 p-2">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-purple-900">Template Kit Selected</h3>
+              <p className="text-sm text-purple-700 mt-1">
+                You're creating a project using a complete design system. Our AI will select 
+                the best templates from the kit for your website.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {!templateSource && (
+        <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-green-100 p-2">
+              <Sparkles className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-green-900">AI Will Select the Best Template</h3>
+              <p className="text-sm text-green-700 mt-1">
+                Based on your business information, our AI will automatically choose the most 
+                suitable Template Kit from our library. You can customize everything later.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Step Indicator */}
       <div className="mb-8">
@@ -406,6 +546,30 @@ export default function NewProjectPage() {
           </CardTitle>
           <CardDescription>{STEPS[currentStep - 1].description}</CardDescription>
         </CardHeader>
+        
+        {/* Error Display */}
+        {error && (
+          <div className="mx-4 mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-red-800">{error.error}</p>
+                <p className="mt-1 text-sm text-red-700">{error.message}</p>
+                {process.env.NODE_ENV === 'development' && error.code && (
+                  <p className="mt-1 text-xs text-red-500">Error code: {error.code}</p>
+                )}
+              </div>
+              <button 
+                onClick={handleDismissError}
+                className="flex-shrink-0 rounded-full p-1 hover:bg-red-100 transition-colors"
+                aria-label="Dismiss error"
+              >
+                <X className="h-4 w-4 text-red-600" />
+              </button>
+            </div>
+          </div>
+        )}
+        
         <CardContent>
           <AnimatePresence mode="wait">
             <motion.div key={currentStep} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }}>

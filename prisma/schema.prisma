@@ -48,7 +48,12 @@ model Project {
   description  String?
   logo         String?       // Supabase Storage URL
   status       ProjectStatus @default(DRAFT)
-  templateId  String?      // Selected template for this project
+  
+  // Template selection
+  templateId   String?       // Selected specific template for this project
+  kitId        String?       // Selected Template Kit (AI will choose best template from this kit)
+  templateSource String?     // 'template' | 'kit' | null (how the template/kit was selected)
+  
   stylePreset  String?       // modern, luxury, minimal, corporate, creative, friendly
   brandColors  Json?         // { primary: "#...", secondary: "#...", accent: "#..." }
   
@@ -77,6 +82,7 @@ model Project {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@index([kitId])
 }
 
 enum ProjectStatus {
@@ -88,15 +94,69 @@ enum ProjectStatus {
 }
 
 // =============================================================================
+// TEMPLATE KIT (Groups related templates into a design system)
+// =============================================================================
+
+model TemplateKit {
+  id            String   @id @default(cuid())
+  name          String   // e.g., "Artifice - AI & Robotics", "DigiCy Digital Agency"
+  slug          String   @unique  // URL-friendly version of name
+  description   String?  // Kit description
+  industry      String?  // Primary industry this kit is designed for
+  style         String?  // modern, minimal, corporate, etc.
+  
+  // Visual identity
+  previewImage  String?  // Kit overview/preview image
+  thumbnailImage String? // Thumbnail for library grid view
+  
+  // Design tokens
+  primaryColor  String?  // Primary brand color
+  secondaryColor String? // Secondary brand color
+  accentColor   String?  // Accent color
+  typography    Json?    // Font settings
+  
+  // Content metadata
+  templateCount Int      @default(0)  // Number of templates in this kit
+  categories    String[] // Categories covered: ["hero", "about", "services", "footer", ...]
+  
+  // Global styles (extracted in Phase 3A)
+  globalStyles  Json?    // { colors: {...}, typography: {...}, spacing: {...}, buttons: {...} }
+  
+  // Storage
+  filePath      String?  // Original ZIP path in Supabase Storage
+  
+  // Import status
+  importStatus  ImportStatus @default(PENDING)
+  importError   String?
+  
+  // Timestamps
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  templates     Template[]
+  
+  @@index([industry])
+  @@index([style])
+  @@index([importStatus])
+}
+
+// =============================================================================
 // TEMPLATE
 // =============================================================================
 
 model Template {
   id                  String       @id @default(cuid())
-  name                String
-  category            String       // hero, about, services, pricing, team, testimonial, footer
+  name                String       // e.g., "Home", "About", "Services", "Header", "Footer"
+  slug                String       // URL-friendly version
+  category            String       // hero, about, services, pricing, team, testimonial, footer, header, offcanvas, form
   industry            String?      // technology, restaurant, medical, real-estate, etc.
   style               String?      // modern, minimal, corporate, etc.
+  
+  // Kit association
+  kitId               String?
+  kitSlug             String?      // Denormalized for easier querying
+  kitName             String?      // Denormalized for easier querying
   
   // Storage
   filePath            String       // Original ZIP path in Supabase Storage
@@ -125,12 +185,16 @@ model Template {
   updatedAt           DateTime     @updatedAt
   
   // Relations
+  kit                 TemplateKit? @relation(fields: [kitId], references: [id], onDelete: SetNull)
   sections            TemplateSection[]
   versions            TemplateVersion[]
   processingJobs      ProcessingJob[]
   
+  @@unique([kitId, slug])  // Each template within a kit must have unique slug
   @@index([category])
   @@index([industry])
+  @@index([kitId])
+  @@index([kitSlug])
   @@index([compatibilityScore])
   @@index([importStatus])
 }
