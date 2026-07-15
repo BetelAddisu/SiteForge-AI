@@ -8,18 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Wand2, 
-  FileStack, 
-  Building2,
-  Palette,
-  Globe,
-  Loader2,
-  CheckCircle,
-  ArrowRight,
-  AlertCircle
-} from 'lucide-react';
+import { FileStack, Building2, Loader2, CheckCircle, ArrowRight, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const INDUSTRIES = [
@@ -38,16 +27,24 @@ const INDUSTRIES = [
 ];
 
 const STYLE_PRESETS = [
-  { value: 'modern', label: 'Modern', description: 'Clean lines, bold colors, contemporary feel' },
-  { value: 'minimal', label: 'Minimal', description: 'Simple, elegant, lots of white space' },
-  { value: 'corporate', label: 'Corporate', description: 'Professional, trustworthy, business-focused' },
-  { value: 'creative', label: 'Creative', description: 'Bold, artistic, expressive' },
-  { value: 'luxury', label: 'Luxury', description: 'Premium, sophisticated, high-end' },
-  { value: 'friendly', label: 'Friendly', description: 'Warm, approachable, welcoming' },
+  { value: 'modern', label: 'Modern', description: 'Clean lines, bold colors' },
+  { value: 'minimal', label: 'Minimal', description: 'Simple, elegant' },
+  { value: 'corporate', label: 'Corporate', description: 'Professional' },
+  { value: 'creative', label: 'Creative', description: 'Bold, artistic' },
+  { value: 'luxury', label: 'Luxury', description: 'Premium, sophisticated' },
+  { value: 'friendly', label: 'Friendly', description: 'Warm, welcoming' },
 ];
 
+interface Template {
+  id: string;
+  name: string;
+  category: string;
+  industry: string | null;
+  previewImage: string | null;
+}
+
 interface GeneratorState {
-  step: 'input' | 'selecting' | 'generating' | 'preview' | 'complete';
+  step: 'input' | 'selecting' | 'generating' | 'complete';
   businessName: string;
   industry: string;
   description: string;
@@ -56,11 +53,17 @@ interface GeneratorState {
   projectId: string | null;
   progress: number;
   status: string;
+  completedSteps: string[];
+  error: string | null;
 }
+
+const STEPS = ['Initialize', 'Analyze Business', 'Select Templates', 'Generate Content', 'Apply Brand', 'Modify JSON', 'Validate', 'Generate Preview', 'Ready'];
 
 export default function GeneratorPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
   const [state, setState] = useState<GeneratorState>({
     step: 'input',
     businessName: '',
@@ -70,9 +73,10 @@ export default function GeneratorPage() {
     templateId: null,
     projectId: null,
     progress: 0,
-    status: '',
+    status: 'Initializing...',
+    completedSteps: [],
+    error: null,
   });
-  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -80,10 +84,37 @@ export default function GeneratorPage() {
     }
   }, [user, authLoading, router]);
 
+  // Load templates when industry changes
+  useEffect(() => {
+    if (state.industry && state.step === 'selecting') {
+      loadTemplates();
+    }
+  }, [state.industry, state.step]);
+
+  const loadTemplates = async () => {
+    setTemplatesLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (state.industry) params.set('industry', state.industry);
+      params.set('refresh', 'true');
+      
+      const response = await fetch(`/api/templates?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        setTemplates(data.templates || []);
+      }
+    } catch (err) {
+      console.error('Failed to load templates:', err);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
   const handleCreateProject = async () => {
     if (!state.businessName || !state.industry) return;
 
-    setGenerating(true);
+    setState(prev => ({ ...prev, status: 'Creating project...' }));
+    
     try {
       const response = await fetch('/api/projects', {
         method: 'POST',
@@ -103,11 +134,12 @@ export default function GeneratorPage() {
           step: 'selecting',
           projectId: data.project.id,
         }));
+      } else {
+        const errorData = await response.json();
+        setState(prev => ({ ...prev, error: errorData.error || 'Failed to create project' }));
       }
     } catch (err) {
-      console.error('Failed to create project:', err);
-    } finally {
-      setGenerating(false);
+      setState(prev => ({ ...prev, error: 'Failed to create project' }));
     }
   };
 
@@ -116,50 +148,137 @@ export default function GeneratorPage() {
   };
 
   const handleGenerate = async () => {
-    if (!state.templateId) return;
+    if (!state.templateId || !state.projectId) return;
 
-    setState(prev => ({ ...prev, step: 'generating', progress: 0, status: 'Starting generation...' }));
-    setGenerating(true);
+    setState(prev => ({ 
+      ...prev, 
+      step: 'generating', 
+      progress: 0, 
+      status: 'Starting generation...',
+      completedSteps: [],
+      error: null,
+    }));
+
+    let pollCount = 0;
+    const maxPolls = 60; // 2 minutes max
 
     try {
-      // Update project with template
-      await fetch(`/api/projects/${state.projectId}`, {
-        method: 'PATCH',
+      // Start generation via API
+      const response = await fetch('/api/generate', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateId: state.templateId }),
+        body: JSON.stringify({
+          projectId: state.projectId,
+          businessName: state.businessName,
+          industry: state.industry,
+          description: state.description,
+          stylePreset: state.stylePreset,
+          selectedTemplates: [state.templateId],
+        }),
       });
 
-      // Simulate generation progress (in real app, this would be a WebSocket or polling)
-      const steps = [
-        { progress: 20, status: 'Analyzing template...' },
-        { progress: 40, status: 'Generating content with AI...' },
-        { progress: 60, status: 'Applying brand styles...' },
-        { progress: 80, status: 'Building Elementor structure...' },
-        { progress: 100, status: 'Finalizing...' },
-      ];
+      const data = await response.json();
 
-      for (const step of steps) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setState(prev => ({ ...prev, progress: step.progress, status: step.status }));
+      if (!response.ok) {
+        setState(prev => ({ 
+          ...prev, 
+          error: data.error || data.message || 'Generation failed',
+          step: 'selecting',
+        }));
+        return;
       }
 
-      // Update project status
-      await fetch(`/api/projects/${state.projectId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'PREVIEW' }),
-      });
+      if (data.success) {
+        setState(prev => ({ 
+          ...prev, 
+          step: 'complete',
+          completedSteps: data.completedSteps || [],
+        }));
+        return;
+      }
 
-      setState(prev => ({ ...prev, step: 'complete' }));
+      // If not immediately successful, poll for progress
+      const pollProgress = async () => {
+        if (pollCount >= maxPolls) {
+          setState(prev => ({ 
+            ...prev, 
+            error: 'Generation timed out',
+            step: 'selecting',
+          }));
+          return;
+        }
+
+        pollCount++;
+
+        try {
+          const progressRes = await fetch(`/api/generate?projectId=${state.projectId}`);
+          const progressData = await progressRes.json();
+
+          // Calculate progress based on checkpoint
+          const checkpointIndex = STEPS.findIndex(s => 
+            progressData.checkpoint?.toLowerCase().includes(s.toLowerCase())
+          );
+          const progress = checkpointIndex >= 0 ? Math.round((checkpointIndex / STEPS.length) * 100) : 0;
+
+          setState(prev => ({ 
+            ...prev, 
+            progress,
+            status: `Processing: ${progressData.checkpoint || 'Working...'}`,
+            completedSteps: progressData.completedSteps || prev.completedSteps,
+          }));
+
+          // Check if complete
+          if (progressData.status === 'PREVIEW' || progressData.status === 'PUBLISHED') {
+            setState(prev => ({ ...prev, step: 'complete' }));
+            return;
+          }
+
+          if (progressData.status === 'FAILED') {
+            setState(prev => ({ 
+              ...prev, 
+              error: 'Generation failed',
+              step: 'selecting',
+            }));
+            return;
+          }
+
+          // Continue polling
+          setTimeout(pollProgress, 2000);
+        } catch {
+          setTimeout(pollProgress, 5000);
+        }
+      };
+
+      pollProgress();
+
     } catch (err) {
-      console.error('Generation failed:', err);
-    } finally {
-      setGenerating(false);
+      setState(prev => ({ 
+        ...prev, 
+        error: 'Failed to start generation',
+        step: 'selecting',
+      }));
     }
   };
 
   const handleViewProject = () => {
     router.push(`/projects/${state.projectId}`);
+  };
+
+  const handleReset = () => {
+    setState({
+      step: 'input',
+      businessName: '',
+      industry: '',
+      description: '',
+      stylePreset: 'modern',
+      templateId: null,
+      projectId: null,
+      progress: 0,
+      status: '',
+      completedSteps: [],
+      error: null,
+    });
+    setTemplates([]);
   };
 
   if (authLoading) {
@@ -176,7 +295,6 @@ export default function GeneratorPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Website Generator</h1>
         <p className="text-muted-foreground">
@@ -184,23 +302,18 @@ export default function GeneratorPage() {
         </p>
       </div>
 
-      {/* Step Progress */}
-      <div className="flex items-center justify-between">
-        {['Business Info', 'Select Template', 'Generate', 'Preview'].map((label, i) => (
-          <div key={label} className="flex items-center">
-            <div className={cn(
-              'flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium',
-              state.step === ['input', 'selecting', 'generating', 'complete'][i]
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground'
-            )}>
-              {i + 1}
-            </div>
-            <span className="ml-2 text-sm">{label}</span>
-            {i < 3 && <ArrowRight className="mx-4 h-4 w-4 text-muted-foreground" />}
-          </div>
-        ))}
-      </div>
+      {/* Error Display */}
+      {state.error && (
+        <Card className="border-red-500 bg-red-50">
+          <CardContent className="flex items-center gap-3 py-4">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-red-700">{state.error}</p>
+            <Button variant="outline" size="sm" onClick={() => setState(prev => ({ ...prev, error: null }))} className="ml-auto">
+              Dismiss
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Step Content */}
       {state.step === 'input' && (
@@ -274,20 +387,11 @@ export default function GeneratorPage() {
 
             <Button 
               onClick={handleCreateProject} 
-              disabled={generating || !state.businessName || !state.industry}
+              disabled={!state.businessName || !state.industry}
               className="w-full"
             >
-              {generating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Project...
-                </>
-              ) : (
-                <>
-                  Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              )}
+              Continue
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </CardContent>
         </Card>
@@ -301,58 +405,67 @@ export default function GeneratorPage() {
               Select a Template
             </CardTitle>
             <CardDescription>
-              Choose a starting template for your {state.industry} website.
+              {templatesLoading ? 'Loading templates...' : `Choose a starting template for your ${state.industry} website`}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 rounded-lg border bg-muted/50 p-4">
-              <p className="text-sm">
-                <strong>Tip:</strong> You can customize everything after generation. The template 
-                provides a starting structure that AI will personalize for your business.
-              </p>
-            </div>
-            
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <button
-                  key={i}
-                  onClick={() => handleSelectTemplate(`template-${i}`)}
-                  className={cn(
-                    'rounded-lg border p-4 text-left transition-all',
-                    state.templateId === `template-${i}` 
-                      ? 'border-primary bg-primary/5 ring-2 ring-primary' 
-                      : 'border-border hover:border-primary/50'
-                  )}
-                >
-                  <div className="aspect-video rounded bg-muted mb-3 flex items-center justify-center">
-                    <FileStack className="h-8 w-8 text-muted-foreground/50" />
-                  </div>
-                  <p className="font-medium">Template {i}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{state.industry}</p>
-                </button>
-              ))}
-            </div>
+            {templatesLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : templates.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>No templates found for {state.industry}.</p>
+                <Button variant="outline" className="mt-4" onClick={() => setTemplates([])}>
+                  Show All Templates
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="mb-4 rounded-lg border bg-muted/50 p-4">
+                  <p className="text-sm">
+                    <strong>Tip:</strong> You can customize everything after generation. The template 
+                    provides a starting structure that AI will personalize for your business.
+                  </p>
+                </div>
+                
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {templates.slice(0, 9).map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => handleSelectTemplate(template.id)}
+                      className={cn(
+                        'rounded-lg border p-4 text-left transition-all',
+                        state.templateId === template.id 
+                          ? 'border-primary bg-primary/5 ring-2 ring-primary' 
+                          : 'border-border hover:border-primary/50'
+                      )}
+                    >
+                      <div className="aspect-video rounded bg-muted mb-3 flex items-center justify-center overflow-hidden">
+                        {template.previewImage ? (
+                          <img src={template.previewImage} alt={template.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <FileStack className="h-8 w-8 text-muted-foreground/50" />
+                        )}
+                      </div>
+                      <p className="font-medium">{template.name}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{template.category}</p>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
             <div className="mt-6 flex gap-3">
-              <Button variant="outline" onClick={() => setState(prev => ({ ...prev, step: 'input' }))}>
+              <Button variant="outline" onClick={handleReset}>
                 Back
               </Button>
               <Button 
                 onClick={handleGenerate} 
-                disabled={!state.templateId || generating}
+                disabled={!state.templateId}
                 className="flex-1"
               >
-                {generating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Wand2 className="mr-2 h-4 w-4" />
-                    Generate Website
-                  </>
-                )}
+                Generate Website
               </Button>
             </div>
           </CardContent>
@@ -363,9 +476,10 @@ export default function GeneratorPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Wand2 className="h-5 w-5 animate-pulse" />
+              <Loader2 className="h-5 w-5 animate-spin" />
               Generating Your Website
             </CardTitle>
+            <CardDescription>{state.status}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -375,31 +489,33 @@ export default function GeneratorPage() {
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div 
-                  className="h-full rounded-full bg-primary transition-all duration-300"
+                  className="h-full rounded-full bg-primary transition-all duration-500"
                   style={{ width: `${state.progress}%` }}
                 />
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              {[
-                { done: state.progress >= 20, label: 'Analyzing template' },
-                { done: state.progress >= 40, label: 'Generating content' },
-                { done: state.progress >= 60, label: 'Applying styles' },
-                { done: state.progress >= 80, label: 'Building structure' },
-                { done: state.progress >= 100, label: 'Finalizing' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm">
-                  {item.done ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <div className="h-4 w-4 rounded-full border-2 border-muted" />
-                  )}
-                  <span className={item.done ? 'text-foreground' : 'text-muted-foreground'}>
-                    {item.label}
-                  </span>
-                </div>
-              ))}
+            <div className="space-y-2">
+              {STEPS.map((step, i) => {
+                const stepIndex = Math.floor((state.progress / 100) * STEPS.length);
+                const isComplete = i < stepIndex;
+                const isCurrent = i === stepIndex;
+                
+                return (
+                  <div key={step} className="flex items-center gap-2 text-sm">
+                    {isComplete ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : isCurrent ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    ) : (
+                      <div className="h-4 w-4 rounded-full border-2 border-muted" />
+                    )}
+                    <span className={isComplete ? 'text-foreground' : isCurrent ? 'text-primary font-medium' : 'text-muted-foreground'}>
+                      {step}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -437,7 +553,7 @@ export default function GeneratorPage() {
             </div>
 
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => router.push('/generator')} className="flex-1">
+              <Button variant="outline" onClick={handleReset} className="flex-1">
                 Create Another
               </Button>
               <Button onClick={handleViewProject} className="flex-1">
