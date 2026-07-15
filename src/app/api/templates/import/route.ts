@@ -136,6 +136,28 @@ export async function POST(request: Request) {
         const manifest: Manifest = JSON.parse(manifestContent);
         const kitSlug = slugify(manifest.title);
 
+        // Create or find the TemplateKit
+        let kitId: string;
+        const existingKit = await prisma.templateKit.findUnique({
+          where: { slug: kitSlug },
+        });
+
+        if (existingKit) {
+          kitId = existingKit.id;
+        } else {
+          const newKit = await prisma.templateKit.create({
+            data: {
+              name: manifest.title,
+              slug: kitSlug,
+              industry: detectIndustry(manifest.title),
+              style: 'modern',
+              templateCount: manifest.templates.length,
+              importStatus: 'COMPLETE',
+            },
+          });
+          kitId = newKit.id;
+        }
+
         for (const template of manifest.templates) {
           // Skip Elementor Pro templates
           if (template.elementor_pro_required) continue;
@@ -182,11 +204,15 @@ export async function POST(request: Request) {
             data: {
               id: templateId,
               name: template.name,
+              slug: templateSlug,
               category: detectCategory(template.name),
               industry: detectIndustry(manifest.title),
               style: 'modern',
               filePath: `templates/${zipFile.name}`,
               previewImage: screenshotUrl,
+              kitId: kitId,
+              kitSlug: kitSlug,
+              kitName: manifest.title,
               metadata: {
                 kitName: manifest.title,
                 kitSlug,
