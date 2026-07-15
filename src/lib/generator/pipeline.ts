@@ -7,7 +7,7 @@
  * enabling recovery from failures without restarting from scratch.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../prisma';
 import { matchTemplates, type ProjectContext } from '../elementor/template-matcher';
 import { AIContentEngine } from '../elementor/schemas';
 import { applyModifications, type ModificationBatch } from '../elementor/modifier';
@@ -67,12 +67,11 @@ export interface PipelineOptions {
 // ============================================================================
 
 export class GenerationPipeline {
-  private prisma: PrismaClient;
+  private prisma = prisma;
   private ai: AIContentEngine;
   private state: PipelineState | null = null;
 
   constructor(apiKey: string) {
-    this.prisma = new PrismaClient();
     this.ai = new AIContentEngine({ apiKey });
   }
 
@@ -524,7 +523,6 @@ export async function getPipelineProgress(projectId: string): Promise<{
   checkpoint: string | null;
   completedSteps: PipelineStep[];
 }> {
-  const prisma = new PrismaClient();
   
   const project = await prisma.project.findUnique({ where: { id: projectId } });
 
