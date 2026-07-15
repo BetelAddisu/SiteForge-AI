@@ -47,9 +47,27 @@ export async function GET() {
       }, { status: 401 });
     }
 
+    // Get the app user
+    const appUser = await prisma.user.findUnique({
+      where: { supabaseId: user.id },
+    });
+
+    if (!appUser) {
+      return NextResponse.json({
+        settings: {
+          wordpressUrl: '',
+          wordpressConnected: false,
+        },
+        apiKeys: {
+          gemini: !!process.env.GEMINI_API_KEY,
+          unsplash: !!process.env.UNSPLASH_ACCESS_KEY,
+        },
+      });
+    }
+
     // Get WordPress connection
     const wpConnection = await prisma.wordPressConnection.findUnique({
-      where: { supabaseId: user.id },
+      where: { userId: appUser.id },
     });
 
     return NextResponse.json({
