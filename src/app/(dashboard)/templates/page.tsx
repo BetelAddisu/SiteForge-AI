@@ -1,14 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Filter, FileStack, Eye, ChevronRight, RefreshCw, Download, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Search, FileStack, Eye, ChevronRight, RefreshCw, Download, Loader2, X, ExternalLink } from 'lucide-react';
 
 interface Template {
   id: string;
@@ -33,6 +31,8 @@ const CATEGORIES = [
   { value: 'contact', label: 'Contact' },
   { value: 'footer', label: 'Footer' },
   { value: 'section', label: 'Sections' },
+  { value: 'header', label: 'Header' },
+  { value: 'error', label: 'Error Pages' },
 ];
 
 const INDUSTRIES = [
@@ -48,52 +48,123 @@ const INDUSTRIES = [
   'Travel',
   'Non-Profit',
   'E-commerce',
+  'Marketing',
 ];
+
+const SESSION_KEY = 'siteforge_templates_cache';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+interface CachedTemplates {
+  templates: Template[];
+  timestamp: number;
+}
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [filteredTemplates, setFilteredTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
-  const loadTemplates = async (forceRefresh = false) => {
+  // Load from session cache
+  const loadFromCache = useCallback((): Template[] | null => {
+    try {
+      const cached = sessionStorage.getItem(SESSION_KEY);
+      if (cached) {
+        const data: CachedTemplates = JSON.parse(cached);
+        if (Date.now() - data.timestamp < CACHE_DURATION) {
+          return data.templates;
+        }
+      }
+    } catch (e) {
+      console.error('Cache read error:', e);
+    }
+    return null;
+  }, []);
+
+  // Save to session cache
+  const saveToCache = useCallback((templates: Template[]) => {
+    try {
+      const data: CachedTemplates = {
+        templates,
+        timestamp: Date.now(),
+      };
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.error('Cache write error:', e);
+    }
+  }, []);
+
+  const loadTemplates = useCallback(async (forceRefresh = false) => {
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh) {
+      const cached = loadFromCache();
+      if (cached && cached.length > 0) {
+        setTemplates(cached);
+        setFilteredTemplates(cached);
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (selectedCategory) params.set('category', selectedCategory);
-      if (selectedIndustry) params.set('industry', selectedIndustry);
-      if (search) params.set('search', search);
-      if (forceRefresh) params.set('refresh', 'true');
-      
-      const response = await fetch(`/api/templates?${params}`);
+      const response = await fetch('/api/templates?refresh=true');
       if (response.ok) {
         const data = await response.json();
-        setTemplates(data.templates || []);
+        const fetchedTemplates = data.templates || [];
+        setTemplates(fetchedTemplates);
+        setFilteredTemplates(fetchedTemplates);
+        saveToCache(fetchedTemplates);
       }
     } catch (err) {
       console.error('Failed to load templates:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadFromCache, saveToCache]);
+
+  // Apply filters locally
+  useEffect(() => {
+    let result = [...templates];
+
+    if (selectedCategory) {
+      result = result.filter(t => t.category === selectedCategory);
+    }
+    if (selectedIndustry) {
+      result = result.filter(t => t.industry === selectedIndustry);
+    }
+    if (search) {
+      const searchLower = search.toLowerCase();
+      result = result.filter(t =>
+        t.name.toLowerCase().includes(searchLower) ||
+        (t.industry && t.industry.toLowerCase().includes(searchLower)) ||
+        t.category.toLowerCase().includes(searchLower) ||
+        (t.kitName && t.kitName.toLowerCase().includes(searchLower))
+      );
+    }
+
+    setFilteredTemplates(result);
+  }, [templates, selectedCategory, selectedIndustry, search]);
 
   const handleImport = async () => {
     try {
       setImporting(true);
       setImportResult(null);
-      
+
       const response = await fetch('/api/templates/import', { method: 'POST' });
       const data = await response.json();
-      
+
       if (response.ok) {
         setImportResult({
           success: true,
           message: `Imported ${data.results?.templatesImported || 0} templates!`,
         });
-        // Refresh templates list
         await loadTemplates(true);
       } else {
         setImportResult({
@@ -111,18 +182,33 @@ export default function TemplatesPage() {
     }
   };
 
+  const handlePreview = async (template: Template) => {
+    setSelectedTemplate(template);
+    setPreviewLoading(true);
+    
+    // Load full preview if not available
+    if (!template.screenshotUrl && !template.previewImage) {
+      try {
+        const response = await fetch(`/api/templates/${template.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSelectedTemplate({ ...template, ...data.template });
+        }
+      } catch (e) {
+        console.error('Failed to load preview:', e);
+      }
+    }
+    
+    setPreviewLoading(false);
+  };
+
+  // Initial load
   useEffect(() => {
     loadTemplates();
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadTemplates();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [selectedCategory, selectedIndustry, search]);
-
-  const showEmptyState = !loading && templates.length === 0 && !search && !selectedCategory && !selectedIndustry;
+  const showEmptyState = !loading && filteredTemplates.length === 0 && !search && !selectedCategory && !selectedIndustry;
+  const showNoResults = !loading && filteredTemplates.length === 0 && (search || selectedCategory || selectedIndustry);
 
   return (
     <div className="space-y-6">
@@ -131,39 +217,49 @@ export default function TemplatesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Template Library</h1>
           <p className="text-muted-foreground">
-            {templates.length} Elementor templates ready for your projects
+            {filteredTemplates.length} templates {filteredTemplates.length !== templates.length && `(filtered from ${templates.length})`}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => loadTemplates(true)} disabled={loading}>
-            <RefreshCw className={cn('mr-2 h-4 w-4', loading && 'animate-spin')} />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => loadTemplates(true)}
+            disabled={loading}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          {showEmptyState && (
-            <Button onClick={handleImport} disabled={importing}>
-              {importing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Importing...
-                </>
-              ) : (
-                <>
-                  <Download className="mr-2 h-4 w-4" />
-                  Import Templates
-                </>
-              )}
-            </Button>
-          )}
+          <Button onClick={handleImport} disabled={importing}>
+            {importing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Importing...
+              </>
+            ) : (
+              <>
+                <Download className="mr-2 h-4 w-4" />
+                Import Templates
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
       {/* Import Result */}
       {importResult && (
         <Card className={importResult.success ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}>
-          <CardContent className="py-3">
+          <CardContent className="flex items-center justify-between py-3">
             <p className={importResult.success ? 'text-green-700' : 'text-red-700'}>
               {importResult.message}
             </p>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setImportResult(null)}
+            >
+              Dismiss
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -206,42 +302,47 @@ export default function TemplatesPage() {
       {/* Template Grid */}
       {loading ? (
         <div className="flex h-64 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : templates.length === 0 ? (
+      ) : filteredTemplates.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <div className="rounded-full bg-muted p-4">
               <FileStack className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h3 className="mt-4 text-lg font-medium">No templates found</h3>
+            <h3 className="mt-4 text-lg font-medium">
+              {showNoResults ? 'No matching templates' : 'No templates yet'}
+            </h3>
             <p className="mt-2 text-center text-sm text-muted-foreground">
-              {search || selectedCategory || selectedIndustry
+              {showNoResults 
                 ? 'Try adjusting your search or filters.'
-                : 'Click "Import Templates" to load templates from Supabase storage.'}
+                : showEmptyState
+                  ? 'Click "Import Templates" to load templates from Supabase storage.'
+                  : 'Something went wrong loading templates.'}
             </p>
-            {!search && !selectedCategory && !selectedIndustry && (
-              <Button className="mt-4" onClick={handleImport} disabled={importing}>
-                {importing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Importing from Supabase...
-                  </>
-                ) : (
-                  <>
-                    <Download className="mr-2 h-4 w-4" />
-                    Import Templates
-                  </>
-                )}
+            {showNoResults && (
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => {
+                  setSearch('');
+                  setSelectedCategory(null);
+                  setSelectedIndustry(null);
+                }}
+              >
+                Clear Filters
               </Button>
             )}
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {templates.map((template) => (
+          {filteredTemplates.map((template) => (
             <Card key={template.id} className="overflow-hidden">
-              <div className="aspect-video bg-muted">
+              <button 
+                className="w-full aspect-video bg-muted relative group cursor-pointer"
+                onClick={() => handlePreview(template)}
+              >
                 {template.previewImage || template.screenshotUrl ? (
                   <img
                     src={template.previewImage || template.screenshotUrl || ''}
@@ -256,7 +357,13 @@ export default function TemplatesPage() {
                     <FileStack className="h-12 w-12 text-muted-foreground/50" />
                   </div>
                 )}
-              </div>
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="bg-white rounded-full p-3">
+                    <Eye className="h-6 w-6 text-gray-900" />
+                  </div>
+                </div>
+              </button>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div>
@@ -279,11 +386,14 @@ export default function TemplatesPage() {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1" asChild>
-                    <Link href={`/templates/${template.id}`}>
-                      <Eye className="mr-2 h-4 w-4" />
-                      Preview
-                    </Link>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handlePreview(template)}
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    Preview
                   </Button>
                   <Button size="sm" className="flex-1" asChild>
                     <Link href={`/projects/new?template=${template.id}`}>
@@ -298,12 +408,76 @@ export default function TemplatesPage() {
         </div>
       )}
 
+      {/* Preview Modal */}
+      {selectedTemplate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="relative max-w-5xl w-full max-h-[90vh] bg-background rounded-lg overflow-hidden shadow-2xl">
+            {/* Modal Header */}
+            <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
+              <div>
+                <h2 className="text-xl font-bold text-white">{selectedTemplate.name}</h2>
+                <p className="text-sm text-gray-300">
+                  {selectedTemplate.kitName && `${selectedTemplate.kitName} • `}
+                  {selectedTemplate.category} • {selectedTemplate.industry || 'General'}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="secondary" size="sm" asChild>
+                  <Link href={`/projects/new?template=${selectedTemplate.id}`}>
+                    Use Template
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="text-white hover:bg-white/20"
+                  onClick={() => setSelectedTemplate(null)}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Preview Image */}
+            <div className="overflow-auto max-h-[90vh] pt-14">
+              {previewLoading ? (
+                <div className="flex items-center justify-center h-96">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : selectedTemplate.previewImage || selectedTemplate.screenshotUrl ? (
+                <img
+                  src={selectedTemplate.previewImage || selectedTemplate.screenshotUrl || ''}
+                  alt={selectedTemplate.name}
+                  className="w-full h-auto"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).parentElement!.innerHTML = `
+                      <div class="flex flex-col items-center justify-center h-96 bg-muted">
+                        <FileStack class="h-16 w-16 text-muted-foreground/50 mb-4" />
+                        <p class="text-muted-foreground">Preview image not available</p>
+                      </div>
+                    `;
+                  }}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-96 bg-muted">
+                  <FileStack className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground">Preview image not available</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    This template will be imported with screenshots on next refresh.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Help Text */}
       <Card className="bg-muted/50">
         <CardContent className="py-4">
           <p className="text-sm text-muted-foreground">
-            <strong>Tip:</strong> Templates are assembled from Elementor sections. When creating a project, 
-            the AI selects the best sections from multiple templates to create a cohesive website for your industry.
+            <strong>Tip:</strong> Templates are cached in your session. Click "Refresh" to reload templates if you add new ones to Supabase storage.
           </p>
         </CardContent>
       </Card>
