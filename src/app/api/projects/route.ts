@@ -1,12 +1,36 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { prisma } from '@/lib/prisma';
+import { cookies } from 'next/headers';
 
-// Get Supabase client for auth
-function getSupabaseClient() {
-  return createClient(
+// Create Supabase server client that reads from cookies
+function createServerSupabaseClient() {
+  const cookieStore = cookies();
+
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch {
+            // Ignore errors in read-only context
+          }
+        },
+        remove(name: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value: '', ...options });
+          } catch {
+            // Ignore errors in read-only context
+          }
+        },
+      },
+    }
   );
 }
 
@@ -19,10 +43,16 @@ interface ErrorResponse {
 
 export async function GET(request: Request) {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = createServerSupabaseClient();
     
-    // Get authenticated user
+    // Get authenticated user from session
     const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    console.log('GET /api/projects - Auth check:', { 
+      hasUser: !!user, 
+      userId: user?.id,
+      authError: authError?.message 
+    });
     
     if (authError || !user) {
       return NextResponse.json(
@@ -65,10 +95,16 @@ export async function POST(request: Request) {
   let appUserId: string | null = null;
   
   try {
-    const supabase = getSupabaseClient();
+    const supabase = createServerSupabaseClient();
     
-    // Get authenticated user
+    // Get authenticated user from session
     const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    console.log('POST /api/projects - Auth check:', { 
+      hasUser: !!user, 
+      userId: user?.id,
+      authError: authError?.message 
+    });
     
     if (authError || !user) {
       const response: ErrorResponse = {
@@ -76,6 +112,7 @@ export async function POST(request: Request) {
         message: 'Please sign in to create a project',
         code: 'AUTH_REQUIRED',
       };
+      console.error('POST /api/projects - Auth failed:', authError);
       return NextResponse.json(response, { status: 401 });
     }
     
@@ -182,7 +219,6 @@ export async function POST(request: Request) {
       
       if (!templateExists) {
         console.warn(`Template ${templateId} not found, proceeding without template`);
-        // Don't fail - just proceed without template
       }
     }
 
@@ -252,7 +288,6 @@ export async function POST(request: Request) {
     }
 
     if (errorCode === 'PrismaClientKnownRequestError') {
-      // Handle unique constraint violations
       const prismaError = error as { code?: string; meta?: { target?: string[] } };
       if (prismaError.code === 'P2002') {
         const response: ErrorResponse = {
