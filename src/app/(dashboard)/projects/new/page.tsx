@@ -304,13 +304,46 @@ export default function NewProjectPage() {
   const handleNext = () => { if (currentStep < STEPS.length) setCurrentStep(currentStep + 1); };
   const handleBack = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
 
-  const handleSubmit = async () => {
+	  const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      console.log('Project data:', formData);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      alert('Project created! Your Elementor website will be generated and published to WordPress.');
-      router.push('/projects');
+      // Create project via API
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: formData.businessName,
+          industry: formData.industry,
+          description: formData.description,
+          stylePreset: formData.stylePreset,
+          templateId: templateId,
+          services: formData.services,
+          mainService: formData.mainService,
+          contact: {
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            zipCode: formData.zipCode,
+          },
+          socialLinks: formData.socialLinks,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create project');
+      }
+
+      const data = await response.json();
+      const projectId = data.project?.id;
+
+      if (projectId) {
+        // Redirect to the project page where user can edit and generate
+        router.push(`/projects/${projectId}`);
+      } else {
+        router.push('/projects');
+      }
     } catch (err) {
       console.error('Error:', err);
       alert('Failed to create project. Please try again.');
