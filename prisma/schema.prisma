@@ -66,6 +66,12 @@ model Project {
   // Generation checkpoint
   checkpoint   String?       // Last completed step (for pipeline resume)
   
+  // Generated content (AI-generated text for pages)
+  generatedContent Json?     // { homepage, about, services, contact, ... }
+  
+  // Elementor data (final JSON to publish)
+  elementorData  Json?       // { version: "0.3", elements: [...] }
+  
   // Preview
   previewImage String?       // Supabase Storage URL
   
