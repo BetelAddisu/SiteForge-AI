@@ -287,6 +287,14 @@ export class GenerationPipeline {
       generatedContent,
     };
 
+    // Persist generated content to database
+    await this.prisma.project.update({
+      where: { id: this.state!.projectId },
+      data: {
+        generatedContent: generatedContent as object,
+      },
+    });
+
     await this.saveCheckpoint('GENERATE_CONTENT');
     options.onStepComplete?.('GENERATE_CONTENT', generatedContent);
   }
@@ -372,22 +380,38 @@ export class GenerationPipeline {
     }
 
     // Apply modifications using the real modifier
-    const result = applyModifications(
+    const modifiedElements = applyModifications(
       (templateContent.content || []) as Parameters<typeof applyModifications>[0],
       modifications
     );
 
+    // Build proper Elementor JSON structure
+    const elementorData = {
+      version: '0.3',
+      elements: modifiedElements,
+    };
+
+    // Store as checkpoint summary but persist actual elementorData
     const modifiedJson = {
       templateId: template.id,
       modified: true,
-      modifications: result.modifications,
+      modifications: modifications.elements.length,
       timestamp: new Date().toISOString(),
     };
 
     this.state!.checkpointData = {
       ...this.state!.checkpointData,
+      elementorData,
       modifiedJson,
     };
+
+    // Persist elementor data to database
+    await this.prisma.project.update({
+      where: { id: this.state!.projectId },
+      data: {
+        elementorData: elementorData as object,
+      },
+    });
 
     await this.saveCheckpoint('MODIFY_JSON');
     options.onStepComplete?.('MODIFY_JSON', modifiedJson);
