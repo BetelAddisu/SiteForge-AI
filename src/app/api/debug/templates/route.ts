@@ -65,7 +65,7 @@ export async function GET() {
         const manifestFile = zip.file('manifest.json');
         
         if (!manifestFile) {
-          debugResults.push({ zip: zipName, error: 'No manifest.json', filesInZip: zip.fileNames.slice(0, 10) });
+          debugResults.push({ zip: zipName, error: 'No manifest.json', filesInZip: Object.keys(zip.files).slice(0, 10) });
           continue;
         }
         
