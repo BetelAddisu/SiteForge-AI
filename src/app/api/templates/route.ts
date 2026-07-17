@@ -70,8 +70,13 @@ function detectIndustry(kitName: string): string | null {
 
 // Fetch templates directly from R2
 async function fetchTemplatesFromR2() {
+  console.log('[R2] Starting fetch from R2...');
+  console.log('[R2] R2_BUCKET:', R2_BUCKET);
+  console.log('[R2] R2_ENDPOINT:', process.env.R2_ENDPOINT);
+  
   try {
     const zipFiles = await listFiles('');
+    console.log('[R2] Files found:', zipFiles);
     const zipNames = zipFiles.filter(f => f.endsWith('.zip'));
     
     const kitMap = new Map<string, any>();
@@ -181,7 +186,7 @@ async function fetchTemplatesFromR2() {
     return { kits: Array.from(kitMap.values()), templates };
     
   } catch (error) {
-    console.error('Error fetching from R2:', error);
+    console.error('[R2] Error fetching from R2:', error);
     return { kits: [], templates: [] };
   }
 }
@@ -275,7 +280,7 @@ export async function GET(request: Request) {
     }
     
     // Database empty - fetch from R2 directly
-    console.log('Database empty, fetching templates from R2...');
+    console.log('[Templates] Database empty, falling back to R2...');
     const { kits, templates } = await fetchTemplatesFromR2();
     
     // Apply filters
