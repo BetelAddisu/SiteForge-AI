@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { getSignedDownloadUrl, listFiles, r2, R2_BUCKET } from '@/lib/storage/r2';
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import JSZip from 'jszip';
@@ -68,158 +67,119 @@ function detectIndustry(kitName: string): string | null {
   return null;
 }
 
-// Extract kit name from filename (remove timestamp and extension)
 function extractKitSlug(filename: string): string {
-  // Filename format: "kit-name-2023-11-27-05-19-42-utc.zip"
-  // or: "kit-name-full-elementor-template-kit.zip"
   const withoutExt = filename.replace('.zip', '');
-  
-  // Remove timestamp pattern: -YYYY-MM-DD-HH-MM-SS-utc
   const withoutTimestamp = withoutExt.replace(/-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-utc$/, '');
-  
-  // Remove common suffixes
   const cleanName = withoutTimestamp
     .replace(/-elementor-template-kit$/i, '')
     .replace(/-elementor-pro-template-kit$/i, '')
     .replace(/-woocommerce-el$/i, '')
     .replace(/-wordpress-theme$/i, '')
     .replace(/-full$/i, '');
-  
   return cleanName;
 }
 
-// Fetch templates directly from R2 by extracting ZIP files
+// Fetch templates from R2
 async function fetchTemplatesFromR2() {
   console.log('[R2] Starting fetch from R2...');
   
-  try {
-    const zipFiles = await listFiles('');
-    const zipNames = zipFiles.filter(f => f.endsWith('.zip'));
-    console.log(`[R2] Found ${zipNames.length} ZIP files`);
-    
-    const kitMap = new Map<string, any>();
-    const templates: any[] = [];
-    
-    for (const zipName of zipNames) {
-      try {
-        console.log(`[R2] Processing: ${zipName}`);
-        
-        // Download ZIP from R2
-        const command = new GetObjectCommand({
-          Bucket: R2_BUCKET,
-          Key: zipName,
+  const zipFiles = await listFiles('');
+  const zipNames = zipFiles.filter(f => f.endsWith('.zip'));
+  console.log(`[R2] Found ${zipNames.length} ZIP files`);
+  
+  const kitMap = new Map<string, any>();
+  const templates: any[] = [];
+  
+  for (const zipName of zipNames) {
+    try {
+      console.log(`[R2] Processing: ${zipName}`);
+      
+      const command = new GetObjectCommand({
+        Bucket: R2_BUCKET,
+        Key: zipName,
+      });
+      
+      const response = await r2.send(command);
+      const zipData = await response.Body?.transformToByteArray();
+      
+      if (!zipData) continue;
+      
+      const zip = await JSZip.loadAsync(zipData);
+      const manifestFile = zip.file('manifest.json');
+      if (!manifestFile) continue;
+      
+      const manifestContent = await manifestFile.async('string');
+      const manifest: Manifest = JSON.parse(manifestContent);
+      const kitSlug = extractKitSlug(zipName);
+      
+      if (!kitMap.has(kitSlug)) {
+        const kitThumbnail: string | null = null;
+        kitMap.set(kitSlug, {
+          id: kitSlug,
+          name: manifest.title || kitSlug,
+          slug: kitSlug,
+          industry: detectIndustry(manifest.title || kitSlug),
+          style: 'modern',
+          previewImage: kitThumbnail,
+          thumbnailImage: kitThumbnail,
+          templateCount: 0,
+          categories: [],
+          templates: [],
+          storageKey: zipName,
         });
-        
-        const response = await r2.send(command);
-        const zipData = await response.Body?.transformToByteArray();
-        
-        if (!zipData) {
-          console.log(`[R2] No data for ${zipName}`);
-          continue;
-        }
-        
-        // Load and extract ZIP
-        const zip = await JSZip.loadAsync(zipData);
-        
-        // Find manifest.json
-        const manifestFile = zip.file('manifest.json');
-        if (!manifestFile) {
-          console.log(`[R2] No manifest.json in ${zipName}`);
-          continue;
-        }
-        
-        const manifestContent = await manifestFile.async('string');
-        const manifest: Manifest = JSON.parse(manifestContent);
-        
-        // Extract kit slug from filename
-        const kitSlug = extractKitSlug(zipName);
-        console.log(`[R2] Kit: ${kitSlug}, Templates: ${manifest.templates.length}`);
-        
-        // Create or update kit
-        if (!kitMap.has(kitSlug)) {
-          // Check for kit thumbnail in the ZIP
-          let kitThumbnail: string | null = null;
-          const thumbnailFile = zip.file('kit-thumbnail.jpg') || zip.file('thumbnail.jpg') || zip.file('preview.jpg');
-          if (thumbnailFile) {
-            const thumbnailData = await thumbnailFile.async('base64');
-            kitThumbnail = `data:image/jpeg;base64,${thumbnailData}`;
-          }
-          
-          kitMap.set(kitSlug, {
-            id: kitSlug,
-            name: manifest.title || kitSlug,
-            slug: kitSlug,
-            industry: detectIndustry(manifest.title || kitSlug),
-            style: 'modern',
-            previewImage: kitThumbnail,
-            thumbnailImage: kitThumbnail,
-            templateCount: 0,
-            categories: [],
-            templates: [],
-            storageKey: zipName,
-          });
-        }
-        
-        const kit = kitMap.get(kitSlug)!;
-        
-        // Process each template in the manifest
-        for (const template of manifest.templates) {
-          if (template.elementor_pro_required) continue;
-          
-          const templateSlug = slugify(template.name);
-          const templateId = `${kitSlug}-${templateSlug}`;
-          const category = detectCategory(template.name);
-          
-          // Look for screenshot in the ZIP
-          let screenshotUrl: string | null = null;
-          if (template.screenshot) {
-            const screenshotFile = zip.file(template.screenshot);
-            if (screenshotFile) {
-              const screenshotData = await screenshotFile.async('base64');
-              const ext = template.screenshot.split('.').pop() || 'jpg';
-              screenshotUrl = `data:image/${ext === 'png' ? 'png' : 'jpeg'};base64,${screenshotData}`;
-            }
-          }
-          
-          const templateData = {
-            id: templateId,
-            name: template.name,
-            slug: templateSlug,
-            category,
-            industry: kit.industry,
-            kitId: kit.id,
-            kitName: kit.name,
-            kitSlug,
-            previewImage: screenshotUrl,
-            screenshotUrl,
-            compatibilityScore: 85,
-            storageKey: zipName,
-          };
-          
-          templates.push(templateData);
-          kit.templates.push(templateData);
-          if (!kit.categories.includes(category)) {
-            kit.categories.push(category);
-          }
-        }
-        
-        kit.templateCount = kit.templates.length;
-        console.log(`[R2] Added ${kit.templates.length} templates for kit: ${kit.name}`);
-        
-      } catch (err) {
-        console.error(`[R2] Error processing ${zipName}:`, err);
       }
+      
+      const kit = kitMap.get(kitSlug)!;
+      
+      for (const template of manifest.templates) {
+        if (template.elementor_pro_required) continue;
+        
+        const templateSlug = slugify(template.name);
+        const templateId = `${kitSlug}-${templateSlug}`;
+        const category = detectCategory(template.name);
+        
+        let screenshotUrl: string | null = null;
+        if (template.screenshot) {
+          const screenshotFile = zip.file(template.screenshot);
+          if (screenshotFile) {
+            const screenshotData = await screenshotFile.async('base64');
+            const ext = template.screenshot.split('.').pop() || 'jpg';
+            screenshotUrl = `data:image/${ext === 'png' ? 'png' : 'jpeg'};base64,${screenshotData}`;
+          }
+        }
+        
+        const templateData = {
+          id: templateId,
+          name: template.name,
+          slug: templateSlug,
+          category,
+          industry: kit.industry,
+          kitId: kit.id,
+          kitName: kit.name,
+          kitSlug,
+          previewImage: screenshotUrl,
+          screenshotUrl,
+          compatibilityScore: 85,
+          storageKey: zipName,
+        };
+        
+        templates.push(templateData);
+        kit.templates.push(templateData);
+        if (!kit.categories.includes(category)) {
+          kit.categories.push(category);
+        }
+      }
+      
+      kit.templateCount = kit.templates.length;
+    } catch (err) {
+      console.error(`[R2] Error processing ${zipName}:`, err);
     }
-    
-    const kits = Array.from(kitMap.values());
-    console.log(`[R2] Total: ${kits.length} kits, ${templates.length} templates`);
-    
-    return { kits, templates };
-    
-  } catch (error) {
-    console.error('[R2] Error fetching from R2:', error);
-    return { kits: [], templates: [] };
   }
+  
+  const kits = Array.from(kitMap.values());
+  console.log(`[R2] Total: ${kits.length} kits, ${templates.length} templates`);
+  
+  return { kits, templates };
 }
 
 export async function GET(request: Request) {
@@ -247,64 +207,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 });
     }
     
-    // Try database first, but don't fail if it's unavailable
-    let dbKits: any[] = [];
-    let dbTemplates: any[] = [];
-    
-    try {
-      dbTemplates = await prisma.template.findMany({
-        where: { importStatus: 'COMPLETE' },
-        include: { kit: true },
-        orderBy: { name: 'asc' },
-      });
-      
-      dbKits = await prisma.templateKit.findMany({
-        where: { importStatus: 'COMPLETE' },
-        include: {
-          templates: {
-            where: { importStatus: 'COMPLETE' },
-            select: { id: true, name: true, slug: true, category: true, previewImage: true },
-          },
-        },
-        orderBy: { name: 'asc' },
-      });
-    } catch (dbError) {
-      console.log('[Templates] Database not available, using R2:', dbError);
-    }
-    
-    // If database has data, use it
-    if (dbKits.length > 0 || dbTemplates.length > 0) {
-      console.log('[Templates] Using database data:', dbKits.length, 'kits,', dbTemplates.length, 'templates');
-      let filteredTemplates = dbTemplates;
-      if (search) {
-        const searchLower = search.toLowerCase();
-        filteredTemplates = dbTemplates.filter(t => 
-          t.name.toLowerCase().includes(searchLower) ||
-          (t.industry && t.industry.toLowerCase().includes(searchLower)) ||
-          t.category.toLowerCase().includes(searchLower) ||
-          (t.kitName && t.kitName.toLowerCase().includes(searchLower))
-        );
-      }
-      
-      const kitIds = new Set(filteredTemplates.map(t => t.kitId));
-      let filteredKits = dbKits.filter(k => kitIds.has(k.id));
-      
-      filteredKits = filteredKits.map(kit => ({
-        ...kit,
-        templates: filteredTemplates.filter((t: any) => t.kitId === kit.id),
-        templateCount: filteredTemplates.filter((t: any) => t.kitId === kit.id).length,
-      }));
-      
-      return NextResponse.json({ 
-        kits: filteredKits, 
-        templates: filteredTemplates,
-        totalKits: filteredKits.length,
-        totalTemplates: filteredTemplates.length,
-        source: 'database',
-      });
-    }
-    
-    // Database empty or unavailable - fetch from R2
+    // Fetch from R2 directly
     console.log('[Templates] Fetching from R2...');
     const { kits, templates } = await fetchTemplatesFromR2();
     
@@ -342,6 +245,6 @@ export async function GET(request: Request) {
     
   } catch (error) {
     console.error('[Templates] Error:', error);
-    return NextResponse.json({ error: 'Failed to fetch templates', kits: [], templates: [], total: 0 }, { status: 500 });
+    return NextResponse.json({ error: String(error), kits: [], templates: [], total: 0 }, { status: 500 });
   }
 }
