@@ -83,7 +83,7 @@ export async function GET() {
             screenshot: t.screenshot,
             elementor_pro_required: t.elementor_pro_required
           })),
-          filesInZip: zip.fileNames.slice(0, 20)
+          filesInZip: Object.keys(zip.files).slice(0, 20)
         });
         
       } catch (err) {
