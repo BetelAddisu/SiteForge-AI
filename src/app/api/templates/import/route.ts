@@ -199,7 +199,7 @@ export async function POST(request: Request) {
             // Screenshot upload failed
           }
 
-          // Create template in database
+          // Create template in database with R2 storage
           await prisma.template.create({
             data: {
               id: templateId,
@@ -208,7 +208,9 @@ export async function POST(request: Request) {
               category: detectCategory(template.name),
               industry: detectIndustry(manifest.title),
               style: 'modern',
-              filePath: `templates/${zipFile.name}`,
+              storageProvider: 'r2',
+              storageKey: zipFile.name, // R2 key is just the filename
+              filePath: `templates/${zipFile.name}`, // Legacy path for migration
               previewImage: screenshotUrl,
               kitId: kitId,
               kitSlug: kitSlug,
