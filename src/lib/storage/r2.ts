@@ -22,7 +22,7 @@ export const r2 = new S3Client({
   },
 });
 
-export const R2_BUCKET = process.env.R2_BUCKET_NAME || "siteforge-templates";
+export const R2_BUCKET = process.env.R2_BUCKET_NAME || "templates";
 
 /**
  * Generate a signed URL for downloading a template file
@@ -83,16 +83,16 @@ export async function listFiles(prefix: string): Promise<string[]> {
 }
 
 /**
- * Get file key for a template
- * Structure: kits/{kit-slug}/{file-name}
+ * Get file key for a template (flat structure)
+ * Files are stored at root level: {filename}.zip
  */
 export function getTemplateFileKey(kitSlug: string, fileName: string): string {
-  return `kits/${kitSlug}/${fileName}`;
+  return fileName; // e.g., "artifice-ai-home.zip"
 }
 
 /**
- * Get file key for a kit's global styles
+ * Get file key for a kit's global styles (flat structure)
  */
 export function getKitGlobalStylesKey(kitSlug: string): string {
-  return `kits/${kitSlug}/global-styles.json`;
+  return `${kitSlug}-global-styles.json`;
 }
