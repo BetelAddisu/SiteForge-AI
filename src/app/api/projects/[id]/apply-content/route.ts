@@ -56,7 +56,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const validation = validateElementorJson(contentTree);
     if (!validation.valid) return NextResponse.json({ error: `Validation failed: ${validation.errors.map(e => e.message).join(', ')}` }, { status: 422 });
 
-    await prisma.project.update({ where: { id }, data: { elementorData: { version: '0.3', elements: contentTree } } });
+    await prisma.project.update({ where: { id }, data: { elementorData: { version: '0.3', elements: contentTree } as object } });
     return NextResponse.json({ success: true, modifications: result.modifications });
   } catch (error) {
     console.error('Error applying content:', error);
