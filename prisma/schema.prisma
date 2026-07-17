@@ -129,8 +129,10 @@ model TemplateKit {
   // Global styles (extracted in Phase 3A)
   globalStyles  Json?    // { colors: {...}, typography: {...}, spacing: {...}, buttons: {...} }
   
-  // Storage
-  filePath      String?  // Original ZIP path in Supabase Storage
+  // Storage (R2)
+  storageProvider String @default("r2")  // "r2" or "supabase"
+  storageKey     String? // R2 key: "kits/{slug}/global-styles.json"
+  filePath       String? // Legacy Supabase Storage path (for migration)
   
   // Import status
   importStatus  ImportStatus @default(PENDING)
@@ -165,9 +167,11 @@ model Template {
   kitSlug             String?      // Denormalized for easier querying
   kitName             String?      // Denormalized for easier querying
   
-  // Storage
-  filePath            String       // Original ZIP path in Supabase Storage
+  // Storage (R2)
+  storageProvider     String @default("r2")  // "r2" or "supabase"
+  storageKey          String       // R2 key: "kits/{kit-slug}/{file-name}.zip"
   extractedPath       String?      // Per-template extracted folder path
+  filePath            String?      // Legacy Supabase Storage path (for migration)
   
   // Preview
   previewImage        String?      // Lazy-generated preview URL
