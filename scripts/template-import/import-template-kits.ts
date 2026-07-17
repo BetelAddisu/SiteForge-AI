@@ -196,7 +196,15 @@ async function parseKitZip(
   const templates: TemplateSection[] = [];
   
   // Read manifest.json
-  const manifestJson = await zip.file('manifest.json')?.async('string');
+  let manifestJson = await zip.file('manifest.json')?.async('string');
+  if (!manifestJson) {
+    const allFiles = Object.keys(zip.files);
+    const manifestPath = allFiles.find(f => f.endsWith('manifest.json'));
+    if (manifestPath) {
+      manifestJson = await zip.file(manifestPath)?.async('string');
+    }
+  }
+  
   if (!manifestJson) {
     console.log(`No manifest.json found in ${fileName}`);
     return templates;
@@ -226,9 +234,24 @@ async function parseKitZip(
     // Read screenshot
     let screenshotBuffer: Buffer | null = null;
     try {
-      const screenshotData = await zip.file(template.screenshot)?.async('nodebuffer');
-      if (screenshotData) {
-        screenshotBuffer = screenshotData;
+      let screenshotEntry = template.screenshot ? zip.file(template.screenshot) : null;
+      if (!screenshotEntry) {
+        const allFiles = Object.keys(zip.files);
+        const namePattern = template.name.toLowerCase().replace(/[^a-z0-9]/g, '.*');
+        const slugPattern = slugify(template.name).replace(/[^a-z0-9]/g, '.*');
+        
+        const match = allFiles.find(f => {
+          const lowerF = f.toLowerCase();
+          if (!lowerF.includes('screenshots/')) return false;
+          return new RegExp(namePattern).test(lowerF) || new RegExp(slugPattern).test(lowerF);
+        });
+        
+        if (match) {
+          screenshotEntry = zip.file(match);
+        }
+      }
+      if (screenshotEntry) {
+        screenshotBuffer = await screenshotEntry.async('nodebuffer');
       }
     } catch {
       // Screenshot might not exist

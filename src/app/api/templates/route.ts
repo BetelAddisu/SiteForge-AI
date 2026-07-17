@@ -122,7 +122,15 @@ async function fetchTemplatesFromR2() {
         const zip = await JSZip.loadAsync(zipData);
         
         // Find manifest.json
-        const manifestFile = zip.file('manifest.json');
+        let manifestFile = zip.file('manifest.json');
+        if (!manifestFile) {
+          const allFiles = Object.keys(zip.files);
+          const manifestPath = allFiles.find(f => f.endsWith('manifest.json'));
+          if (manifestPath) {
+            manifestFile = zip.file(manifestPath);
+          }
+        }
+        
         if (!manifestFile) {
           console.log(`[R2] No manifest.json in ${zipName}`);
           continue;
@@ -172,13 +180,33 @@ async function fetchTemplatesFromR2() {
           
           // Look for screenshot in the ZIP
           let screenshotUrl: string | null = null;
+          
+          let screenshotFile: JSZip.JSZipObject | null = null;
           if (template.screenshot) {
-            const screenshotFile = zip.file(template.screenshot);
-            if (screenshotFile) {
-              const screenshotData = await screenshotFile.async('base64');
-              const ext = template.screenshot.split('.').pop() || 'jpg';
-              screenshotUrl = `data:image/${ext === 'png' ? 'png' : 'jpeg'};base64,${screenshotData}`;
+            screenshotFile = zip.file(template.screenshot);
+          }
+          
+          if (!screenshotFile) {
+            // fallback: search inside screenshots/ folder, ignoring root folder prefixes
+            const allFiles = Object.keys(zip.files);
+            const namePattern = template.name.toLowerCase().replace(/[^a-z0-9]/g, '.*');
+            const slugPattern = templateSlug.toLowerCase().replace(/[^a-z0-9]/g, '.*');
+            
+            const match = allFiles.find(f => {
+              const lowerF = f.toLowerCase();
+              if (!lowerF.includes('screenshots/')) return false;
+              return new RegExp(namePattern).test(lowerF) || new RegExp(slugPattern).test(lowerF);
+            });
+            
+            if (match) {
+              screenshotFile = zip.file(match);
             }
+          }
+          
+          if (screenshotFile) {
+            const screenshotData = await screenshotFile.async('base64');
+            const ext = screenshotFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+            screenshotUrl = `data:image/${ext === 'png' ? 'png' : 'jpeg'};base64,${screenshotData}`;
           }
           
           const templateData = {

@@ -113,7 +113,15 @@ async function importTemplateZip(zipPath: string) {
   const zip = await JSZip.loadAsync(zipBuffer);
   
   // Read manifest
-  const manifestJson = await zip.file('manifest.json')?.async('string');
+  let manifestJson = await zip.file('manifest.json')?.async('string');
+  if (!manifestJson) {
+    const allFiles = Object.keys(zip.files);
+    const manifestPath = allFiles.find(f => f.endsWith('manifest.json'));
+    if (manifestPath) {
+      manifestJson = await zip.file(manifestPath)?.async('string');
+    }
+  }
+  
   if (!manifestJson) {
     console.error('❌ No manifest.json found in ZIP');
     process.exit(1);
@@ -154,8 +162,24 @@ async function importTemplateZip(zipPath: string) {
     // Read screenshot
     let screenshotPath: string | null = null;
     try {
-      const screenshotData = await zip.file(template.screenshot)?.async('nodebuffer');
-      if (screenshotData) {
+      let screenshotFile = template.screenshot ? zip.file(template.screenshot) : null;
+      if (!screenshotFile) {
+        const allFiles = Object.keys(zip.files);
+        const namePattern = template.name.toLowerCase().replace(/[^a-z0-9]/g, '.*');
+        const slugPattern = templateSlug.toLowerCase().replace(/[^a-z0-9]/g, '.*');
+        
+        const match = allFiles.find(f => {
+          const lowerF = f.toLowerCase();
+          if (!lowerF.includes('screenshots/')) return false;
+          return new RegExp(namePattern).test(lowerF) || new RegExp(slugPattern).test(lowerF);
+        });
+        
+        if (match) {
+          screenshotFile = zip.file(match);
+        }
+      }
+      if (screenshotFile) {
+        const screenshotData = await screenshotFile.async('nodebuffer');
         screenshotPath = path.join(outputDir, `${templateSlug}.jpg`);
         fs.writeFileSync(screenshotPath, screenshotData);
       }

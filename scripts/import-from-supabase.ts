@@ -132,7 +132,15 @@ async function processZipFile(zipFileName: string): Promise<number> {
   const zip = await JSZip.loadAsync(arrayBuffer);
   
   // Find manifest
-  const manifestFile = zip.file('manifest.json');
+  let manifestFile = zip.file('manifest.json');
+  if (!manifestFile) {
+    const allFiles = Object.keys(zip.files);
+    const manifestPath = allFiles.find(f => f.endsWith('manifest.json'));
+    if (manifestPath) {
+      manifestFile = zip.file(manifestPath);
+    }
+  }
+  
   if (!manifestFile) {
     console.log(`No manifest.json in ${zipFileName}`);
     return 0;
@@ -168,7 +176,22 @@ async function processZipFile(zipFileName: string): Promise<number> {
     // Upload screenshot
     let screenshotUrl: string | null = null;
     try {
-      const screenshotEntry = zip.file(template.screenshot);
+      let screenshotEntry = template.screenshot ? zip.file(template.screenshot) : null;
+      if (!screenshotEntry) {
+        const allFiles = Object.keys(zip.files);
+        const namePattern = template.name.toLowerCase().replace(/[^a-z0-9]/g, '.*');
+        const slugPattern = templateSlug.toLowerCase().replace(/[^a-z0-9]/g, '.*');
+        
+        const match = allFiles.find(f => {
+          const lowerF = f.toLowerCase();
+          if (!lowerF.includes('screenshots/')) return false;
+          return new RegExp(namePattern).test(lowerF) || new RegExp(slugPattern).test(lowerF);
+        });
+        
+        if (match) {
+          screenshotEntry = zip.file(match);
+        }
+      }
       if (screenshotEntry) {
         const screenshotData = await screenshotEntry.async('nodebuffer');
         screenshotUrl = await uploadScreenshot(kitSlug, templateSlug, screenshotData);
