@@ -65,6 +65,7 @@ model Project {
   
   // Generation checkpoint
   checkpoint   String?       // Last completed step (for pipeline resume)
+  checkpointData Json?       // Accumulated intermediate step data (for resuming a partial run)
   
   // Generated content (AI-generated text for pages)
   generatedContent Json?     // { homepage, about, services, contact, ... }

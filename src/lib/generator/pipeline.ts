@@ -91,7 +91,7 @@ export class GenerationPipeline {
       projectId,
       currentStep: 'INITIALIZE',
       completedSteps: [],
-      checkpointData: project.checkpoint ? JSON.parse(project.checkpoint as string) : {},
+      checkpointData: (project.checkpointData as Record<string, unknown>) ?? {},
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     };
@@ -364,7 +364,8 @@ export class GenerationPipeline {
     }
 
     const templateContent = template.metadata as { content?: unknown[] };
-    
+    const contentTree = (templateContent.content || []) as Parameters<typeof applyModifications>[0];
+
     // Apply AI-generated content to template
     const modifications: ModificationBatch = {
       elements: [],
@@ -379,23 +380,27 @@ export class GenerationPipeline {
       });
     }
 
-    // Apply modifications using the real modifier
-    const modifiedElements = applyModifications(
-      (templateContent.content || []) as Parameters<typeof applyModifications>[0],
-      modifications
-    );
+    // Apply modifications using the real modifier.
+    // NOTE: applyModifications mutates contentTree in place and returns only
+    // a summary ({success, modified, modifications}) - contentTree itself,
+    // not the return value, is the actual modified Elementor content.
+    const result = applyModifications(contentTree, modifications);
+
+    if (!result.success) {
+      throw new Error(result.error || 'Elementor modification failed');
+    }
 
     // Build proper Elementor JSON structure
     const elementorData = {
       version: '0.3',
-      elements: modifiedElements,
+      elements: contentTree,
     };
 
     // Store as checkpoint summary but persist actual elementorData
     const modifiedJson = {
       templateId: template.id,
-      modified: true,
-      modifications: modifications.elements.length,
+      modified: result.modified,
+      modifications: result.modifications,
       timestamp: new Date().toISOString(),
     };
 
@@ -410,6 +415,7 @@ export class GenerationPipeline {
       where: { id: this.state!.projectId },
       data: {
         elementorData: elementorData as object,
+        templateId: template.id,
       },
     });
 
@@ -419,12 +425,12 @@ export class GenerationPipeline {
 
   // Step 8: Validate JSON - Uses real validator
   private async stepValidateJson(options: PipelineOptions): Promise<void> {
-    const modifiedJson = this.state!.checkpointData['modifiedJson'] as {
-      modifications?: string[];
+    const elementorData = this.state!.checkpointData['elementorData'] as {
+      elements?: unknown[];
     } | undefined;
 
-    // Validate using the real validator
-    const validationResult = validateElementorJson([]);
+    // Validate the actual modified content, not a placeholder
+    const validationResult = validateElementorJson((elementorData?.elements ?? []) as Parameters<typeof validateElementorJson>[0]);
 
     if (!validationResult.valid) {
       throw new Error(`Validation failed: ${validationResult.errors.map(e => e.message).join(', ')}`);
@@ -451,11 +457,15 @@ export class GenerationPipeline {
       typography?: { headingFont?: string; bodyFont?: string };
     } | undefined;
 
+    const elementorData = this.state!.checkpointData['elementorData'] as {
+      elements?: unknown[];
+    } | undefined;
+
     try {
       // Use the real preview generator
       const previewResult = await generatePreview({
         projectId: options.projectId,
-        elementorData: [],
+        elementorData: elementorData?.elements ?? [],
         stylePreset: options.businessData.stylePreset,
         brandTokens,
       });
@@ -505,7 +515,10 @@ export class GenerationPipeline {
 
     await this.prisma.project.update({
       where: { id: this.state.projectId },
-      data: { checkpoint: step },
+      data: {
+        checkpoint: step,
+        checkpointData: this.state.checkpointData as object,
+      },
     });
   }
 

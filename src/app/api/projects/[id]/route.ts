@@ -41,8 +41,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const project = await prisma.project.findUnique({
-      where: { id },
+    const project = await prisma.project.findFirst({
+      where: { id, userId: appUser.id },
       include: {
         assets: true,
         aiJobs: {
@@ -99,8 +99,13 @@ export async function PATCH(
       elementorData,
     } = body;
 
-    const project = await prisma.project.update({
+    const existing = await prisma.project.findFirst({
       where: { id, userId: appUser.id },
+    });
+    if (!existing) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+
+    const project = await prisma.project.update({
+      where: { id },
       data: {
         ...(businessName !== undefined && { businessName }),
         ...(industry !== undefined && { industry }),
@@ -144,8 +149,13 @@ export async function DELETE(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    await prisma.project.delete({
+    const existing = await prisma.project.findFirst({
       where: { id, userId: appUser.id },
+    });
+    if (!existing) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+
+    await prisma.project.delete({
+      where: { id },
     });
 
     return NextResponse.json({ success: true });
