@@ -113,7 +113,12 @@ async function fetchTemplatesFromR2() {
       const kitSlug = extractKitSlug(zipName);
       
       if (!kitMap.has(kitSlug)) {
-        const kitThumbnail: string | null = null;
+        // Only use kit thumbnail, not all screenshots
+        let kitThumbnail: string | null = null;
+        const kitThumb = zip.file('kit-thumbnail.jpg') || zip.file('thumbnail.jpg');
+        // Don't load thumbnail as base64 - just store the path reference
+        kitThumbnail = null; // Screenshots will be fetched on demand
+      
         kitMap.set(kitSlug, {
           id: kitSlug,
           name: manifest.title || kitSlug,
@@ -138,15 +143,8 @@ async function fetchTemplatesFromR2() {
         const templateId = `${kitSlug}-${templateSlug}`;
         const category = detectCategory(template.name);
         
-        let screenshotUrl: string | null = null;
-        if (template.screenshot) {
-          const screenshotFile = zip.file(template.screenshot);
-          if (screenshotFile) {
-            const screenshotData = await screenshotFile.async('base64');
-            const ext = template.screenshot.split('.').pop() || 'jpg';
-            screenshotUrl = `data:image/${ext === 'png' ? 'png' : 'jpeg'};base64,${screenshotData}`;
-          }
-        }
+        // Don't load screenshots as base64 - just store screenshot path
+        // Screenshots will be loaded on demand when previewing
         
         const templateData = {
           id: templateId,
@@ -157,8 +155,9 @@ async function fetchTemplatesFromR2() {
           kitId: kit.id,
           kitName: kit.name,
           kitSlug,
-          previewImage: screenshotUrl,
-          screenshotUrl,
+          previewImage: null, // Will be fetched on demand
+          screenshotUrl: null,
+          screenshotPath: template.screenshot, // Store the path in ZIP
           compatibilityScore: 85,
           storageKey: zipName,
         };
