@@ -247,27 +247,34 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 });
     }
     
-    // Try database first
-    const dbTemplates = await prisma.template.findMany({
-      where: { importStatus: 'COMPLETE' },
-      include: { kit: true },
-      orderBy: { name: 'asc' },
-    });
+    // Try database first, but don't fail if it's unavailable
+    let dbKits: any[] = [];
+    let dbTemplates: any[] = [];
     
-    const dbKits = await prisma.templateKit.findMany({
-      where: { importStatus: 'COMPLETE' },
-      include: {
-        templates: {
-          where: { importStatus: 'COMPLETE' },
-          select: { id: true, name: true, slug: true, category: true, previewImage: true },
+    try {
+      dbTemplates = await prisma.template.findMany({
+        where: { importStatus: 'COMPLETE' },
+        include: { kit: true },
+        orderBy: { name: 'asc' },
+      });
+      
+      dbKits = await prisma.templateKit.findMany({
+        where: { importStatus: 'COMPLETE' },
+        include: {
+          templates: {
+            where: { importStatus: 'COMPLETE' },
+            select: { id: true, name: true, slug: true, category: true, previewImage: true },
+          },
         },
-      },
-      orderBy: { name: 'asc' },
-    });
+        orderBy: { name: 'asc' },
+      });
+    } catch (dbError) {
+      console.log('[Templates] Database not available, using R2:', dbError);
+    }
     
     // If database has data, use it
     if (dbKits.length > 0 || dbTemplates.length > 0) {
-      console.log('[Templates] Using database data');
+      console.log('[Templates] Using database data:', dbKits.length, 'kits,', dbTemplates.length, 'templates');
       let filteredTemplates = dbTemplates;
       if (search) {
         const searchLower = search.toLowerCase();
@@ -297,8 +304,8 @@ export async function GET(request: Request) {
       });
     }
     
-    // Database empty - fetch from R2
-    console.log('[Templates] Database empty, fetching from R2...');
+    // Database empty or unavailable - fetch from R2
+    console.log('[Templates] Fetching from R2...');
     const { kits, templates } = await fetchTemplatesFromR2();
     
     // Apply filters
