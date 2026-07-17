@@ -7,10 +7,9 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { listFiles, r2, R2_BUCKET } from '@/lib/storage/r2';
+import JSZip from 'jszip';
 
 interface ManifestTemplate {
   name: string;
@@ -32,37 +31,38 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Template ID required' }, { status: 400 });
     }
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
     // List all ZIP files in templates bucket
-    const { data: files, error } = await supabase.storage
-      .from('templates')
-      .list('', { limit: 200 });
+    const zipFiles = await listFiles('');
+    const zipNames = zipFiles.filter(f => f.endsWith('.zip'));
 
-    if (error || !files) {
-      return NextResponse.json({ error: 'Failed to list files' }, { status: 500 });
+    if (!zipNames || zipNames.length === 0) {
+      return NextResponse.json({ error: 'No files found in R2' }, { status: 404 });
     }
-
-    const zipFiles = files.filter(f => f.name.endsWith('.zip'));
 
     // Search for the template in all ZIPs
-    for (const zipFile of zipFiles) {
+    for (const zipName of zipNames) {
       try {
-        const { data: zipData, error: downloadError } = await supabase.storage
-          .from('templates')
-          .download(zipFile.name);
+        const command = new GetObjectCommand({
+          Bucket: R2_BUCKET,
+          Key: zipName,
+        });
+        
+        const response = await r2.send(command);
+        const zipData = await response.Body?.transformToByteArray();
 
-        if (downloadError || !zipData) continue;
+        if (!zipData) continue;
 
-        const arrayBuffer = await zipData.arrayBuffer();
-        const JSZip = (await import('jszip')).default;
-        const zip = await JSZip.loadAsync(arrayBuffer);
+        const zip = await JSZip.loadAsync(zipData);
 
-        const manifestFile = zip.file('manifest.json');
+        let manifestFile = zip.file('manifest.json');
+        if (!manifestFile) {
+          const allFiles = Object.keys(zip.files);
+          const manifestPath = allFiles.find(f => f.endsWith('manifest.json'));
+          if (manifestPath) {
+            manifestFile = zip.file(manifestPath);
+          }
+        }
+        
         if (!manifestFile) continue;
 
         const manifestContent = await manifestFile.async('string');
@@ -71,18 +71,40 @@ export async function GET(request: Request) {
         // Parse the template ID to find matching template
         // Format: kitSlug-templateSlug
         for (const template of manifest.templates) {
-          const kitSlug = zipFile.name.replace('.zip', '').toLowerCase().replace(/[^\w]/g, '-');
+          const kitSlug = zipName.replace('.zip', '').toLowerCase().replace(/[^\w]/g, '-');
           const templateSlug = template.name.toLowerCase().replace(/[^\w]/g, '-');
           const fullId = `${kitSlug}-${templateSlug}`;
 
           if (fullId === id.toLowerCase() || fullId.includes(id.toLowerCase())) {
             // Found the template - return screenshot
-            const screenshotEntry = zip.file(template.screenshot);
+            // The user noted: inside of the invidual folder with subfolder name screenshots/ as images with indivual page names
+            let screenshotEntry: JSZip.JSZipObject | null = null;
+            if (template.screenshot) {
+              screenshotEntry = zip.file(template.screenshot);
+            }
+            
+            if (!screenshotEntry) {
+              // fallback: search inside screenshots/ folder, ignoring root folder prefixes
+              const allFiles = Object.keys(zip.files);
+              const namePattern = template.name.toLowerCase().replace(/[^a-z0-9]/g, '.*');
+              const slugPattern = templateSlug.toLowerCase().replace(/[^a-z0-9]/g, '.*');
+              
+              const match = allFiles.find(f => {
+                const lowerF = f.toLowerCase();
+                if (!lowerF.includes('screenshots/')) return false;
+                return new RegExp(namePattern).test(lowerF) || new RegExp(slugPattern).test(lowerF);
+              });
+              
+              if (match) {
+                screenshotEntry = zip.file(match);
+              }
+            }
+
             if (screenshotEntry) {
               const screenshotData = await screenshotEntry.async('nodebuffer');
               
               // Determine content type from extension
-              const ext = template.screenshot.split('.').pop()?.toLowerCase() || 'jpg';
+              const ext = screenshotEntry.name.split('.').pop()?.toLowerCase() || 'jpg';
               const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
 
               return new NextResponse(new Uint8Array(screenshotData), {
@@ -95,7 +117,7 @@ export async function GET(request: Request) {
           }
         }
       } catch (err) {
-        console.error(`Error processing ${zipFile.name}:`, err);
+        console.error(`Error processing ${zipName}:`, err);
       }
     }
 
