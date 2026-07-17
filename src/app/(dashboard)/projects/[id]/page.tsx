@@ -35,6 +35,14 @@ interface Project {
   previewImage: string | null;
   createdAt: string;
   templateId: string | null;
+  generatedContent: {
+    homepage?: {
+      hero?: { heading?: string; subheading?: string; ctaText?: string };
+      about?: { heading?: string; paragraphs?: string[] };
+      services?: Array<{ title?: string; description?: string }>;
+    };
+  } | null;
+  elementorData: unknown | null;
 }
 
 interface GenerationProgress {
@@ -55,6 +63,24 @@ const STEPS = [
   'Ready',
 ];
 
+interface ContentFormState {
+  heroHeading: string;
+  heroSubheading: string;
+  heroCta: string;
+  aboutHeading: string;
+  aboutParagraphs: string;
+  services: Array<{ title: string; description: string }>;
+}
+
+const emptyContentForm: ContentFormState = {
+  heroHeading: '',
+  heroSubheading: '',
+  heroCta: '',
+  aboutHeading: '',
+  aboutParagraphs: '',
+  services: [],
+};
+
 export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -71,6 +97,14 @@ export default function ProjectDetailPage() {
     industry: '',
     description: '',
   });
+  const [contentForm, setContentForm] = useState<ContentFormState>(emptyContentForm);
+  const [savingContent, setSavingContent] = useState(false);
+  const [contentSaveMessage, setContentSaveMessage] = useState<string | null>(null);
+  const [regeneratingPreview, setRegeneratingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     loadProject();
@@ -87,6 +121,21 @@ export default function ProjectDetailPage() {
           industry: data.project.industry || '',
           description: data.project.description || '',
         });
+
+        const homepage = data.project.generatedContent?.homepage;
+        if (homepage) {
+          setContentForm({
+            heroHeading: homepage.hero?.heading || '',
+            heroSubheading: homepage.hero?.subheading || '',
+            heroCta: homepage.hero?.ctaText || '',
+            aboutHeading: homepage.about?.heading || '',
+            aboutParagraphs: (homepage.about?.paragraphs || []).join('\n\n'),
+            services: (homepage.services || []).map((s: { title?: string; description?: string }) => ({
+              title: s.title || '',
+              description: s.description || '',
+            })),
+          });
+        }
       } else {
         router.push('/projects');
       }
