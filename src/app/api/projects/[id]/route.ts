@@ -41,6 +41,14 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const appUser = await prisma.user.findUnique({
+      where: { supabaseId: user.id },
+    });
+
+    if (!appUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     const project = await prisma.project.findFirst({
       where: { id, userId: appUser.id },
       include: {
