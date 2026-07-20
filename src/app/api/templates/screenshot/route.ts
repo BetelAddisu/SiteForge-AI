@@ -1,16 +1,15 @@
 /**
  * Template Screenshot API
  * 
- * GET /api/templates/screenshot?id={kitSlug-templateSlug}
+ * GET /api/templates/screenshot?kit={kitSlug}&screenshot={screenshotPath}
  * 
- * Fetches screenshot from Supabase storage inside ZIP files
+ * Fetches screenshot from R2 inside ZIP files
  */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+import { listFiles, r2, R2_BUCKET } from '@/lib/storage/r2';
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import JSZip from 'jszip';
 
 interface ManifestTemplate {
   name: string;
@@ -23,85 +22,154 @@ interface Manifest {
   templates: ManifestTemplate[];
 }
 
+function extractKitSlug(filename: string): string {
+  const withoutExt = filename.replace('.zip', '');
+  const withoutTimestamp = withoutExt.replace(/-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-utc$/, '');
+  const cleanName = withoutTimestamp
+    .replace(/-elementor-template-kit$/i, '')
+    .replace(/-elementor-pro-template-kit$/i, '')
+    .replace(/-woocommerce-el$/i, '')
+    .replace(/-wordpress-theme$/i, '')
+    .replace(/-full$/i, '');
+  return cleanName;
+}
+
+// Cache for zip files
+const zipCache = new Map<string, { zip: JSZip; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000;
+
+async function getZipFromR2(zipName: string): Promise<JSZip | null> {
+  const cached = zipCache.get(zipName);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.zip;
+  }
+  
+  try {
+    const command = new GetObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: zipName,
+    });
+    
+    const response = await r2.send(command);
+    const zipData = await response.Body?.transformToByteArray();
+    
+    if (!zipData) return null;
+    
+    const zip = await JSZip.loadAsync(zipData);
+    zipCache.set(zipName, { zip, timestamp: Date.now() });
+    
+    return zip;
+  } catch (err) {
+    console.error('[Screenshot] Error fetching ZIP from R2:', err);
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const kit = searchParams.get('kit');
+    const screenshot = searchParams.get('screenshot');
     const id = searchParams.get('id');
 
-    if (!id) {
-      return NextResponse.json({ error: 'Template ID required' }, { status: 400 });
+    if (!kit && !id) {
+      return NextResponse.json({ error: 'Template kit or ID required' }, { status: 400 });
     }
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
+    const zipFiles = await listFiles('');
+    const zipNames = zipFiles.filter(f => f.endsWith('.zip'));
+
+    let targetZip: string | null = null;
+    let targetScreenshot: string | null = null;
+
+    if (kit) {
+      for (const zipName of zipNames) {
+        const kitSlug = extractKitSlug(zipName);
+        if (kitSlug === kit) {
+          const zip = await getZipFromR2(zipName);
+          if (zip && screenshot) {
+            const screenshotFile = zip.file(screenshot);
+            if (screenshotFile) {
+              targetZip = zipName;
+              targetScreenshot = screenshot;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (!targetScreenshot && kit) {
+        for (const zipName of zipNames) {
+          const kitSlug = extractKitSlug(zipName);
+          if (kitSlug === kit) {
+            const zip = await getZipFromR2(zipName);
+            if (zip) {
+              const defaultShot = zip.file('screenshots/global-kit-styles.jpg') || 
+                                zip.file('screenshots/home.jpg');
+              if (defaultShot) {
+                targetZip = zipName;
+                targetScreenshot = defaultShot.name;
+                break;
+              }
+            }
+          }
+        }
+      }
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // List all ZIP files in templates bucket
-    const { data: files, error } = await supabase.storage
-      .from('templates')
-      .list('', { limit: 200 });
-
-    if (error || !files) {
-      return NextResponse.json({ error: 'Failed to list files' }, { status: 500 });
-    }
-
-    const zipFiles = files.filter(f => f.name.endsWith('.zip'));
-
-    // Search for the template in all ZIPs
-    for (const zipFile of zipFiles) {
-      try {
-        const { data: zipData, error: downloadError } = await supabase.storage
-          .from('templates')
-          .download(zipFile.name);
-
-        if (downloadError || !zipData) continue;
-
-        const arrayBuffer = await zipData.arrayBuffer();
-        const JSZip = (await import('jszip')).default;
-        const zip = await JSZip.loadAsync(arrayBuffer);
+    if (!targetZip && id) {
+      for (const zipName of zipNames) {
+        const zip = await getZipFromR2(zipName);
+        if (!zip) continue;
 
         const manifestFile = zip.file('manifest.json');
         if (!manifestFile) continue;
 
         const manifestContent = await manifestFile.async('string');
         const manifest: Manifest = JSON.parse(manifestContent);
+        const kitSlug = extractKitSlug(zipName);
 
-        // Parse the template ID to find matching template
-        // Format: kitSlug-templateSlug
         for (const template of manifest.templates) {
-          const kitSlug = zipFile.name.replace('.zip', '').toLowerCase().replace(/[^\w]/g, '-');
           const templateSlug = template.name.toLowerCase().replace(/[^\w]/g, '-');
           const fullId = `${kitSlug}-${templateSlug}`;
 
           if (fullId === id.toLowerCase() || fullId.includes(id.toLowerCase())) {
-            // Found the template - return screenshot
-            const screenshotEntry = zip.file(template.screenshot);
-            if (screenshotEntry) {
-              const screenshotData = await screenshotEntry.async('nodebuffer');
-              
-              // Determine content type from extension
-              const ext = template.screenshot.split('.').pop()?.toLowerCase() || 'jpg';
-              const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
-
-              return new NextResponse(new Uint8Array(screenshotData), {
-                headers: {
-                  'Content-Type': contentType,
-                  'Cache-Control': 'public, max-age=3600',
-                },
-              });
-            }
+            targetZip = zipName;
+            targetScreenshot = template.screenshot;
+            break;
           }
         }
-      } catch (err) {
-        console.error(`Error processing ${zipFile.name}:`, err);
+        
+        if (targetZip) break;
       }
     }
 
-    return NextResponse.json({ error: 'Screenshot not found' }, { status: 404 });
+    if (!targetZip || !targetScreenshot) {
+      return NextResponse.json({ error: 'Screenshot not found' }, { status: 404 });
+    }
+
+    const zip = await getZipFromR2(targetZip);
+    if (!zip) {
+      return NextResponse.json({ error: 'Failed to load ZIP' }, { status: 500 });
+    }
+
+    const screenshotEntry = zip.file(targetScreenshot);
+    if (!screenshotEntry) {
+      return NextResponse.json({ error: 'Screenshot not found in ZIP' }, { status: 404 });
+    }
+
+    const screenshotData = await screenshotEntry.async('nodebuffer');
+    const ext = targetScreenshot.split('.').pop()?.toLowerCase() || 'jpg';
+    const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
+
+    return new NextResponse(new Uint8Array(screenshotData), {
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
   } catch (error) {
-    console.error('Screenshot API error:', error);
+    console.error('[Screenshot] Error:', error);
     return NextResponse.json({ error: 'Failed to fetch screenshot' }, { status: 500 });
   }
 }
