@@ -216,6 +216,111 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const handleSaveContent = async () => {
+    if (!project) return;
+    
+    setSavingContent(true);
+    setContentSaveMessage(null);
+    
+    try {
+      // Convert form fields back to generatedContent structure
+      const paragraphs = contentForm.aboutParagraphs.split('\n\n').filter(p => p.trim());
+      const generatedContent = {
+        homepage: {
+          hero: {
+            heading: contentForm.heroHeading,
+            subheading: contentForm.heroSubheading,
+            ctaText: contentForm.heroCta,
+          },
+          about: {
+            heading: contentForm.aboutHeading,
+            paragraphs,
+          },
+        },
+        services: contentForm.services.map(s => ({
+          title: s.title,
+          description: s.description,
+        })),
+      };
+      
+      const response = await fetch(`/api/projects/${project.id}/apply-content`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ generatedContent }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save content');
+      }
+      
+      setContentSaveMessage('Content saved and applied to your website!');
+      await loadProject();
+    } catch (err) {
+      console.error('Save content error:', err);
+      setContentSaveMessage(err instanceof Error ? err.message : 'Failed to save content');
+    } finally {
+      setSavingContent(false);
+    }
+  };
+
+  const handleRegeneratePreview = async () => {
+    if (!project) return;
+    
+    setRegeneratingPreview(true);
+    setPreviewError(null);
+    
+    try {
+      const response = await fetch(`/api/projects/${project.id}/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to regenerate preview');
+      }
+      
+      await loadProject();
+    } catch (err) {
+      console.error('Regenerate preview error:', err);
+      setPreviewError(err instanceof Error ? err.message : 'Failed to regenerate preview');
+    } finally {
+      setRegeneratingPreview(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!project) return;
+    
+    setPublishing(true);
+    setPublishError(null);
+    setPublishSuccess(null);
+    
+    try {
+      const response = await fetch(`/api/projects/${project.id}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to publish');
+      }
+      
+      setPublishSuccess('Your website has been published to WordPress!');
+      await loadProject();
+    } catch (err) {
+      console.error('Publish error:', err);
+      setPublishError(err instanceof Error ? err.message : 'Failed to publish');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   const getStatusBadge = (status: string | null) => {
     switch (status) {
       case 'DRAFT':
