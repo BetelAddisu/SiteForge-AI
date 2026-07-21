@@ -387,7 +387,7 @@ export default function ProjectDetailPage() {
               <><Sparkles className="mr-2 h-4 w-4" />Generate Website</>
             )}
           </Button>
-          {project.elementorData && (
+          {project.elementorData && typeof project.elementorData === 'object' && (
             <Button variant="default" asChild>
               <Link href={`/projects/${project.id}/editor`}>
                 <Edit className="mr-2 h-4 w-4" />
