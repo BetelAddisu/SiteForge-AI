@@ -9,7 +9,7 @@
  */
 
 import { S3Client } from "@aws-sdk/client-s3";
-import { GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, GetObjectAttributesCommand, ObjectStorageClass } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // R2 client for template storage
@@ -124,7 +124,7 @@ export async function listFiles(prefix: string): Promise<string[]> {
  */
 export async function fileExists(key: string): Promise<boolean> {
   try {
-    const command = new GetObjectAttributesCommand({
+    const command = new GetObjectCommand({
       Bucket: R2_BUCKET,
       Key: key,
     });
