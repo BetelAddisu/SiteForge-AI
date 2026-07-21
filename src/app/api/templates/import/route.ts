@@ -165,12 +165,18 @@ export async function POST(request: Request) {
           const templateSlug = slugify(template.name);
           const templateId = `${kitSlug}-${templateSlug}`;
 
-          // Check if already imported
+          // Check if already imported with content
           const existing = await prisma.template.findUnique({
             where: { id: templateId },
           });
 
-          if (existing) continue;
+          // Templates imported before this fix have no `content` in their
+          // metadata - backfill them instead of skipping, so a re-run of
+          // this endpoint fixes already-imported templates too.
+          const existingMetadata = existing?.metadata as { content?: unknown[] } | undefined;
+          if (existing && existingMetadata?.content && existingMetadata.content.length > 0) {
+            continue;
+          }
 
           // Upload screenshot
           let screenshotUrl: string | null = null;
@@ -199,37 +205,79 @@ export async function POST(request: Request) {
             // Screenshot upload failed
           }
 
-          // Create template in database with R2 storage
-          await prisma.template.create({
-            data: {
-              id: templateId,
-              name: template.name,
-              slug: templateSlug,
-              category: detectCategory(template.name),
-              industry: detectIndustry(manifest.title),
-              style: 'modern',
-              storageProvider: 'r2',
-              storageKey: zipFile.name, // R2 key is just the filename
-              filePath: `templates/${zipFile.name}`, // Legacy path for migration
-              previewImage: screenshotUrl,
-              kitId: kitId,
-              kitSlug: kitSlug,
+          // Read the actual Elementor page data - this is the widget tree
+          // (sections/columns/widgets/settings) the generation pipeline
+          // needs to modify. Previously this was never read at all, so
+          // every generated site ran against an empty element array.
+          let elementorContent: unknown[] = [];
+          try {
+            const sourceEntry = zip.file(template.source);
+            if (sourceEntry) {
+              const sourceRaw = await sourceEntry.async('string');
+              const parsedSource = JSON.parse(sourceRaw);
+
+              // Elementor export files vary in shape depending on export
+              // tool/version - handle the common cases defensively:
+              if (Array.isArray(parsedSource)) {
+                // Raw array of elements, e.g. straight _elementor_data export
+                elementorContent = parsedSource;
+              } else if (Array.isArray(parsedSource?.content)) {
+                elementorContent = parsedSource.content;
+              } else if (Array.isArray(parsedSource?.elements)) {
+                elementorContent = parsedSource.elements;
+              } else if (Array.isArray(parsedSource?.data)) {
+                elementorContent = parsedSource.data;
+              } else {
+                results.errors.push(
+                  `Unrecognized page-data shape for ${template.name} in ${zipFile.name} (source: ${template.source}) - imported without content`
+                );
+              }
+            } else {
+              results.errors.push(
+                `Source file not found in zip: ${template.source} (${template.name} in ${zipFile.name})`
+              );
+            }
+          } catch (err) {
+            results.errors.push(
+              `Failed to parse page data for ${template.name} in ${zipFile.name}: ${err}`
+            );
+          }
+
+          // Create or backfill template in database with R2 storage
+          const templateData = {
+            name: template.name,
+            slug: templateSlug,
+            category: detectCategory(template.name),
+            industry: detectIndustry(manifest.title),
+            style: 'modern',
+            storageProvider: 'r2',
+            storageKey: zipFile.name, // R2 key is just the filename
+            filePath: `templates/${zipFile.name}`, // Legacy path for migration
+            previewImage: screenshotUrl ?? existing?.previewImage ?? null,
+            kitId: kitId,
+            kitSlug: kitSlug,
+            kitName: manifest.title,
+            metadata: {
               kitName: manifest.title,
-              metadata: {
-                kitName: manifest.title,
-                kitSlug,
-                source: template.source,
-                screenshot: template.screenshot,
-              },
-              tags: [kitSlug, detectCategory(template.name)],
-              importStatus: 'COMPLETE',
-              compatibilityScore: 85,
-              compatibilityNotes: {
-                greenWidgets: ['heading', 'text-editor', 'image', 'button', 'icon', 'spacer'],
-                yellowWidgets: ['container', 'accordion', 'tabs'],
-                redWidgets: [],
-              },
+              kitSlug,
+              source: template.source,
+              screenshot: template.screenshot,
+              content: elementorContent,
             },
+            tags: [kitSlug, detectCategory(template.name)],
+            importStatus: (elementorContent.length > 0 ? 'COMPLETE' : 'NEEDS_REVIEW') as 'COMPLETE' | 'NEEDS_REVIEW',
+            compatibilityScore: 85,
+            compatibilityNotes: {
+              greenWidgets: ['heading', 'text-editor', 'image', 'button', 'icon', 'spacer'],
+              yellowWidgets: ['container', 'accordion', 'tabs'],
+              redWidgets: [],
+            },
+          };
+
+          await prisma.template.upsert({
+            where: { id: templateId },
+            create: { id: templateId, ...templateData },
+            update: templateData,
           });
 
           results.templatesImported++;
