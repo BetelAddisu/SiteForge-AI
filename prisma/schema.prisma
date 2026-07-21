@@ -14,13 +14,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
-
-// For Supabase with PgBouncer, both URLs can be the same
-// DIRECT_URL is only needed for migrations with pooled connections
-// Use: postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres (direct, port 5432)
-// DATABASE_URL uses: postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:6543/postgres (pooled, port 6543)
 
 // =============================================================================
 // USER & AUTH
