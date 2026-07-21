@@ -253,12 +253,13 @@ function ElementorWidget({
       );
       
     case 'image':
+      const imageUrl = (settings.image as { url?: string } | undefined)?.url || (settings.url as string | undefined);
       return (
         <div className={baseClasses} onClick={onClick}>
-          {settings.image?.url || settings.url ? (
+          {imageUrl ? (
             <img 
-              src={String(settings.image?.url || settings.url)} 
-              alt={settings.alt as string || ''}
+              src={imageUrl} 
+              alt={String(settings.alt || '')}
               className="w-full h-auto"
             />
           ) : (
@@ -421,14 +422,14 @@ function PropertyPanel({
               <div className="space-y-2">
                 <Label>Image URL</Label>
                 <Input 
-                  value={settings.image?.url as string || settings.url as string || ''}
+                  value={(settings.image as { url?: string })?.url || (settings.url as string) || ''}
                   onChange={(e) => updateSetting('image', { url: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Alt Text</Label>
                 <Input 
-                  value={settings.alt as string || ''}
+                  value={String(settings.alt || '')}
                   onChange={(e) => updateSetting('alt', e.target.value)}
                 />
               </div>
