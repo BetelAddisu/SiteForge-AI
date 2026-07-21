@@ -209,7 +209,7 @@ export async function POST(request: Request) {
           // (sections/columns/widgets/settings) the generation pipeline
           // needs to modify. Previously this was never read at all, so
           // every generated site ran against an empty element array.
-          let elementorContent: unknown[] = [];
+          let elementorContent: object[] = [];
           try {
             const sourceEntry = zip.file(template.source);
             if (sourceEntry) {
@@ -219,14 +219,13 @@ export async function POST(request: Request) {
               // Elementor export files vary in shape depending on export
               // tool/version - handle the common cases defensively:
               if (Array.isArray(parsedSource)) {
-                // Raw array of elements, e.g. straight _elementor_data export
-                elementorContent = parsedSource;
+                elementorContent = parsedSource as object[];
               } else if (Array.isArray(parsedSource?.content)) {
-                elementorContent = parsedSource.content;
+                elementorContent = parsedSource.content as object[];
               } else if (Array.isArray(parsedSource?.elements)) {
-                elementorContent = parsedSource.elements;
+                elementorContent = parsedSource.elements as object[];
               } else if (Array.isArray(parsedSource?.data)) {
-                elementorContent = parsedSource.data;
+                elementorContent = parsedSource.data as object[];
               } else {
                 results.errors.push(
                   `Unrecognized page-data shape for ${template.name} in ${zipFile.name} (source: ${template.source}) - imported without content`
@@ -251,8 +250,8 @@ export async function POST(request: Request) {
             industry: detectIndustry(manifest.title),
             style: 'modern',
             storageProvider: 'r2',
-            storageKey: zipFile.name, // R2 key is just the filename
-            filePath: `templates/${zipFile.name}`, // Legacy path for migration
+            storageKey: zipFile.name,
+            filePath: `templates/${zipFile.name}`,
             previewImage: screenshotUrl ?? existing?.previewImage ?? null,
             kitId: kitId,
             kitSlug: kitSlug,
