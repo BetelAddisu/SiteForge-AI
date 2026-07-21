@@ -509,7 +509,7 @@ function PropertyPanel({
               <div className="flex gap-2">
                 <Input 
                   type="number"
-                  value={settings.font_size?.size as number || 36}
+                  value={(settings.font_size as { size?: number })?.size || 36 || 36}
                   onChange={(e) => updateSetting('font_size', { size: parseInt(e.target.value) })}
                   className="w-20"
                 />
@@ -906,7 +906,7 @@ export default function ElementorEditor({
             {/* Selected element toolbar */}
             {selectedElement && (
               <div className="sticky top-0 z-10 bg-white border-b p-2 flex justify-center">
-                <ElementorToolbar
+                <ElementToolbar
                   element={selectedElement.element}
                   onDelete={() => deleteElement(selectedElement.id)}
                   onDuplicate={() => duplicateElement(selectedElement.element)}
