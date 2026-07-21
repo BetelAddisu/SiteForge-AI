@@ -387,6 +387,14 @@ export default function ProjectDetailPage() {
               <><Sparkles className="mr-2 h-4 w-4" />Generate Website</>
             )}
           </Button>
+          {project.elementorData && (
+            <Button variant="default" asChild>
+              <Link href={`/projects/${project.id}/editor`}>
+                <Edit className="mr-2 h-4 w-4" />
+                Open Visual Editor
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
