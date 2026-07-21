@@ -352,6 +352,10 @@ export default function NewProjectPage() {
       case 'VALIDATION_ERROR':
         return errorData.message || 'Please check your input and try again.';
       case 'DB_CONNECTION_ERROR':
+        // Show the actual database error message
+        if (errorData.message) {
+          return `Database error: ${errorData.message}`;
+        }
         return 'Unable to connect to the database. Please try again in a few moments.';
       case 'DUPLICATE_ERROR':
         return 'A project with this name already exists.';
