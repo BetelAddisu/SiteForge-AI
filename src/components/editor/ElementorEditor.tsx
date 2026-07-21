@@ -222,7 +222,7 @@ function ElementorWidget({
             className="text-3xl font-bold"
             style={{ color: settings.title_color as string }}
           >
-            {settings.heading || 'Heading'}
+            {String(settings.heading || 'Heading')}
           </h2>
         </div>
       );
@@ -239,15 +239,15 @@ function ElementorWidget({
       
     case 'button':
       const btnStyle: React.CSSProperties = {
-        backgroundColor: settings.background_color as string || '#3B82F6',
-        color: settings.button_text_color as string || '#FFFFFF',
-        padding: `${settings.button_padding_top || 12}px ${settings.button_padding_right || 24}px`,
+        backgroundColor: (settings.background_color as string) || '#3B82F6',
+        color: (settings.button_text_color as string) || '#FFFFFF',
+        padding: `${(settings.button_padding_top as number) || 12}px ${(settings.button_padding_right as number) || 24}px`,
         borderRadius: typeof settings.border_radius === 'number' ? `${settings.border_radius}px` : '4px',
       };
       return (
         <div className={baseClasses} onClick={onClick}>
           <a style={btnStyle} className="inline-block font-medium">
-            {settings.text || 'Button'}
+            {String(settings.text || 'Button')}
           </a>
         </div>
       );
@@ -278,9 +278,9 @@ function ElementorWidget({
         >
           <div 
             className="inline-block"
-            style={{ fontSize: `${settings.icon_size || 50}px`, color: settings.primary_color as string }}
+            style={{ fontSize: `${(settings.icon_size as number) || 50}px`, color: settings.primary_color as string }}
           >
-            {settings.icon || '★'}
+            {String(settings.icon || '★')}
           </div>
         </div>
       );
@@ -290,10 +290,10 @@ function ElementorWidget({
         <div 
           className={baseClasses} 
           onClick={onClick}
-          style={{ height: `${settings.space || 100}px` }}
+          style={{ height: `${(settings.space as number) || 100}px` }}
         >
           <div className="w-full h-full bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-xs">
-            Spacer: {settings.space || 100}px
+            Spacer: {(settings.space as number) || 100}px
           </div>
         </div>
       );
@@ -302,8 +302,8 @@ function ElementorWidget({
       return (
         <div className={baseClasses} onClick={onClick}>
           <hr style={{ 
-            borderColor: settings.color as string || '#E0E0E0',
-            borderWidth: `${settings.weight || 1}px`,
+            borderColor: (settings.color as string) || '#E0E0E0',
+            borderWidth: `${(settings.weight as number) || 1}px`,
           }} />
         </div>
       );
