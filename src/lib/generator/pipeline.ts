@@ -348,21 +348,46 @@ export class GenerationPipeline {
       about?: Record<string, unknown>;
     } | undefined;
     
-    const selectedTemplates = this.state!.checkpointData['selectedTemplates'] as Array<{
-      id: string;
-    }> | undefined;
+    // selectedTemplates is now a MatchResult object with homepage/about/services/contact arrays
+    const matchResult = this.state!.checkpointData['selectedTemplates'] as {
+      homepage?: Array<{ templateId: string }>;
+      services?: Array<{ templateId: string }>;
+    } | undefined;
 
-    if (!selectedTemplates || selectedTemplates.length === 0) {
-      throw new Error('No templates selected');
+    // Get the first template ID from homepage or services matches
+    const firstMatch = matchResult?.homepage?.[0] || matchResult?.services?.[0];
+    
+    if (!firstMatch) {
+      // No templates were matched - this means the template library is empty
+      // Generate basic Elementor structure without a template base
+      console.warn('No templates matched. Generating basic structure without template base.');
+      
+      const elementorData = {
+        version: '0.3',
+        elements: this.generateBasicStructure(generatedContent),
+      };
+      
+      await this.prisma.project.update({
+        where: { id: this.state!.projectId },
+        data: { elementorData: elementorData as object },
+      });
+      
+      this.state!.checkpointData = {
+        ...this.state!.checkpointData,
+        elementorData,
+      };
+      
+      await this.saveCheckpoint('MODIFY_JSON');
+      return;
     }
 
     // Get the first template's content
     const template = await this.prisma.template.findUnique({
-      where: { id: selectedTemplates[0].id },
+      where: { id: firstMatch.templateId },
     });
 
     if (!template) {
-      throw new Error('Template not found');
+      throw new Error(`Template not found: ${firstMatch.templateId}`);
     }
 
     // Real widget content lives on TemplateSection.content (set by import scripts),
@@ -434,6 +459,113 @@ export class GenerationPipeline {
 
     await this.saveCheckpoint('MODIFY_JSON');
     options.onStepComplete?.('MODIFY_JSON', modifiedJson);
+  }
+
+  // Generate a basic Elementor structure when no templates are available
+  private generateBasicStructure(content?: {
+    homepage?: {
+      hero?: { heading?: string; subheading?: string; ctaText?: string };
+      about?: { heading?: string; paragraphs?: string[] };
+    };
+  }): unknown[] {
+    const hero = content?.homepage?.hero || {};
+    const about = content?.homepage?.about || {};
+    
+    return [
+      // Hero Section
+      {
+        id: 'section-hero',
+        elType: 'section',
+        settings: {
+          layout: 'full_width',
+          content_width: { size: 1140 },
+        },
+        elements: [
+          {
+            id: 'column-hero-1',
+            elType: 'column',
+            settings: { _column_size: 100 },
+            elements: [
+              {
+                id: 'heading-hero',
+                elType: 'widget',
+                widgetType: 'heading',
+                settings: {
+                  heading: hero.heading || 'Welcome to Our Website',
+                  align: 'center',
+                  title_color: '#1a1a1a',
+                },
+              },
+              {
+                id: 'text-hero',
+                elType: 'widget',
+                widgetType: 'text-editor',
+                settings: {
+                  editor: `<p style="text-align: center;">${hero.subheading || 'We create amazing digital experiences for your business.'}</p>`,
+                },
+              },
+              {
+                id: 'button-hero',
+                elType: 'widget',
+                widgetType: 'button',
+                settings: {
+                  text: hero.ctaText || 'Get Started',
+                  align: 'center',
+                  background_color: '#3B82F6',
+                },
+              },
+            ],
+          },
+        ],
+      },
+      // About Section
+      {
+        id: 'section-about',
+        elType: 'section',
+        settings: {
+          layout: 'full_width',
+          content_width: { size: 1140 },
+          background_background: 'classic',
+          background_color: '#f9fafb',
+        },
+        elements: [
+          {
+            id: 'column-about-1',
+            elType: 'column',
+            settings: { _column_size: 100 },
+            elements: [
+              {
+                id: 'heading-about',
+                elType: 'widget',
+                widgetType: 'heading',
+                settings: {
+                  heading: about.heading || 'About Us',
+                  align: 'center',
+                  title_color: '#1a1a1a',
+                },
+              },
+              {
+                id: 'text-about',
+                elType: 'widget',
+                widgetType: 'text-editor',
+                settings: {
+                  editor: `<p style="text-align: center;">${about.paragraphs?.[0] || 'We are a team of passionate professionals dedicated to delivering excellence.'}</p>`,
+                },
+              },
+            ],
+          },
+        ],
+      },
+      // Spacer
+      {
+        id: 'spacer-1',
+        elType: 'widget',
+        widgetType: 'spacer',
+        settings: {
+          space: 50,
+        },
+      },
+    ];
   }
 
   // Step 8: Validate JSON - Uses real validator
