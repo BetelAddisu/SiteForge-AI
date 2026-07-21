@@ -125,8 +125,8 @@ export async function POST(request: Request) {
         const arrayBuffer = await zipData.arrayBuffer();
         const zip = await JSZip.loadAsync(arrayBuffer);
 
-        // Find manifest
-        const manifestFile = zip.file('manifest.json');
+        // Find manifest - real kits use kit-manifest.json
+        const manifestFile = zip.file('kit-manifest.json') || zip.file('manifest.json');
         if (!manifestFile) {
           results.errors.push(`No manifest in: ${zipFile.name}`);
           continue;
@@ -205,31 +205,44 @@ export async function POST(request: Request) {
             // Screenshot upload failed
           }
 
-          // Read the actual Elementor page data - this is the widget tree
-          // (sections/columns/widgets/settings) the generation pipeline
-          // needs to modify. Previously this was never read at all, so
-          // every generated site ran against an empty element array.
+          // Read the actual Elementor page data - the widget tree lives at
+          // pageJson.content.content (double nested in the real format).
+          // Also resolve template name from the JSON's page_title setting.
           let elementorContent: object[] = [];
+          let templateName = template.name;
+          let screenshotPath: string | null = template.screenshot || null;
+          
           try {
             const sourceEntry = zip.file(template.source);
             if (sourceEntry) {
               const sourceRaw = await sourceEntry.async('string');
-              const parsedSource = JSON.parse(sourceRaw);
+              const pageJson = JSON.parse(sourceRaw);
 
-              // Elementor export files vary in shape depending on export
-              // tool/version - handle the common cases defensively:
-              if (Array.isArray(parsedSource)) {
-                elementorContent = parsedSource as object[];
-              } else if (Array.isArray(parsedSource?.content)) {
-                elementorContent = parsedSource.content as object[];
-              } else if (Array.isArray(parsedSource?.elements)) {
-                elementorContent = parsedSource.elements as object[];
-              } else if (Array.isArray(parsedSource?.data)) {
-                elementorContent = parsedSource.data as object[];
+              // Extract template name from page_title if available
+              if (pageJson?.content?.content?.[0]?.settings?.page_title) {
+                templateName = pageJson.content.content[0].settings.page_title;
+              }
+
+              // Real structure: pageJson.content.content is the widget array
+              if (Array.isArray(pageJson?.content?.content)) {
+                elementorContent = pageJson.content.content as object[];
+              } else if (Array.isArray(pageJson?.content)) {
+                elementorContent = pageJson.content as object[];
+              } else if (Array.isArray(pageJson)) {
+                elementorContent = pageJson as object[];
               } else {
                 results.errors.push(
-                  `Unrecognized page-data shape for ${template.name} in ${zipFile.name} (source: ${template.source}) - imported without content`
+                  `Unrecognized page-data shape for ${template.name} in ${zipFile.name} (source: ${template.source})`
                 );
+              }
+
+              // Screenshot is convention-based: same basename as the JSON, .jpg extension
+              if (!screenshotPath) {
+                const sourceBase = template.source.replace(/\.json$/, '');
+                const possibleJpg = zip.file(`${sourceBase}.jpg`);
+                if (possibleJpg) {
+                  screenshotPath = `${sourceBase}.jpg`;
+                }
               }
             } else {
               results.errors.push(
@@ -243,10 +256,14 @@ export async function POST(request: Request) {
           }
 
           // Create or backfill template in database with R2 storage
+          // Use resolved templateName and category from manifest if available
+          const resolvedSlug = slugify(templateName);
+          const resolvedCategory = (template as any).category || detectCategory(templateName);
+          
           const templateData = {
-            name: template.name,
-            slug: templateSlug,
-            category: detectCategory(template.name),
+            name: templateName,
+            slug: resolvedSlug,
+            category: resolvedCategory,
             industry: detectIndustry(manifest.title),
             style: 'modern',
             storageProvider: 'r2',
@@ -260,10 +277,10 @@ export async function POST(request: Request) {
               kitName: manifest.title,
               kitSlug,
               source: template.source,
-              screenshot: template.screenshot,
+              screenshot: screenshotPath,
               content: elementorContent,
             },
-            tags: [kitSlug, detectCategory(template.name)],
+            tags: [kitSlug, resolvedCategory],
             importStatus: (elementorContent.length > 0 ? 'COMPLETE' : 'NEEDS_REVIEW') as 'COMPLETE' | 'NEEDS_REVIEW',
             compatibilityScore: 85,
             compatibilityNotes: {

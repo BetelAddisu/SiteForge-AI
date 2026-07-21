@@ -10,7 +10,7 @@
 import { prisma } from '../prisma';
 import { matchTemplates, type ProjectContext } from '../elementor/template-matcher';
 import { AIContentEngine } from '../elementor/schemas';
-import { applyModifications, type ModificationBatch } from '../elementor/modifier';
+import { applyModifications, replaceHeading, replaceParagraph, replaceButton } from '../elementor/modifier';
 import { validateElementorJson } from '../elementor/validator';
 import { generatePreview } from '../preview';
 
@@ -341,13 +341,15 @@ export class GenerationPipeline {
   // Step 7: Modify JSON - Uses real modifier engine
   private async stepModifyJson(options: PipelineOptions): Promise<void> {
     const generatedContent = this.state!.checkpointData['generatedContent'] as {
-      homepage?: Record<string, unknown>;
+      homepage?: {
+        hero?: { heading?: string; subheading?: string; ctaText?: string };
+        about?: { heading?: string; paragraphs?: string[] };
+      };
       about?: Record<string, unknown>;
     } | undefined;
     
     const selectedTemplates = this.state!.checkpointData['selectedTemplates'] as Array<{
       id: string;
-      content?: unknown[];
     }> | undefined;
 
     if (!selectedTemplates || selectedTemplates.length === 0) {
@@ -359,35 +361,44 @@ export class GenerationPipeline {
       where: { id: selectedTemplates[0].id },
     });
 
-    if (!template || !template.metadata) {
+    if (!template) {
       throw new Error('Template not found');
     }
 
-    const templateContent = template.metadata as { content?: unknown[] };
-    const contentTree = (templateContent.content || []) as Parameters<typeof applyModifications>[0];
+    // Real widget content lives on TemplateSection.content (set by import scripts),
+    // NOT on Template.metadata - that only ever held manifest bookkeeping fields.
+    const section = await this.prisma.templateSection.findFirst({
+      where: { templateId: template.id },
+    });
 
-    // Apply AI-generated content to template
-    const modifications: ModificationBatch = {
-      elements: [],
-    };
+    const metadataContent = (template.metadata as { content?: unknown[] } | null)?.content;
+    const contentTree = (
+      (section?.content as unknown[]) ?? metadataContent ?? []
+    ) as Parameters<typeof applyModifications>[0];
 
-    // Replace content with AI-generated
-    if (generatedContent?.homepage) {
-      modifications.elements.push({
-        type: 'modify',
-        target: {},
-        changes: generatedContent.homepage as Record<string, unknown>,
-      });
+    if (contentTree.length === 0) {
+      throw new Error(
+        `Template "${template.name}" has no widget content available (checked TemplateSection and metadata.content) - re-run template import for this template.`
+      );
     }
 
-    // Apply modifications using the real modifier.
-    // NOTE: applyModifications mutates contentTree in place and returns only
-    // a summary ({success, modified, modifications}) - contentTree itself,
-    // not the return value, is the actual modified Elementor content.
-    const result = applyModifications(contentTree, modifications);
+    // Apply AI-generated content using widget-type targeting
+    const hero = generatedContent?.homepage?.hero;
+    const about = generatedContent?.homepage?.about;
+    const appliedModifications: string[] = [];
+    let anyModified = false;
 
-    if (!result.success) {
-      throw new Error(result.error || 'Elementor modification failed');
+    if (hero?.heading) {
+      const r = replaceHeading(contentTree, hero.heading);
+      if (r.success && r.modified) { appliedModifications.push(...r.modifications); anyModified = true; }
+    }
+    if (hero?.subheading || about?.paragraphs?.[0]) {
+      const r = replaceParagraph(contentTree, hero?.subheading || about!.paragraphs![0]);
+      if (r.success && r.modified) { appliedModifications.push(...r.modifications); anyModified = true; }
+    }
+    if (hero?.ctaText) {
+      const r = replaceButton(contentTree, hero.ctaText);
+      if (r.success && r.modified) { appliedModifications.push(...r.modifications); anyModified = true; }
     }
 
     // Build proper Elementor JSON structure
@@ -396,11 +407,10 @@ export class GenerationPipeline {
       elements: contentTree,
     };
 
-    // Store as checkpoint summary but persist actual elementorData
     const modifiedJson = {
       templateId: template.id,
-      modified: result.modified,
-      modifications: result.modifications,
+      modified: anyModified,
+      modifications: appliedModifications,
       timestamp: new Date().toISOString(),
     };
 
