@@ -344,6 +344,11 @@ export default function NewProjectPage() {
   };
 
   const getHumanReadableError = (errorData: ErrorDisplay): string => {
+    // Always show the actual error message
+    if (errorData.message) {
+      return errorData.message;
+    }
+    
     switch (errorData.code) {
       case 'AUTH_REQUIRED':
         return 'You need to sign in to create a project. Please sign in and try again.';
@@ -352,11 +357,7 @@ export default function NewProjectPage() {
       case 'VALIDATION_ERROR':
         return errorData.message || 'Please check your input and try again.';
       case 'DB_CONNECTION_ERROR':
-        // Show the actual database error message
-        if (errorData.message) {
-          return `Database error: ${errorData.message}`;
-        }
-        return 'Unable to connect to the database. Please try again in a few moments.';
+        return errorData.message || 'Unable to connect to the database. Please try again.';
       case 'DUPLICATE_ERROR':
         return 'A project with this name already exists.';
       case 'FETCH_ERROR':

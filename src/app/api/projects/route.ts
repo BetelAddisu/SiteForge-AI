@@ -265,6 +265,14 @@ export async function POST(request: Request) {
     const errorCode = error instanceof Error ? error.name : 'UNKNOWN_ERROR';
     const errorStack = error instanceof Error ? error.stack : undefined;
     
+    console.error('Error creating project:', {
+      error: errorMessage,
+      code: errorCode,
+      stack: errorStack,
+      userId,
+      appUserId,
+    });
+
     // Check if it's a Prisma connection error
     const isPrismaInitError = errorCode === 'PrismaClientInitializationError' || 
       errorMessage.includes('connection') || 
@@ -272,22 +280,12 @@ export async function POST(request: Request) {
       errorMessage.includes('timeout') ||
       errorStack?.includes('PrismaClientInitializationError');
     
-    console.error('Error creating project:', {
-      error: errorMessage,
-      code: errorCode,
-      stack: errorStack,
-      userId,
-      appUserId,
-      isPrismaInitError,
-    });
-
     // Handle specific Prisma errors
     if (isPrismaInitError) {
       const response: ErrorResponse = {
         error: 'Database connection error',
-        message: 'Unable to connect to the database. Please try again in a few moments.',
+        message: `Unable to connect to the database: ${errorMessage}`,
         code: 'DB_CONNECTION_ERROR',
-        details: errorMessage,
       };
       return NextResponse.json(response, { status: 503 });
     }
@@ -304,6 +302,7 @@ export async function POST(request: Request) {
       }
     }
 
+    // Generic error - show the actual message
     const response: ErrorResponse = {
       error: 'Failed to create project',
       message: errorMessage,
