@@ -17,7 +17,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 
 // Types
-interface ElementorElement {
+export interface ElementorElement {
   id: string;
   elType: string;
   widgetType?: string;
@@ -25,7 +25,7 @@ interface ElementorElement {
   elements?: ElementorElement[];
 }
 
-interface ElementorData {
+export interface ElementorData {
   version?: string;
   elements: ElementorElement[];
   [key: string]: unknown;

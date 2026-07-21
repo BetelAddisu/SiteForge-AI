@@ -5,12 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import ElementorEditor from '@/components/editor/ElementorEditor';
-
-interface ElementorData {
-  version?: string;
-  elements: unknown[];
-}
+import ElementorEditor, { ElementorData } from '@/components/editor/ElementorEditor';
 
 interface ProjectData {
   elementorData: ElementorData;
@@ -142,7 +137,7 @@ export default function EditorPage() {
       {/* Editor */}
       <ElementorEditor
         projectId={projectId}
-        initialData={projectData.elementorData as ElementorData}
+        initialData={projectData.elementorData}
         onSave={handleSave}
       />
     </div>
