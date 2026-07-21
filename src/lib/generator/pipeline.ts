@@ -371,16 +371,17 @@ export class GenerationPipeline {
       where: { templateId: template.id },
     });
 
-    const metadataContent = (template.metadata as { content?: unknown[] } | null)?.content;
-    const contentTree = (
-      (section?.content as unknown[]) ?? metadataContent ?? []
-    ) as Parameters<typeof applyModifications>[0];
+    const metadataContent = (section?.content as unknown[]) ?? (template.metadata as { content?: unknown[] } | null)?.content ?? [];
 
-    if (contentTree.length === 0) {
+    if (metadataContent.length === 0) {
       throw new Error(
         `Template "${template.name}" has no widget content available (checked TemplateSection and metadata.content) - re-run template import for this template.`
       );
     }
+
+    // Make a DEEP COPY of the template content - NEVER modify the original template!
+    // This preserves the template for reuse across multiple projects.
+    const contentTree = JSON.parse(JSON.stringify(metadataContent)) as Parameters<typeof applyModifications>[0];
 
     // Apply AI-generated content using widget-type targeting
     const hero = generatedContent?.homepage?.hero;
@@ -401,10 +402,12 @@ export class GenerationPipeline {
       if (r.success && r.modified) { appliedModifications.push(...r.modifications); anyModified = true; }
     }
 
-    // Build proper Elementor JSON structure
+    // Build proper Elementor JSON structure - this is stored in the PROJECT, not the template
     const elementorData = {
       version: '0.3',
       elements: contentTree,
+      templateId: template.id, // Track which template was used as a base
+      templateName: template.name,
     };
 
     const modifiedJson = {

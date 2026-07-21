@@ -44,17 +44,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // Real widget content lives on TemplateSection.content (set by import scripts),
     // NOT on Template.metadata - that only ever held manifest bookkeeping.
     const section = await prisma.templateSection.findFirst({ where: { templateId: template.id } });
-    const metadataContent = (template.metadata as { content?: unknown[] } | null)?.content;
-    const contentTree = JSON.parse(
-      JSON.stringify((section?.content as unknown[]) ?? metadataContent ?? [])
-    ) as Parameters<typeof replaceHeading>[0];
+    const sourceContent = (section?.content as unknown[]) ?? (template.metadata as { content?: unknown[] } | null)?.content ?? [];
 
-    if (contentTree.length === 0) {
+    if (sourceContent.length === 0) {
       return NextResponse.json(
         { error: `Template "${template.name}" has no widget content available. Re-run template import for this template.` },
         { status: 422 }
       );
     }
+
+    // Make a DEEP COPY - we never modify the original template!
+    // This preserves the template for reuse across multiple projects.
+    const contentTree = JSON.parse(JSON.stringify(sourceContent)) as Parameters<typeof replaceHeading>[0];
 
     const generatedContent = project.generatedContent as {
       homepage?: {
