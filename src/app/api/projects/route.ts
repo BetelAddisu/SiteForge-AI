@@ -263,21 +263,31 @@ export async function POST(request: Request) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     const errorCode = error instanceof Error ? error.name : 'UNKNOWN_ERROR';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    // Check if it's a Prisma connection error
+    const isPrismaInitError = errorCode === 'PrismaClientInitializationError' || 
+      errorMessage.includes('connection') || 
+      errorMessage.includes('ECONNREFUSED') ||
+      errorMessage.includes('timeout') ||
+      errorStack?.includes('PrismaClientInitializationError');
     
     console.error('Error creating project:', {
       error: errorMessage,
       code: errorCode,
-      stack: error instanceof Error ? error.stack : undefined,
+      stack: errorStack,
       userId,
       appUserId,
+      isPrismaInitError,
     });
 
     // Handle specific Prisma errors
-    if (errorCode === 'PrismaClientInitializationError') {
+    if (isPrismaInitError) {
       const response: ErrorResponse = {
         error: 'Database connection error',
         message: 'Unable to connect to the database. Please try again in a few moments.',
         code: 'DB_CONNECTION_ERROR',
+        details: errorMessage,
       };
       return NextResponse.json(response, { status: 503 });
     }
