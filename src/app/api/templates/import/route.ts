@@ -296,6 +296,31 @@ export async function POST(request: Request) {
             update: templateData,
           });
 
+          // Create TemplateSection records from the Elementor content
+          // The generation pipeline reads from TemplateSection.content and needs
+          // the full element tree for widget traversal (replaceHeading, etc.)
+          // Store all elements as a single section containing the full tree
+          if (elementorContent.length > 0) {
+            // Delete existing sections for this template (in case of re-import)
+            await prisma.templateSection.deleteMany({
+              where: { templateId: templateId },
+            });
+
+            // Create a single section containing the entire element tree
+            const sectionType = detectCategory(templateName);
+            await prisma.templateSection.create({
+              data: {
+                templateId: templateId,
+                type: sectionType,
+                title: templateName,
+                content: elementorContent as object[],
+                metadata: {
+                  elementCount: elementorContent.length,
+                },
+              },
+            });
+          }
+
           results.templatesImported++;
         }
       } catch (err) {
