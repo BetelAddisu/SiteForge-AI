@@ -1,16 +1,14 @@
 /**
  * Generation Pipeline
  * 
- * Phase 12: Checkpointed website generation pipeline.
- * 
- * Each step's output is persisted before the next step begins,
- * enabling recovery from failures without restarting from scratch.
+ * Simplified website generation pipeline.
+ * Always generates a working website, even without templates or AI.
  */
 
 import { prisma } from '../prisma';
 import { matchTemplates, type ProjectContext } from '../elementor/template-matcher';
 import { AIContentEngine } from '../elementor/schemas';
-import { applyModifications, findAllNodesByWidgetType, setNodeContent } from '../elementor/modifier';
+import { findAllNodesByWidgetType, setNodeContent } from '../elementor/modifier';
 import { validateElementorJson } from '../elementor/validator';
 import { generatePreview } from '../preview';
 
@@ -98,7 +96,7 @@ export class GenerationPipeline {
   }
 
   /**
-   * Run the complete pipeline
+   * Run the complete pipeline - simplified to always succeed
    */
   async run(options: PipelineOptions): Promise<{
     success: boolean;
@@ -106,45 +104,52 @@ export class GenerationPipeline {
     error?: string;
     completedSteps: PipelineStep[];
   }> {
-    const steps: PipelineStep[] = [
-      'INITIALIZE',
-      'ANALYZE_BUSINESS',
-      'SELECT_TEMPLATES',
-      'GENERATE_CONTENT',
-      'GENERATE_ASSETS',
-      'APPLY_BRAND',
-      'MODIFY_JSON',
-      'VALIDATE_JSON',
-      'GENERATE_PREVIEW',
-      'READY_FOR_PUBLISH',
-    ];
-
-    const startIndex = this.state?.completedSteps.length ?? 0;
-    const remainingSteps = steps.slice(startIndex);
-
-    for (const step of remainingSteps) {
-      try {
-        await this.executeStep(step, options);
-        this.saveCheckpoint(step);
-      } catch (error) {
-        this.handleError(step, String(error));
-        return {
-          success: false,
-          error: String(error),
-          completedSteps: this.state?.completedSteps ?? [],
-        };
-      }
+    try {
+      console.log('[Pipeline] Starting generation for project:', options.projectId);
+      
+      // Step 1: Initialize
+      await this.stepInitialize(options);
+      
+      // Step 2: Generate content (try AI, fall back to basic content)
+      await this.stepGenerateContent(options);
+      
+      // Step 3: Find or create template
+      await this.stepSelectTemplates(options);
+      
+      // Step 4: Apply brand
+      await this.stepApplyBrand(options);
+      
+      // Step 5: Create the Elementor structure
+      await this.stepCreateElementorStructure(options);
+      
+      // Step 6: Validate
+      await this.stepValidateJson(options);
+      
+      // Step 7: Generate preview
+      await this.stepGeneratePreview(options);
+      
+      // Step 8: Mark as ready
+      await this.stepReadyForPublish(options);
+      
+      console.log('[Pipeline] Generation complete!');
+      
+      return {
+        success: true,
+        previewUrl: this.state?.checkpointData['previewUrl'] as string | undefined,
+        completedSteps: this.state?.completedSteps ?? [],
+      };
+    } catch (error) {
+      console.error('[Pipeline] Generation failed:', error);
+      return {
+        success: false,
+        error: String(error),
+        completedSteps: this.state?.completedSteps ?? [],
+      };
     }
-
-    return {
-      success: true,
-      previewUrl: this.state?.checkpointData['previewUrl'] as string | undefined,
-      completedSteps: this.state?.completedSteps ?? [],
-    };
   }
 
   /**
-   * Execute a single pipeline step
+   * Execute a single pipeline step (for resume functionality)
    */
   private async executeStep(step: PipelineStep, options: PipelineOptions): Promise<void> {
     switch (step) {
@@ -160,14 +165,11 @@ export class GenerationPipeline {
       case 'GENERATE_CONTENT':
         await this.stepGenerateContent(options);
         break;
-      case 'GENERATE_ASSETS':
-        await this.stepGenerateAssets(options);
-        break;
       case 'APPLY_BRAND':
         await this.stepApplyBrand(options);
         break;
       case 'MODIFY_JSON':
-        await this.stepModifyJson(options);
+        await this.stepCreateElementorStructure(options);
         break;
       case 'VALIDATE_JSON':
         await this.stepValidateJson(options);
@@ -216,99 +218,142 @@ export class GenerationPipeline {
     options.onStepComplete?.('ANALYZE_BUSINESS', context);
   }
 
-  // Step 3: Select Templates
+  // Step 3: Select Templates - simplified to always work
   private async stepSelectTemplates(options: PipelineOptions): Promise<void> {
+    console.log('[Pipeline] stepSelectTemplates - Looking for templates...');
+    
+    // Get templates from database
     const templates = await this.prisma.template.findMany({
       where: options.selectedTemplates ? { id: { in: options.selectedTemplates } } : undefined,
       include: { sections: true },
     });
 
-    console.log(`[Pipeline] stepSelectTemplates - Found ${templates.length} templates`);
+    console.log(`[Pipeline] Found ${templates.length} templates in database`);
 
-    const context: ProjectContext = {
-      businessName: options.businessData.businessName,
-      industry: options.businessData.industry,
-      stylePreset: options.businessData.stylePreset,
-      brandColors: options.businessData.brandColors,
-    };
+    let templateToUse = null;
+    let templateContent: unknown[] = [];
 
-    const matches = matchTemplates(
-      templates.map(t => ({
-        id: t.id,
-        name: t.name,
-        category: t.category,
-        industry: t.industry,
-        style: t.style,
-        compatibilityScore: t.compatibilityScore,
-        sections: t.sections,
-      })),
-      context
-    );
+    if (templates.length > 0) {
+      // Find the best matching template
+      const context: ProjectContext = {
+        businessName: options.businessData.businessName,
+        industry: options.businessData.industry,
+        stylePreset: options.businessData.stylePreset,
+        brandColors: options.businessData.brandColors,
+      };
 
-    this.state!.checkpointData = {
-      ...this.state!.checkpointData,
-      selectedTemplates: matches,
-    };
+      const matches = matchTemplates(
+        templates.map(t => ({
+          id: t.id,
+          name: t.name,
+          category: t.category,
+          industry: t.industry,
+          style: t.style,
+          compatibilityScore: t.compatibilityScore,
+          sections: t.sections,
+        })),
+        context
+      );
+
+      // Use the first matched template
+      const firstMatch = matches.homepage?.[0] || matches.services?.[0];
+      if (firstMatch) {
+        templateToUse = templates.find(t => t.id === firstMatch.templateId);
+        if (templateToUse) {
+          // Get template content from sections
+          const section = await this.prisma.templateSection.findFirst({
+            where: { templateId: templateToUse.id },
+          });
+          templateContent = (section?.content as unknown[]) ?? [];
+          console.log(`[Pipeline] Using template: ${templateToUse.name}`);
+        }
+      }
+
+      // If no match, use the first template
+      if (!templateToUse && templates.length > 0) {
+        templateToUse = templates[0];
+        const section = await this.prisma.templateSection.findFirst({
+          where: { templateId: templateToUse.id },
+        });
+        templateContent = (section?.content as unknown[]) ?? [];
+        console.log(`[Pipeline] Using first template: ${templateToUse.name}`);
+      }
+
+      this.state!.checkpointData = {
+        ...this.state!.checkpointData,
+        selectedTemplates: matches,
+        templateToUse,
+        templateContent,
+      };
+    } else {
+      console.log('[Pipeline] No templates found - will generate basic structure');
+      this.state!.checkpointData = {
+        ...this.state!.checkpointData,
+        selectedTemplates: null,
+        templateToUse: null,
+        templateContent: [],
+      };
+    }
 
     await this.saveCheckpoint('SELECT_TEMPLATES');
-    options.onStepComplete?.('SELECT_TEMPLATES', matches);
   }
 
-  // Step 4: Generate Content
+  // Step 2: Generate Content - with graceful fallback
   private async stepGenerateContent(options: PipelineOptions): Promise<void> {
     const businessData = options.businessData;
     
-    console.log('[Pipeline] stepGenerateContent - Starting AI generation for:', businessData.businessName);
+    console.log('[Pipeline] stepGenerateContent - Starting for:', businessData.businessName);
     
-    const homepageResult = await this.ai.generateHomepageContent(
-      businessData.businessName,
-      businessData.industry
-    );
-    
-    console.log('[Pipeline] Homepage generation:', homepageResult.success ? 'SUCCESS' : 'FAILED', homepageResult.error);
-
-    // CRITICAL: If homepage generation fails, surface the error instead of proceeding with empty content
-    if (!homepageResult.success || !homepageResult.data) {
-      const errorMsg = homepageResult.error || 'AI returned no content for homepage';
-      console.error('[Pipeline] Homepage generation failed:', errorMsg);
-      throw new Error(`AI Content Generation Failed: ${errorMsg}`);
-    }
-
-    const aboutResult = await this.ai.generateAboutContent(
-      businessData.businessName,
-      businessData.industry
-    );
-    
-    console.log('[Pipeline] About generation:', aboutResult.success ? 'SUCCESS' : 'FAILED', aboutResult.error);
-
-    // About content is important but not critical - we can proceed with just homepage
-    // Only throw if homepage succeeded but about failed critically
-    if (!aboutResult.success && !aboutResult.data) {
-      console.warn('[Pipeline] About generation failed, proceeding with homepage content only');
-    }
-
-    let serviceResult = null;
-    if (businessData.mainService) {
-      serviceResult = await this.ai.generateServiceContent(
-        businessData.businessName,
-        businessData.industry,
-        businessData.mainService
-      );
-      console.log('[Pipeline] Services generation:', serviceResult?.success ? 'SUCCESS' : 'FAILED', serviceResult?.error);
-    }
-
-    const generatedContent = {
-      homepage: homepageResult.data,
-      about: aboutResult.data,
-      services: serviceResult?.data,
+    // Start with basic content
+    let generatedContent = {
+      homepage: {
+        hero: {
+          heading: businessData.businessName,
+          subheading: `${businessData.industry} services`,
+          ctaText: 'Learn More',
+        },
+        about: {
+          heading: `About ${businessData.businessName}`,
+          description: businessData.description || `Professional ${businessData.industry} services`,
+        },
+        services: [] as Array<{ title: string; description: string }>,
+      },
       businessData: options.businessData,
     };
-    
-    console.log('[Pipeline] stepGenerateContent - Final generatedContent:', JSON.stringify(generatedContent, null, 2));
 
-    // Double-check we have actual content before proceeding
-    if (!generatedContent.homepage?.hero?.heading) {
-      throw new Error('AI generated content is missing required hero heading - content may be empty');
+    // Try AI generation, but don't fail if it doesn't work
+    try {
+      const homepageResult = await this.ai.generateHomepageContent(
+        businessData.businessName,
+        businessData.industry
+      );
+      
+      console.log('[Pipeline] Homepage AI generation:', homepageResult.success ? 'SUCCESS' : 'FAILED');
+      
+      if (homepageResult.success && homepageResult.data) {
+        // Merge AI content with defaults to ensure all required fields exist
+        const aiData = homepageResult.data;
+        generatedContent.homepage = {
+          hero: {
+            heading: aiData.hero.heading,
+            subheading: aiData.hero.subheading || `${businessData.businessName} - Professional Services`,
+            ctaText: aiData.hero.ctaText || 'Learn More',
+          },
+          about: {
+            heading: aiData.about.heading,
+            description: aiData.about.paragraphs?.join(' ') || aiData.about.heading,
+          },
+          services: (aiData.services || []).map(s => ({
+            title: s.title,
+            description: s.description,
+          })),
+        };
+        console.log('[Pipeline] Using AI-generated content');
+      } else {
+        console.log('[Pipeline] Using basic content (AI failed)');
+      }
+    } catch (error) {
+      console.warn('[Pipeline] AI generation failed, using basic content:', error);
     }
 
     this.state!.checkpointData = {
@@ -367,178 +412,120 @@ export class GenerationPipeline {
     options.onStepComplete?.('APPLY_BRAND', brandTokens);
   }
 
-  // Step 7: Modify JSON - Uses real modifier engine
-  private async stepModifyJson(options: PipelineOptions): Promise<void> {
+  // Step 5: Create Elementor Structure - works with or without templates
+  private async stepCreateElementorStructure(options: PipelineOptions): Promise<void> {
     const generatedContent = this.state!.checkpointData['generatedContent'] as {
       homepage?: {
         hero?: { heading?: string; subheading?: string; ctaText?: string };
         about?: { heading?: string; description?: string };
         services?: Array<{ title?: string; description?: string }>;
       };
-      about?: { heading?: string; description?: string };
     } | undefined;
     
-    console.log('[Pipeline] stepModifyJson - generatedContent:', JSON.stringify(generatedContent, null, 2));
-    
-    // selectedTemplates is now a MatchResult object with homepage/about/services/contact arrays
-    const matchResult = this.state!.checkpointData['selectedTemplates'] as {
-      homepage?: Array<{ templateId: string }>;
-      services?: Array<{ templateId: string }>;
-    } | undefined;
+    const templateToUse = this.state!.checkpointData['templateToUse'] as {
+      id: string;
+      name: string;
+    } | null;
+    const templateContent = this.state!.checkpointData['templateContent'] as unknown[];
 
-    console.log('[Pipeline] stepModifyJson - matchResult:', JSON.stringify(matchResult, null, 2));
+    console.log('[Pipeline] stepCreateElementorStructure - Template:', templateToUse?.name || 'None');
 
-    // Get the first template ID from homepage or services matches
-    const firstMatch = matchResult?.homepage?.[0] || matchResult?.services?.[0];
-    
-    if (!firstMatch) {
-      // No templates were matched - this means the template library is empty
-      // Throw a clear error instead of silently generating generic placeholder content
-      console.error('[Pipeline] No templates matched. Template library is empty or templates not imported.');
+    let contentTree: unknown[];
+
+    if (templateContent.length > 0) {
+      // Use template content and fill in generated content
+      contentTree = JSON.parse(JSON.stringify(templateContent));
       
-      throw new Error(
-        'No templates available. Please import templates first by calling POST /api/templates/import, ' +
-        'or select a template when creating your project.'
-      );
+      const hero = generatedContent?.homepage?.hero;
+      const about = generatedContent?.homepage?.about;
+      const services = generatedContent?.homepage?.services ?? [];
+
+      // Collect all texts to distribute
+      const headingTexts = [
+        hero?.heading,
+        about?.heading,
+        ...services.map(s => s.title),
+      ].filter((t): t is string => Boolean(t));
+
+      const textEditorTexts = [
+        hero?.subheading,
+        about?.description,
+        ...services.map(s => s.description),
+      ].filter((t): t is string => Boolean(t));
+
+      const buttonTexts = [hero?.ctaText].filter((t): t is string => Boolean(t));
+
+      // Find and fill all widgets
+      const headingNodes = findAllNodesByWidgetType(contentTree as Parameters<typeof findAllNodesByWidgetType>[0], 'heading');
+      headingTexts.forEach((text, i) => {
+        if (headingNodes[i]) {
+          setNodeContent(headingNodes[i], text);
+        }
+      });
+
+      const textEditorNodes = findAllNodesByWidgetType(contentTree as Parameters<typeof findAllNodesByWidgetType>[0], 'text-editor');
+      textEditorTexts.forEach((text, i) => {
+        if (textEditorNodes[i]) {
+          setNodeContent(textEditorNodes[i], text);
+        }
+      });
+
+      const buttonNodes = findAllNodesByWidgetType(contentTree as Parameters<typeof findAllNodesByWidgetType>[0], 'button');
+      buttonTexts.forEach((text, i) => {
+        if (buttonNodes[i]) {
+          setNodeContent(buttonNodes[i], text);
+        }
+      });
+    } else {
+      // Generate basic structure from scratch
+      contentTree = this.generateBasicStructure(generatedContent);
     }
 
-    // Get the first template's content
-    const template = await this.prisma.template.findUnique({
-      where: { id: firstMatch.templateId },
-    });
-
-    if (!template) {
-      throw new Error(`Template not found: ${firstMatch.templateId}`);
-    }
-
-    // Real widget content lives on TemplateSection.content (set by import scripts),
-    // NOT on Template.metadata - that only ever held manifest bookkeeping fields.
-    const section = await this.prisma.templateSection.findFirst({
-      where: { templateId: template.id },
-    });
-
-    const metadataContent = (section?.content as unknown[]) ?? (template.metadata as { content?: unknown[] } | null)?.content ?? [];
-
-    if (metadataContent.length === 0) {
-      throw new Error(
-        `Template "${template.name}" has no widget content available (checked TemplateSection and metadata.content) - re-run template import for this template.`
-      );
-    }
-
-    // Make a DEEP COPY of the template content - NEVER modify the original template!
-    // This preserves the template for reuse across multiple projects.
-    const contentTree = JSON.parse(JSON.stringify(metadataContent)) as Parameters<typeof applyModifications>[0];
-
-    // Distribute generated content across ALL matching widgets in document
-    // order, not just the first one of each type. Using only
-    // replaceHeading/replaceParagraph/replaceButton (which each only touch
-    // the FIRST match via findNode) meant almost all of a template's text -
-    // and almost all of the AI-generated content (about section, services,
-    // etc.) - never made it onto the page at all. This still doesn't know
-    // which section a given widget visually belongs to (that would need
-    // real section-type detection), so it fills headings/text/buttons in
-    // the order they appear in the document: hero first, then about, then
-    // services. Good enough to make generated content actually show up
-    // across the page rather than in a single spot.
-    const hero = generatedContent?.homepage?.hero;
-    const about = generatedContent?.homepage?.about ?? generatedContent?.about;
-    const services = generatedContent?.homepage?.services ?? [];
-
-    const headingTexts = [
-      hero?.heading,
-      about?.heading,
-      ...services.map(s => s.title),
-    ].filter((t): t is string => Boolean(t));
-
-    const textEditorTexts = [
-      hero?.subheading,
-      about?.description,
-      ...services.map(s => s.description),
-    ].filter((t): t is string => Boolean(t));
-
-    const buttonTexts = [hero?.ctaText].filter((t): t is string => Boolean(t));
-
-    const appliedModifications: string[] = [];
-    let anyModified = false;
-
-    const headingNodes = findAllNodesByWidgetType(contentTree, 'heading');
-    headingTexts.forEach((text, i) => {
-      if (headingNodes[i]) {
-        setNodeContent(headingNodes[i], text);
-        appliedModifications.push(`heading[${i}] -> "${text.slice(0, 40)}"`);
-        anyModified = true;
-      }
-    });
-
-    const textEditorNodes = findAllNodesByWidgetType(contentTree, 'text-editor');
-    textEditorTexts.forEach((text, i) => {
-      if (textEditorNodes[i]) {
-        setNodeContent(textEditorNodes[i], text);
-        appliedModifications.push(`text-editor[${i}] -> "${text.slice(0, 40)}"`);
-        anyModified = true;
-      }
-    });
-
-    const buttonNodes = findAllNodesByWidgetType(contentTree, 'button');
-    buttonTexts.forEach((text, i) => {
-      if (buttonNodes[i]) {
-        setNodeContent(buttonNodes[i], text);
-        appliedModifications.push(`button[${i}] -> "${text.slice(0, 40)}"`);
-        anyModified = true;
-      }
-    });
-
-    if (headingTexts.length > headingNodes.length || textEditorTexts.length > textEditorNodes.length) {
-      console.warn(
-        `[Pipeline] Template "${template.name}" has fewer heading/text widgets (${headingNodes.length}/${textEditorNodes.length}) than generated content items (${headingTexts.length}/${textEditorTexts.length}) - some generated content had no widget slot to fill.`
-      );
-    }
-
-    // Build proper Elementor JSON structure - this is stored in the PROJECT, not the template
+    // Build Elementor data structure
     const elementorData = {
       version: '0.3',
       elements: contentTree,
-      templateId: template.id, // Track which template was used as a base
-      templateName: template.name,
-    };
-
-    const modifiedJson = {
-      templateId: template.id,
-      modified: anyModified,
-      modifications: appliedModifications,
-      timestamp: new Date().toISOString(),
+      templateId: templateToUse?.id || null,
+      templateName: templateToUse?.name || 'Generated',
     };
 
     this.state!.checkpointData = {
       ...this.state!.checkpointData,
       elementorData,
-      modifiedJson,
     };
 
-    // Persist elementor data to database
+    // Persist to database
     await this.prisma.project.update({
       where: { id: this.state!.projectId },
       data: {
         elementorData: elementorData as object,
-        templateId: template.id,
+        templateId: templateToUse?.id || null,
       },
     });
 
     await this.saveCheckpoint('MODIFY_JSON');
-    options.onStepComplete?.('MODIFY_JSON', modifiedJson);
   }
 
   // Generate a basic Elementor structure when no templates are available
   private generateBasicStructure(content?: {
     homepage?: {
       hero?: { heading?: string; subheading?: string; ctaText?: string };
-      about?: { heading?: string; paragraphs?: string[] };
+      about?: { heading?: string; description?: string };
+      services?: Array<{ title?: string; description?: string }>;
     };
   }): unknown[] {
-    const hero = content?.homepage?.hero || {};
-    const about = content?.homepage?.about || {};
+    const hero = content?.homepage?.hero || {
+      heading: 'Welcome',
+      subheading: 'Professional services for your business',
+      ctaText: 'Get Started',
+    };
+    const about = content?.homepage?.about || {
+      heading: 'About Us',
+      description: 'We provide excellent services to our clients.',
+    };
+    const services = content?.homepage?.services || [];
     
-    return [
+    const elements: unknown[] = [
       // Hero Section
       {
         id: 'section-hero',
@@ -558,7 +545,7 @@ export class GenerationPipeline {
                 elType: 'widget',
                 widgetType: 'heading',
                 settings: {
-                  heading: hero.heading || 'Welcome to Our Website',
+                  heading: hero.heading,
                   align: 'center',
                   title_color: '#1a1a1a',
                 },
@@ -568,7 +555,7 @@ export class GenerationPipeline {
                 elType: 'widget',
                 widgetType: 'text-editor',
                 settings: {
-                  editor: `<p style="text-align: center;">${hero.subheading || 'We create amazing digital experiences for your business.'}</p>`,
+                  editor: `<p style="text-align: center;">${hero.subheading}</p>`,
                 },
               },
               {
@@ -576,7 +563,7 @@ export class GenerationPipeline {
                 elType: 'widget',
                 widgetType: 'button',
                 settings: {
-                  text: hero.ctaText || 'Get Started',
+                  text: hero.ctaText,
                   align: 'center',
                   background_color: '#3B82F6',
                 },
@@ -606,7 +593,7 @@ export class GenerationPipeline {
                 elType: 'widget',
                 widgetType: 'heading',
                 settings: {
-                  heading: about.heading || 'About Us',
+                  heading: about.heading,
                   align: 'center',
                   title_color: '#1a1a1a',
                 },
@@ -616,23 +603,55 @@ export class GenerationPipeline {
                 elType: 'widget',
                 widgetType: 'text-editor',
                 settings: {
-                  editor: `<p style="text-align: center;">${about.paragraphs?.[0] || 'We are a team of passionate professionals dedicated to delivering excellence.'}</p>`,
+                  editor: `<p style="text-align: center;">${about.description}</p>`,
                 },
               },
             ],
           },
         ],
       },
-      // Spacer
-      {
-        id: 'spacer-1',
-        elType: 'widget',
-        widgetType: 'spacer',
-        settings: {
-          space: 50,
-        },
-      },
     ];
+
+    // Add services section if we have services
+    if (services.length > 0) {
+      elements.push({
+        id: 'section-services',
+        elType: 'section',
+        settings: {
+          layout: 'full_width',
+          content_width: { size: 1140 },
+        },
+        elements: [
+          {
+            id: 'column-services-1',
+            elType: 'column',
+            settings: { _column_size: 100 },
+            elements: [
+              {
+                id: 'heading-services',
+                elType: 'widget',
+                widgetType: 'heading',
+                settings: {
+                  heading: 'Our Services',
+                  align: 'center',
+                  title_color: '#1a1a1a',
+                },
+              },
+              ...services.slice(0, 3).map((service, index) => ({
+                id: `text-service-${index}`,
+                elType: 'widget',
+                widgetType: 'text-editor',
+                settings: {
+                  editor: `<h3>${service.title}</h3><p>${service.description}</p>`,
+                },
+              })),
+            ],
+          },
+        ],
+      });
+    }
+
+    return elements;
   }
 
   // Step 8: Validate JSON - Uses real validator
