@@ -223,6 +223,8 @@ export class GenerationPipeline {
       include: { sections: true },
     });
 
+    console.log(`[Pipeline] stepSelectTemplates - Found ${templates.length} templates`);
+
     const context: ProjectContext = {
       businessName: options.businessData.businessName,
       industry: options.businessData.industry,
@@ -256,15 +258,21 @@ export class GenerationPipeline {
   private async stepGenerateContent(options: PipelineOptions): Promise<void> {
     const businessData = options.businessData;
     
+    console.log('[Pipeline] stepGenerateContent - Starting AI generation for:', businessData.businessName);
+    
     const homepageResult = await this.ai.generateHomepageContent(
       businessData.businessName,
       businessData.industry
     );
+    
+    console.log('[Pipeline] Homepage generation:', homepageResult.success ? 'SUCCESS' : 'FAILED', homepageResult.error);
 
     const aboutResult = await this.ai.generateAboutContent(
       businessData.businessName,
       businessData.industry
     );
+    
+    console.log('[Pipeline] About generation:', aboutResult.success ? 'SUCCESS' : 'FAILED', aboutResult.error);
 
     let serviceResult = null;
     if (businessData.mainService) {
@@ -273,6 +281,7 @@ export class GenerationPipeline {
         businessData.industry,
         businessData.mainService
       );
+      console.log('[Pipeline] Services generation:', serviceResult?.success ? 'SUCCESS' : 'FAILED', serviceResult?.error);
     }
 
     const generatedContent = {
@@ -281,6 +290,8 @@ export class GenerationPipeline {
       services: serviceResult?.data,
       businessData: options.businessData,
     };
+    
+    console.log('[Pipeline] stepGenerateContent - Final generatedContent:', JSON.stringify(generatedContent, null, 2));
 
     this.state!.checkpointData = {
       ...this.state!.checkpointData,
@@ -348,11 +359,15 @@ export class GenerationPipeline {
       about?: Record<string, unknown>;
     } | undefined;
     
+    console.log('[Pipeline] stepModifyJson - generatedContent:', JSON.stringify(generatedContent, null, 2));
+    
     // selectedTemplates is now a MatchResult object with homepage/about/services/contact arrays
     const matchResult = this.state!.checkpointData['selectedTemplates'] as {
       homepage?: Array<{ templateId: string }>;
       services?: Array<{ templateId: string }>;
     } | undefined;
+
+    console.log('[Pipeline] stepModifyJson - matchResult:', JSON.stringify(matchResult, null, 2));
 
     // Get the first template ID from homepage or services matches
     const firstMatch = matchResult?.homepage?.[0] || matchResult?.services?.[0];
@@ -360,7 +375,7 @@ export class GenerationPipeline {
     if (!firstMatch) {
       // No templates were matched - this means the template library is empty
       // Generate basic Elementor structure without a template base
-      console.warn('No templates matched. Generating basic structure without template base.');
+      console.warn('[Pipeline] No templates matched. Generating basic structure without template base.');
       
       const elementorData = {
         version: '0.3',
