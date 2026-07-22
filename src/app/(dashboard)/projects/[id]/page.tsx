@@ -101,6 +101,7 @@ export default function ProjectDetailPage() {
   const [savingContent, setSavingContent] = useState(false);
   const [contentSaveMessage, setContentSaveMessage] = useState<string | null>(null);
   const [regeneratingPreview, setRegeneratingPreview] = useState(false);
+  const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -640,7 +641,7 @@ export default function ProjectDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Website Preview</CardTitle>
-              <CardDescription>See how your website will look</CardDescription>
+              <CardDescription>Live rendering of your generated website</CardDescription>
             </CardHeader>
             <CardContent>
               {previewError && (
@@ -648,33 +649,36 @@ export default function ProjectDetailPage() {
                   {previewError}
                 </div>
               )}
-              {project.previewImage || project.status === 'PREVIEW' || project.status === 'PUBLISHED' ? (
+              {project.elementorData ? (
                 <div className="space-y-4">
-                  <div className="aspect-video rounded-lg border bg-muted overflow-hidden">
-                    {project.previewImage ? (
-                      <img src={project.previewImage} alt="Website Preview" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <p className="text-muted-foreground">Preview not available</p>
-                      </div>
-                    )}
+                  <div className="rounded-lg border bg-muted overflow-hidden" style={{ height: '600px' }}>
+                    <iframe
+                      key={previewRefreshKey}
+                      src={`/api/projects/${projectId}/render`}
+                      title="Website Preview"
+                      className="w-full h-full border-0"
+                      sandbox="allow-same-origin"
+                    />
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    This renders your actual generated Elementor content directly - not a screenshot. Widget
+                    types not yet supported by the preview renderer show as a labeled placeholder instead of
+                    being silently skipped.
+                  </p>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      disabled={!project.previewImage}
-                      onClick={() => project.previewImage && window.open(project.previewImage, '_blank')}
+                      onClick={() => window.open(`/api/projects/${projectId}/render`, '_blank')}
                     >
                       <Eye className="mr-2 h-4 w-4" />
-                      View Full Size
+                      Open Full Size
                     </Button>
-                    <Button variant="outline" onClick={handleRegeneratePreview} disabled={regeneratingPreview}>
-                      {regeneratingPreview ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                      )}
-                      Regenerate Preview
+                    <Button
+                      variant="outline"
+                      onClick={() => setPreviewRefreshKey((k) => k + 1)}
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Refresh Preview
                     </Button>
                   </div>
                 </div>
