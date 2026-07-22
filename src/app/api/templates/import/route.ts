@@ -1,23 +1,18 @@
 /**
  * Template Import API
  * 
- * Imports templates from Supabase storage to database.
+ * Imports templates from R2 storage to database.
  * Call this once to populate the database with all templates.
+ * This makes templates available to the generation pipeline.
  * 
  * POST /api/templates/import
  */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { prisma } from '@/lib/prisma';
+import { listFiles, r2, R2_BUCKET } from '@/lib/storage/r2';
+import { GetObjectCommand } from "@aws-sdk/client-s3";
 import JSZip from 'jszip';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-function getSupabaseAdmin() {
-  return createClient(supabaseUrl, supabaseServiceKey);
-}
 
 interface ManifestTemplate {
   name: string;
@@ -36,6 +31,18 @@ interface Manifest {
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
+}
+
+function extractKitSlug(filename: string): string {
+  const withoutExt = filename.replace('.zip', '');
+  const withoutTimestamp = withoutExt.replace(/-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-utc$/, '');
+  const cleanName = withoutTimestamp
+    .replace(/-elementor-template-kit$/i, '')
+    .replace(/-elementor-pro-template-kit$/i, '')
+    .replace(/-woocommerce-el$/i, '')
+    .replace(/-wordpress-theme$/i, '')
+    .replace(/-full$/i, '');
+  return cleanName;
 }
 
 function detectCategory(templateName: string): string {
@@ -80,61 +87,51 @@ function detectIndustry(kitName: string): string | null {
 
 export async function POST(request: Request) {
   try {
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 500 }
-      );
-    }
-
-    const supabase = getSupabaseAdmin();
+    console.log('[Import] Starting template import from R2...');
     
-    // List all ZIP files
-    const { data: files, error } = await supabase.storage
-      .from('templates')
-      .list('', { limit: 200 });
-
-    if (error || !files) {
-      return NextResponse.json(
-        { error: 'Failed to list templates bucket', details: error },
-        { status: 500 }
-      );
-    }
-
-    const zipFiles = files.filter(f => f.name.endsWith('.zip'));
+    // List all ZIP files from R2
+    const zipNames = await listFiles('');
+    const zipFiles = zipNames.filter(f => f.endsWith('.zip'));
+    
+    console.log(`[Import] Found ${zipFiles.length} ZIP files in R2`);
     
     const results = {
       kitsFound: zipFiles.length,
       templatesImported: 0,
-      screenshotsUploaded: 0,
       errors: [] as string[],
     };
 
-    for (const zipFile of zipFiles) {
+    for (const zipName of zipFiles) {
       try {
-        // Download ZIP
-        const { data: zipData, error: downloadError } = await supabase.storage
-          .from('templates')
-          .download(zipFile.name);
-
-        if (downloadError || !zipData) {
-          results.errors.push(`Failed to download: ${zipFile.name}`);
+        console.log(`[Import] Processing: ${zipName}`);
+        
+        // Download ZIP from R2
+        const command = new GetObjectCommand({
+          Bucket: R2_BUCKET,
+          Key: zipName,
+        });
+        
+        const response = await r2.send(command);
+        const zipData = await response.Body?.transformToByteArray();
+        
+        if (!zipData) {
+          results.errors.push(`Failed to download: ${zipName}`);
           continue;
         }
-
-        const arrayBuffer = await zipData.arrayBuffer();
-        const zip = await JSZip.loadAsync(arrayBuffer);
+        
+        const zip = await JSZip.loadAsync(zipData);
 
         // Find manifest - real kits use kit-manifest.json
         const manifestFile = zip.file('kit-manifest.json') || zip.file('manifest.json');
         if (!manifestFile) {
-          results.errors.push(`No manifest in: ${zipFile.name}`);
+          results.errors.push(`No manifest in: ${zipName}`);
           continue;
         }
 
         const manifestContent = await manifestFile.async('string');
         const manifest: Manifest = JSON.parse(manifestContent);
-        const kitSlug = slugify(manifest.title);
+        // Use extractKitSlug to match the same logic as the templates listing API
+        const kitSlug = extractKitSlug(zipName);
 
         // Create or find the TemplateKit
         let kitId: string;
@@ -147,9 +144,9 @@ export async function POST(request: Request) {
         } else {
           const newKit = await prisma.templateKit.create({
             data: {
-              name: manifest.title,
+              name: manifest.title || kitSlug,
               slug: kitSlug,
-              industry: detectIndustry(manifest.title),
+              industry: detectIndustry(manifest.title || kitSlug),
               style: 'modern',
               templateCount: manifest.templates.length,
               importStatus: 'COMPLETE',
@@ -170,39 +167,14 @@ export async function POST(request: Request) {
             where: { id: templateId },
           });
 
-          // Templates imported before this fix have no `content` in their
-          // metadata - backfill them instead of skipping, so a re-run of
-          // this endpoint fixes already-imported templates too.
-          const existingMetadata = existing?.metadata as { content?: unknown[] } | undefined;
-          if (existing && existingMetadata?.content && existingMetadata.content.length > 0) {
+          // Check if already has sections (means it was properly imported)
+          const existingSections = await prisma.templateSection.findFirst({
+            where: { templateId: templateId },
+          });
+          
+          if (existing && existingSections) {
+            console.log(`[Import] Skipping already imported: ${templateId}`);
             continue;
-          }
-
-          // Upload screenshot
-          let screenshotUrl: string | null = null;
-          try {
-            const screenshotEntry = zip.file(template.screenshot);
-            if (screenshotEntry) {
-              const screenshotData = await screenshotEntry.async('nodebuffer');
-              const fileName = `${kitSlug}/${templateSlug}.jpg`;
-              
-              const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('template-screenshots')
-                .upload(fileName, screenshotData, {
-                  contentType: 'image/jpeg',
-                  upsert: true,
-                });
-
-              if (!uploadError) {
-                const { data: urlData } = supabase.storage
-                  .from('template-screenshots')
-                  .getPublicUrl(fileName);
-                screenshotUrl = urlData.publicUrl;
-                results.screenshotsUploaded++;
-              }
-            }
-          } catch {
-            // Screenshot upload failed
           }
 
           // Read the actual Elementor page data - the widget tree lives at
@@ -210,7 +182,6 @@ export async function POST(request: Request) {
           // Also resolve template name from the JSON's page_title setting.
           let elementorContent: object[] = [];
           let templateName = template.name;
-          let screenshotPath: string | null = template.screenshot || null;
           
           try {
             const sourceEntry = zip.file(template.source);
@@ -232,52 +203,42 @@ export async function POST(request: Request) {
                 elementorContent = pageJson as object[];
               } else {
                 results.errors.push(
-                  `Unrecognized page-data shape for ${template.name} in ${zipFile.name} (source: ${template.source})`
+                  `Unrecognized page-data shape for ${template.name} in ${zipName} (source: ${template.source})`
                 );
-              }
-
-              // Screenshot is convention-based: same basename as the JSON, .jpg extension
-              if (!screenshotPath) {
-                const sourceBase = template.source.replace(/\.json$/, '');
-                const possibleJpg = zip.file(`${sourceBase}.jpg`);
-                if (possibleJpg) {
-                  screenshotPath = `${sourceBase}.jpg`;
-                }
               }
             } else {
               results.errors.push(
-                `Source file not found in zip: ${template.source} (${template.name} in ${zipFile.name})`
+                `Source file not found in zip: ${template.source} (${template.name} in ${zipName})`
               );
             }
           } catch (err) {
             results.errors.push(
-              `Failed to parse page data for ${template.name} in ${zipFile.name}: ${err}`
+              `Failed to parse page data for ${template.name} in ${zipName}: ${err}`
             );
           }
 
           // Create or backfill template in database with R2 storage
           // Use resolved templateName and category from manifest if available
           const resolvedSlug = slugify(templateName);
-          const resolvedCategory = (template as any).category || detectCategory(templateName);
+          const resolvedCategory = detectCategory(templateName);
           
           const templateData = {
             name: templateName,
             slug: resolvedSlug,
             category: resolvedCategory,
-            industry: detectIndustry(manifest.title),
+            industry: detectIndustry(manifest.title || kitSlug),
             style: 'modern',
             storageProvider: 'r2',
-            storageKey: zipFile.name,
-            filePath: `templates/${zipFile.name}`,
-            previewImage: screenshotUrl ?? existing?.previewImage ?? null,
+            storageKey: zipName,
+            filePath: zipName,
+            previewImage: existing?.previewImage ?? null,
             kitId: kitId,
             kitSlug: kitSlug,
-            kitName: manifest.title,
+            kitName: manifest.title || kitSlug,
             metadata: {
               kitName: manifest.title,
               kitSlug,
               source: template.source,
-              screenshot: screenshotPath,
               content: elementorContent,
             },
             tags: [kitSlug, resolvedCategory],
@@ -324,7 +285,7 @@ export async function POST(request: Request) {
           results.templatesImported++;
         }
       } catch (err) {
-        results.errors.push(`Error processing ${zipFile.name}: ${err}`);
+        results.errors.push(`Error processing ${zipName}: ${err}`);
       }
     }
 
