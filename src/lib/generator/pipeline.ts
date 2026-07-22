@@ -267,12 +267,25 @@ export class GenerationPipeline {
     
     console.log('[Pipeline] Homepage generation:', homepageResult.success ? 'SUCCESS' : 'FAILED', homepageResult.error);
 
+    // CRITICAL: If homepage generation fails, surface the error instead of proceeding with empty content
+    if (!homepageResult.success || !homepageResult.data) {
+      const errorMsg = homepageResult.error || 'AI returned no content for homepage';
+      console.error('[Pipeline] Homepage generation failed:', errorMsg);
+      throw new Error(`AI Content Generation Failed: ${errorMsg}`);
+    }
+
     const aboutResult = await this.ai.generateAboutContent(
       businessData.businessName,
       businessData.industry
     );
     
     console.log('[Pipeline] About generation:', aboutResult.success ? 'SUCCESS' : 'FAILED', aboutResult.error);
+
+    // About content is important but not critical - we can proceed with just homepage
+    // Only throw if homepage succeeded but about failed critically
+    if (!aboutResult.success && !aboutResult.data) {
+      console.warn('[Pipeline] About generation failed, proceeding with homepage content only');
+    }
 
     let serviceResult = null;
     if (businessData.mainService) {
@@ -292,6 +305,11 @@ export class GenerationPipeline {
     };
     
     console.log('[Pipeline] stepGenerateContent - Final generatedContent:', JSON.stringify(generatedContent, null, 2));
+
+    // Double-check we have actual content before proceeding
+    if (!generatedContent.homepage?.hero?.heading) {
+      throw new Error('AI generated content is missing required hero heading - content may be empty');
+    }
 
     this.state!.checkpointData = {
       ...this.state!.checkpointData,
@@ -375,26 +393,13 @@ export class GenerationPipeline {
     
     if (!firstMatch) {
       // No templates were matched - this means the template library is empty
-      // Generate basic Elementor structure without a template base
-      console.warn('[Pipeline] No templates matched. Generating basic structure without template base.');
+      // Throw a clear error instead of silently generating generic placeholder content
+      console.error('[Pipeline] No templates matched. Template library is empty or templates not imported.');
       
-      const elementorData = {
-        version: '0.3',
-        elements: this.generateBasicStructure(generatedContent),
-      };
-      
-      await this.prisma.project.update({
-        where: { id: this.state!.projectId },
-        data: { elementorData: elementorData as object },
-      });
-      
-      this.state!.checkpointData = {
-        ...this.state!.checkpointData,
-        elementorData,
-      };
-      
-      await this.saveCheckpoint('MODIFY_JSON');
-      return;
+      throw new Error(
+        'No templates available. Please import templates first by calling POST /api/templates/import, ' +
+        'or select a template when creating your project.'
+      );
     }
 
     // Get the first template's content
