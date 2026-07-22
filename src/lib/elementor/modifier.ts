@@ -100,6 +100,62 @@ function applySingleModification(
 }
 
 /**
+ * Find every node of a given widget type, in document order.
+ *
+ * The single-target functions above (replaceHeading, replaceParagraph, etc.)
+ * only ever touch the FIRST matching widget in the whole tree via findNode.
+ * Real templates typically have many headings/text blocks/buttons across
+ * hero/about/services/testimonials/footer sections - using only the
+ * single-target functions means almost all of a template's text stays as
+ * the original placeholder copy, with just one heading/paragraph/button
+ * changed anywhere on the page. This is what callers should use instead
+ * when they have multiple pieces of generated content to distribute across
+ * a template (e.g. one heading per section, one card per service).
+ */
+export function findAllNodesByWidgetType(
+  nodes: ElementorNode[],
+  widgetType: string
+): ElementorNode[] {
+  const matches: ElementorNode[] = [];
+
+  function walk(list: ElementorNode[]) {
+    for (const node of list) {
+      if (node.elType === 'widget' && node.widgetType === widgetType) {
+        matches.push(node);
+      }
+      if (node.elements) {
+        walk(node.elements);
+      }
+    }
+  }
+
+  walk(nodes);
+  return matches;
+}
+
+/**
+ * Set the display text/value on a single node directly, given its widget
+ * type. Used alongside findAllNodesByWidgetType to update a specific
+ * occurrence rather than always the first one in the tree.
+ */
+export function setNodeContent(node: ElementorNode, text: string): void {
+  if (!node.settings) node.settings = {};
+  switch (node.widgetType) {
+    case 'heading':
+      node.settings.heading = text;
+      break;
+    case 'text-editor':
+      node.settings.editor = `<p>${text}</p>`;
+      break;
+    case 'button':
+      node.settings.text = text;
+      break;
+    default:
+      break;
+  }
+}
+
+/**
  * Find a node by target criteria
  */
 function findNode(
