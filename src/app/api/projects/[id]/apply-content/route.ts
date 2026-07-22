@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
-import { replaceHeading, replaceParagraph, replaceButton } from '@/lib/elementor/modifier';
+import { findAllNodesByWidgetType, setNodeContent } from '@/lib/elementor/modifier';
+import type { ElementorNode } from '@/lib/elementor/parser';
 import { validateElementorJson } from '@/lib/elementor/validator';
 
 async function createServerSupabaseClient() {
@@ -55,30 +56,54 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     // Make a DEEP COPY - we never modify the original template!
     // This preserves the template for reuse across multiple projects.
-    const contentTree = JSON.parse(JSON.stringify(sourceContent)) as Parameters<typeof replaceHeading>[0];
+    const contentTree = JSON.parse(JSON.stringify(sourceContent)) as ElementorNode[];
 
     const generatedContent = project.generatedContent as {
       homepage?: {
         hero?: { heading?: string; subheading?: string; ctaText?: string };
         about?: { heading?: string; paragraphs?: string[] };
+        services?: Array<{ title?: string; description?: string }>;
       };
     };
     const hero = generatedContent.homepage?.hero;
     const about = generatedContent.homepage?.about;
+    const services = generatedContent.homepage?.services ?? [];
+
+    // Distribute across ALL matching widgets in document order, not just
+    // the first one of each type - matches the same strategy used in the
+    // generation pipeline (see pipeline.ts stepModifyJson), so edits made
+    // here behave the same way edits made during generation do.
+    const headingTexts = [hero?.heading, about?.heading, ...services.map(s => s.title)]
+      .filter((t): t is string => Boolean(t));
+    const textEditorTexts = [hero?.subheading, ...(about?.paragraphs ?? []), ...services.map(s => s.description)]
+      .filter((t): t is string => Boolean(t));
+    const buttonTexts = [hero?.ctaText].filter((t): t is string => Boolean(t));
+
     const appliedModifications: string[] = [];
 
-    if (hero?.heading) {
-      const r = replaceHeading(contentTree, hero.heading);
-      if (r.success && r.modified) appliedModifications.push(...r.modifications);
-    }
-    if (hero?.subheading || about?.paragraphs?.[0]) {
-      const r = replaceParagraph(contentTree, hero?.subheading || about!.paragraphs![0]);
-      if (r.success && r.modified) appliedModifications.push(...r.modifications);
-    }
-    if (hero?.ctaText) {
-      const r = replaceButton(contentTree, hero.ctaText);
-      if (r.success && r.modified) appliedModifications.push(...r.modifications);
-    }
+    const headingNodes = findAllNodesByWidgetType(contentTree, 'heading');
+    headingTexts.forEach((text, i) => {
+      if (headingNodes[i]) {
+        setNodeContent(headingNodes[i], text);
+        appliedModifications.push(`heading[${i}] -> "${text.slice(0, 40)}"`);
+      }
+    });
+
+    const textEditorNodes = findAllNodesByWidgetType(contentTree, 'text-editor');
+    textEditorTexts.forEach((text, i) => {
+      if (textEditorNodes[i]) {
+        setNodeContent(textEditorNodes[i], text);
+        appliedModifications.push(`text-editor[${i}] -> "${text.slice(0, 40)}"`);
+      }
+    });
+
+    const buttonNodes = findAllNodesByWidgetType(contentTree, 'button');
+    buttonTexts.forEach((text, i) => {
+      if (buttonNodes[i]) {
+        setNodeContent(buttonNodes[i], text);
+        appliedModifications.push(`button[${i}] -> "${text.slice(0, 40)}"`);
+      }
+    });
 
     const validation = validateElementorJson(contentTree);
     if (!validation.valid) return NextResponse.json({ error: `Validation failed: ${validation.errors.map(e => e.message).join(', ')}` }, { status: 422 });

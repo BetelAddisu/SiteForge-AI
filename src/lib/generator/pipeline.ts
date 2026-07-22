@@ -10,7 +10,7 @@
 import { prisma } from '../prisma';
 import { matchTemplates, type ProjectContext } from '../elementor/template-matcher';
 import { AIContentEngine } from '../elementor/schemas';
-import { applyModifications, replaceHeading, replaceParagraph, replaceButton } from '../elementor/modifier';
+import { applyModifications, findAllNodesByWidgetType, setNodeContent } from '../elementor/modifier';
 import { validateElementorJson } from '../elementor/validator';
 import { generatePreview } from '../preview';
 
@@ -354,9 +354,10 @@ export class GenerationPipeline {
     const generatedContent = this.state!.checkpointData['generatedContent'] as {
       homepage?: {
         hero?: { heading?: string; subheading?: string; ctaText?: string };
-        about?: { heading?: string; paragraphs?: string[] };
+        about?: { heading?: string; description?: string };
+        services?: Array<{ title?: string; description?: string }>;
       };
-      about?: Record<string, unknown>;
+      about?: { heading?: string; description?: string };
     } | undefined;
     
     console.log('[Pipeline] stepModifyJson - generatedContent:', JSON.stringify(generatedContent, null, 2));
@@ -423,23 +424,69 @@ export class GenerationPipeline {
     // This preserves the template for reuse across multiple projects.
     const contentTree = JSON.parse(JSON.stringify(metadataContent)) as Parameters<typeof applyModifications>[0];
 
-    // Apply AI-generated content using widget-type targeting
+    // Distribute generated content across ALL matching widgets in document
+    // order, not just the first one of each type. Using only
+    // replaceHeading/replaceParagraph/replaceButton (which each only touch
+    // the FIRST match via findNode) meant almost all of a template's text -
+    // and almost all of the AI-generated content (about section, services,
+    // etc.) - never made it onto the page at all. This still doesn't know
+    // which section a given widget visually belongs to (that would need
+    // real section-type detection), so it fills headings/text/buttons in
+    // the order they appear in the document: hero first, then about, then
+    // services. Good enough to make generated content actually show up
+    // across the page rather than in a single spot.
     const hero = generatedContent?.homepage?.hero;
-    const about = generatedContent?.homepage?.about;
+    const about = generatedContent?.homepage?.about ?? generatedContent?.about;
+    const services = generatedContent?.homepage?.services ?? [];
+
+    const headingTexts = [
+      hero?.heading,
+      about?.heading,
+      ...services.map(s => s.title),
+    ].filter((t): t is string => Boolean(t));
+
+    const textEditorTexts = [
+      hero?.subheading,
+      about?.description,
+      ...services.map(s => s.description),
+    ].filter((t): t is string => Boolean(t));
+
+    const buttonTexts = [hero?.ctaText].filter((t): t is string => Boolean(t));
+
     const appliedModifications: string[] = [];
     let anyModified = false;
 
-    if (hero?.heading) {
-      const r = replaceHeading(contentTree, hero.heading);
-      if (r.success && r.modified) { appliedModifications.push(...r.modifications); anyModified = true; }
-    }
-    if (hero?.subheading || about?.paragraphs?.[0]) {
-      const r = replaceParagraph(contentTree, hero?.subheading || about!.paragraphs![0]);
-      if (r.success && r.modified) { appliedModifications.push(...r.modifications); anyModified = true; }
-    }
-    if (hero?.ctaText) {
-      const r = replaceButton(contentTree, hero.ctaText);
-      if (r.success && r.modified) { appliedModifications.push(...r.modifications); anyModified = true; }
+    const headingNodes = findAllNodesByWidgetType(contentTree, 'heading');
+    headingTexts.forEach((text, i) => {
+      if (headingNodes[i]) {
+        setNodeContent(headingNodes[i], text);
+        appliedModifications.push(`heading[${i}] -> "${text.slice(0, 40)}"`);
+        anyModified = true;
+      }
+    });
+
+    const textEditorNodes = findAllNodesByWidgetType(contentTree, 'text-editor');
+    textEditorTexts.forEach((text, i) => {
+      if (textEditorNodes[i]) {
+        setNodeContent(textEditorNodes[i], text);
+        appliedModifications.push(`text-editor[${i}] -> "${text.slice(0, 40)}"`);
+        anyModified = true;
+      }
+    });
+
+    const buttonNodes = findAllNodesByWidgetType(contentTree, 'button');
+    buttonTexts.forEach((text, i) => {
+      if (buttonNodes[i]) {
+        setNodeContent(buttonNodes[i], text);
+        appliedModifications.push(`button[${i}] -> "${text.slice(0, 40)}"`);
+        anyModified = true;
+      }
+    });
+
+    if (headingTexts.length > headingNodes.length || textEditorTexts.length > textEditorNodes.length) {
+      console.warn(
+        `[Pipeline] Template "${template.name}" has fewer heading/text widgets (${headingNodes.length}/${textEditorNodes.length}) than generated content items (${headingTexts.length}/${textEditorTexts.length}) - some generated content had no widget slot to fill.`
+      );
     }
 
     // Build proper Elementor JSON structure - this is stored in the PROJECT, not the template
