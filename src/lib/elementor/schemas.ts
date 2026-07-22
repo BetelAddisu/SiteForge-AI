@@ -9,8 +9,84 @@
  * - AI usage logging for cost tracking
  */
 
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from '@google/genai';
+import { GoogleGenAI, HarmCategory, HarmBlockThreshold, Schema, Type } from '@google/genai';
 import { z } from 'zod';
+
+// ============================================================================
+// Zod to Gemini Schema Converter
+// ============================================================================
+
+/**
+ * Convert a Zod schema to a Gemini Schema object for use with responseSchema.
+ * Gemini expects a specific JSON schema format.
+ */
+function zodToGeminiSchema(zodSchema: z.ZodType<unknown>): Schema {
+  if (zodSchema instanceof z.ZodObject) {
+    const properties: Record<string, Schema> = {};
+    const required: string[] = [];
+    
+    for (const [key, value] of Object.entries(zodSchema.shape as Record<string, z.ZodTypeAny>)) {
+      properties[key] = zodToGeminiSchema(value);
+      // Zod marks required fields by default (unless optional/nullable)
+      if (!(value instanceof z.ZodOptional) && !(value instanceof z.ZodNullable)) {
+        required.push(key);
+      }
+    }
+    
+    return {
+      type: Type.OBJECT,
+      properties,
+      ...(required.length > 0 ? { required } : {}),
+    };
+  }
+  
+  if (zodSchema instanceof z.ZodArray) {
+    return {
+      type: Type.ARRAY,
+      items: zodToGeminiSchema(zodSchema.element),
+    };
+  }
+  
+  if (zodSchema instanceof z.ZodString) {
+    return { type: Type.STRING };
+  }
+  
+  if (zodSchema instanceof z.ZodNumber) {
+    return { type: Type.NUMBER };
+  }
+  
+  if (zodSchema instanceof z.ZodBoolean) {
+    return { type: Type.BOOLEAN };
+  }
+  
+  if (zodSchema instanceof z.ZodOptional) {
+    return zodToGeminiSchema(zodSchema.unwrap());
+  }
+  
+  if (zodSchema instanceof z.ZodNullable) {
+    return zodToGeminiSchema(zodSchema.unwrap());
+  }
+  
+  if (zodSchema instanceof z.ZodUnion) {
+    // For unions, try to find the first string type (common for enums)
+    for (const variant of zodSchema.options) {
+      if (variant instanceof z.ZodLiteral) {
+        return { type: Type.STRING };
+      }
+    }
+    return { type: Type.STRING };
+  }
+  
+  if (zodSchema instanceof z.ZodLiteral) {
+    const val = zodSchema.value;
+    if (typeof val === 'string') return { type: Type.STRING };
+    if (typeof val === 'number') return { type: Type.NUMBER };
+    if (typeof val === 'boolean') return { type: Type.BOOLEAN };
+  }
+  
+  // Default fallback
+  return { type: Type.STRING };
+}
 
 // ============================================================================
 // Schemas
@@ -185,12 +261,17 @@ export class AIContentEngine {
       attempts++;
 
       try {
+        // Convert Zod schema to Gemini schema format
+        const geminiSchema = zodToGeminiSchema(schema);
+        
+        console.log('[AI] Requesting content with schema:', JSON.stringify(geminiSchema, null, 2));
+        
         const response = await this.client.models.generateContent({
           model: this.model,
           contents: prompt,
           config: {
             responseMimeType: 'application/json',
-            responseSchema: schema as unknown as Record<string, unknown>,
+            responseSchema: geminiSchema,
             safetySettings,
             systemInstruction: options.systemInstruction ? { text: options.systemInstruction } : undefined,
           },
@@ -200,6 +281,8 @@ export class AIContentEngine {
         if (!text) {
           return { success: false, error: 'Empty response from AI', attempts };
         }
+        
+        console.log('[AI] Raw response:', text.slice(0, 500));
 
         const parsed = JSON.parse(text);
         const validated = schema.parse(parsed);
