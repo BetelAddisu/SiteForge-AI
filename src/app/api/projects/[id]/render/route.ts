@@ -59,6 +59,8 @@ export async function GET(
       | { colors?: { primary?: string; secondary?: string }; typography?: { headingFont?: string; bodyFont?: string } }
       | undefined;
 
+    console.log('[Render] Project:', project.id, 'elementorData.elements count:', elementorData?.elements?.length ?? 0);
+
     const html = renderElementorToHtml(elementorData?.elements ?? [], {
       title: project.businessName,
       brandTokens,
