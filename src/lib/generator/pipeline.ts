@@ -265,7 +265,7 @@ export class GenerationPipeline {
             where: { templateId: templateToUse.id },
           });
           templateContent = (section?.content as unknown[]) ?? [];
-          console.log(`[Pipeline] Using template: ${templateToUse.name}`);
+          console.log(`[Pipeline] Template: ${templateToUse.name}, section content length: ${templateContent.length}`);
         }
       }
 
@@ -276,7 +276,7 @@ export class GenerationPipeline {
           where: { templateId: templateToUse.id },
         });
         templateContent = (section?.content as unknown[]) ?? [];
-        console.log(`[Pipeline] Using first template: ${templateToUse.name}`);
+        console.log(`[Pipeline] Using first template: ${templateToUse.name}, section content length: ${templateContent.length}`);
       }
 
       this.state!.checkpointData = {
@@ -489,6 +489,9 @@ export class GenerationPipeline {
       templateName: templateToUse?.name || 'Generated',
     };
 
+    console.log('[Pipeline] Saving elementorData with', contentTree.length, 'top-level elements');
+    console.log('[Pipeline] First element:', JSON.stringify(contentTree[0], null, 2).slice(0, 500));
+
     this.state!.checkpointData = {
       ...this.state!.checkpointData,
       elementorData,
@@ -502,6 +505,8 @@ export class GenerationPipeline {
         templateId: templateToUse?.id || null,
       },
     });
+
+    console.log('[Pipeline] Saved elementorData to project', this.state!.projectId);
 
     await this.saveCheckpoint('MODIFY_JSON');
   }

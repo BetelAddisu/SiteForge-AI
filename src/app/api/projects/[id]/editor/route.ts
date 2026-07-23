@@ -54,6 +54,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       elements?: unknown[];
     } | null;
 
+    console.log('[Editor GET] Project:', id, 'elementorData:', JSON.stringify(elementorData)?.slice(0, 200));
+
     return NextResponse.json({
       elementorData: elementorData || { elements: [] },
       project: {
