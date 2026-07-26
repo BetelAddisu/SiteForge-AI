@@ -7,6 +7,12 @@
  * and produces an actual HTML document, so "preview" means a live
  * rendered page instead of a broken <img> tag.
  *
+ * Supports Elementor Global Kit system:
+ * - Extracts global colors from template settings
+ * - Parses global typography references (globals/typography?id=xxx)
+ * - Generates CSS with proper --e-global-color-* variables
+ * - Falls back to Elementor default values when not specified
+ *
  * Scope: supports the widget types this codebase actually creates/modifies
  * (heading, text-editor, image, button, icon, spacer) plus the structural
  * types (section, container, column). Elementor has a much larger widget
@@ -38,6 +44,227 @@ export interface BrandTokens {
   typography?: { headingFont?: string; bodyFont?: string };
 }
 
+/**
+ * Elementor Global Kit styles extracted from template settings.
+ * These match the structure stored in Elementor's global kit.
+ */
+export interface ElementorKitStyles {
+  // System colors (default Elementor colors)
+  systemColors: Array<{ _id: string; title: string; color: string }>;
+  // Custom colors added by template author
+  customColors: Array<{ _id: string; title: string; color: string }>;
+  // System typography (default Elementor fonts)
+  systemTypography: Array<{
+    _id: string;
+    title: string;
+    typography_typography?: string;
+    typography_font_family?: string;
+    typography_font_size?: { size?: number; unit?: string };
+    typography_font_weight?: string;
+  }>;
+  // Custom typography added by template author
+  customTypography: Array<{
+    _id: string;
+    title: string;
+    typography_typography?: string;
+    typography_font_family?: string;
+    typography_font_weight?: string;
+  }>;
+  // Default generic font family
+  defaultGenericFonts?: string;
+}
+
+/**
+ * Resolved global values for CSS generation
+ */
+export interface ResolvedStyles {
+  colors: Record<string, string>;
+  typography: Record<string, { fontFamily?: string; fontSize?: string; fontWeight?: string }>;
+  defaultFonts: {
+    heading: string;
+    body: string;
+  };
+}
+
+// Elementor Default Global Kit Values (from Elementor source)
+const ELEMENTOR_DEFAULT_COLORS = {
+  primary: '#6EC1E4',
+  secondary: '#54595F',
+  text: '#7A7A7A',
+  accent: '#61CE70',
+};
+
+const ELEMENTOR_DEFAULT_TYPOGRAPHY = {
+  primary: { fontFamily: 'Roboto', fontWeight: '600' },
+  secondary: { fontFamily: 'Roboto Slab', fontWeight: '400' },
+  text: { fontFamily: 'Roboto', fontWeight: '400' },
+  accent: { fontFamily: 'Roboto', fontWeight: '500' },
+};
+
+/**
+ * Extract global kit styles from Elementor template settings.
+ * Templates may embed their own global styles in settings or page settings.
+ */
+export function extractKitStyles(elements: ElementorNode[]): ElementorKitStyles {
+  const kitStyles: ElementorKitStyles = {
+    systemColors: [
+      { _id: 'primary', title: 'Primary', color: ELEMENTOR_DEFAULT_COLORS.primary },
+      { _id: 'secondary', title: 'Secondary', color: ELEMENTOR_DEFAULT_COLORS.secondary },
+      { _id: 'text', title: 'Text', color: ELEMENTOR_DEFAULT_COLORS.text },
+      { _id: 'accent', title: 'Accent', color: ELEMENTOR_DEFAULT_COLORS.accent },
+    ],
+    customColors: [],
+    systemTypography: [
+      { _id: 'primary', title: 'Primary', typography_font_family: 'Roboto', typography_font_weight: '600' },
+      { _id: 'secondary', title: 'Secondary', typography_font_family: 'Roboto Slab', typography_font_weight: '400' },
+      { _id: 'text', title: 'Text', typography_font_family: 'Roboto', typography_font_weight: '400' },
+      { _id: 'accent', title: 'Accent', typography_font_family: 'Roboto', typography_font_weight: '500' },
+    ],
+    customTypography: [],
+    defaultGenericFonts: 'Sans-serif',
+  };
+
+  // Search for global settings in elements
+  function searchForSettings(node: ElementorNode) {
+    const settings = node.settings || {};
+    
+    // Check for page settings (Elementor stores kit settings here sometimes)
+    if (settings.page_settings) {
+      const pageSettings = settings.page_settings as Record<string, unknown>;
+      
+      // Extract system colors
+      if (Array.isArray(pageSettings.system_colors)) {
+        pageSettings.system_colors.forEach((c: unknown) => {
+          const color = c as { _id?: string; title?: string; color?: string };
+          if (color._id && color.color) {
+            const existing = kitStyles.systemColors.find(sc => sc._id === color._id);
+            if (existing) {
+              existing.color = color.color;
+            }
+          }
+        });
+      }
+      
+      // Extract custom colors
+      if (Array.isArray(pageSettings.custom_colors)) {
+        kitStyles.customColors = pageSettings.custom_colors as ElementorKitStyles['customColors'];
+      }
+      
+      // Extract system typography
+      if (Array.isArray(pageSettings.system_typography)) {
+        pageSettings.system_typography.forEach((t: unknown) => {
+          const typo = t as Record<string, unknown>;
+          const id = typo._id as string;
+          if (id) {
+            const existing = kitStyles.systemTypography.find(st => st._id === id);
+            if (existing) {
+              existing.typography_font_family = typo.typography_font_family as string || existing.typography_font_family;
+              existing.typography_font_weight = typo.typography_font_weight as string || existing.typography_font_weight;
+            }
+          }
+        });
+      }
+      
+      // Extract custom typography
+      if (Array.isArray(pageSettings.custom_typography)) {
+        kitStyles.customTypography = pageSettings.custom_typography as ElementorKitStyles['customTypography'];
+      }
+    }
+    
+    // Check for nested settings (some templates store kit data in widgets)
+    if (node.elements) {
+      node.elements.forEach(searchForSettings);
+    }
+  }
+
+  elements.forEach(searchForSettings);
+  return kitStyles;
+}
+
+/**
+ * Parse a global color reference like "globals/colors?id=primary" and return the actual color.
+ */
+export function resolveGlobalColor(ref: unknown, kitStyles: ResolvedStyles): string | null {
+  if (typeof ref !== 'string') return null;
+  
+  // Match "globals/colors?id=xxx" pattern
+  const match = ref.match(/^globals\/colors\?id=(.+)$/);
+  if (match) {
+    const colorId = match[1];
+    return kitStyles.colors[colorId] || null;
+  }
+  
+  // If it's already a hex color, return as-is
+  if (ref.startsWith('#') || ref.startsWith('rgb')) {
+    return ref;
+  }
+  
+  return null;
+}
+
+/**
+ * Parse a global typography reference like "globals/typography?id=primary" and return font info.
+ */
+export function resolveGlobalTypography(ref: unknown, kitStyles: ResolvedStyles): { fontFamily?: string; fontWeight?: string } | null {
+  if (typeof ref !== 'string') return null;
+  
+  // Match "globals/typography?id=xxx" pattern
+  const match = ref.match(/^globals\/typography\?id=(.+)$/);
+  if (match) {
+    const typoId = match[1];
+    return kitStyles.typography[typoId] || null;
+  }
+  
+  return null;
+}
+
+/**
+ * Resolve kit styles to a simple lookup map for fast access.
+ */
+export function resolveKitStyles(kitStyles: ElementorKitStyles): ResolvedStyles {
+  const colors: Record<string, string> = {};
+  const typography: Record<string, { fontFamily?: string; fontSize?: string; fontWeight?: string }> = {};
+  
+  // Add system colors
+  kitStyles.systemColors.forEach(c => {
+    colors[c._id] = c.color;
+  });
+  
+  // Add custom colors (override system colors with same ID)
+  kitStyles.customColors.forEach(c => {
+    colors[c._id] = c.color;
+  });
+  
+  // Add system typography
+  kitStyles.systemTypography.forEach(t => {
+    typography[t._id] = {
+      fontFamily: t.typography_font_family,
+      fontWeight: t.typography_font_weight as string || '400',
+    };
+  });
+  
+  // Add custom typography
+  kitStyles.customTypography.forEach(t => {
+    typography[t._id] = {
+      fontFamily: t.typography_font_family,
+      fontWeight: t.typography_font_weight as string || '400',
+    };
+  });
+  
+  // Default fonts
+  const defaultHeading = typography.primary?.fontFamily || 'Roboto';
+  const defaultBody = typography.text?.fontFamily || 'Roboto';
+  
+  return {
+    colors,
+    typography,
+    defaultFonts: {
+      heading: defaultHeading,
+      body: defaultBody,
+    },
+  };
+}
+
 function esc(value: unknown): string {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -50,7 +277,18 @@ function getSetting<T>(settings: Record<string, unknown>, key: string, defaultVa
   return (value !== undefined ? value : defaultValue) as T;
 }
 
-function renderWidget(node: ElementorNode): string {
+/**
+ * Resolve a color value - handles both direct hex colors and global color references.
+ */
+function resolveColor(value: unknown, resolvedStyles: ResolvedStyles, fallback: string): string {
+  if (typeof value === 'string' && value.startsWith('globals/colors')) {
+    const resolved = resolveGlobalColor(value, resolvedStyles);
+    return resolved || fallback;
+  }
+  return (value as string) || fallback;
+}
+
+function renderWidget(node: ElementorNode, resolvedStyles: ResolvedStyles): string {
   const settings = node.settings || {};
 
   switch (node.widgetType) {
@@ -58,7 +296,9 @@ function renderWidget(node: ElementorNode): string {
       const text = getSetting(settings, 'heading', '') as string || getSetting(settings, 'title', '') as string;
       const tag = getSetting(settings, 'header_size', 'h2') as string;
       const align = getSetting(settings, 'align', 'left') as string;
-      const titleColor = getSetting(settings, 'title_color', '#1a1a1a') as string;
+      // Use Elementor color resolution for heading
+      const titleColorRaw = settings.title_color;
+      const titleColor = resolveColor(titleColorRaw, resolvedStyles, '#1a1a1a');
       return `<${tag} class="sf-heading" style="text-align:${align};color:${titleColor}">${esc(text)}</${tag}>`;
     }
     case 'text-editor': {
@@ -77,7 +317,9 @@ function renderWidget(node: ElementorNode): string {
       const link = settings.link as { url?: string } | undefined;
       const href = link?.url || '#';
       const align = getSetting(settings, 'align', 'left') as string;
-      const bgColor = getSetting(settings, 'background_color', '#2563eb') as string;
+      // Use Elementor color resolution for button
+      const bgColorRaw = settings.background_color;
+      const bgColor = resolveColor(bgColorRaw, resolvedStyles, '#2563eb');
       return `<div class="sf-button-wrapper" style="text-align:${align}"><a class="sf-button" href="${esc(href)}" style="background-color:${bgColor}">${esc(text)}</a></div>`;
     }
     case 'icon': {
@@ -93,8 +335,9 @@ function renderWidget(node: ElementorNode): string {
       const endingNumber = getSetting(settings, 'ending_number', 0) as number;
       const suffix = getSetting(settings, 'suffix', '') as string;
       const title = getSetting(settings, 'title', '') as string;
-      const numberColor = getSetting(settings, 'number_color', '#2563eb') as string;
-      const titleColor = getSetting(settings, 'title_color', '#666') as string;
+      // Use Elementor color resolution
+      const numberColor = resolveColor(settings.number_color, resolvedStyles, '#2563eb');
+      const titleColor = resolveColor(settings.title_color, resolvedStyles, '#666');
       return `
         <div class="sf-counter">
           <div class="sf-counter-number" style="color:${numberColor}" data-target="${endingNumber}" data-suffix="${esc(suffix)}">${endingNumber}${esc(suffix)}</div>
@@ -107,8 +350,9 @@ function renderWidget(node: ElementorNode): string {
       const imageAlt = (image as { alt?: string })?.alt || '';
       const title = getSetting(settings, 'title_text', '') as string;
       const description = getSetting(settings, 'description_text', '') as string;
-      const titleColor = getSetting(settings, 'title_color', '#1a1a1a') as string;
-      const descColor = getSetting(settings, 'description_color', '#666') as string;
+      // Use Elementor color resolution
+      const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
+      const descColor = resolveColor(settings.description_color, resolvedStyles, '#666');
       const imagePosition = getSetting(settings, 'image_type', 'top') as string;
       
       const imageHtml = url ? `<img class="sf-image-box-img" src="${esc(url)}" alt="${esc(imageAlt)}" loading="lazy" />` : '';
@@ -126,8 +370,9 @@ function renderWidget(node: ElementorNode): string {
       const iconValue = icon?.value || '';
       const title = getSetting(settings, 'title_text', '') as string;
       const description = getSetting(settings, 'description_text', '') as string;
-      const titleColor = getSetting(settings, 'title_color', '#1a1a1a') as string;
-      const descColor = getSetting(settings, 'description_color', '#666') as string;
+      // Use Elementor color resolution
+      const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
+      const descColor = resolveColor(settings.description_color, resolvedStyles, '#666');
       const position = getSetting(settings, 'graphic_element', 'icon') as string;
       
       const iconHtml = iconValue ? `<div class="sf-icon-box-icon">${esc(iconValue)}</div>` : '';
@@ -209,8 +454,8 @@ function renderWidget(node: ElementorNode): string {
   }
 }
 
-function renderNode(node: ElementorNode): string {
-  const children = (node.elements || []).map(renderNode).join('\n');
+function renderNode(node: ElementorNode, resolvedStyles: ResolvedStyles): string {
+  const children = (node.elements || []).map(n => renderNode(n, resolvedStyles)).join('\n');
 
   switch (node.elType) {
     case 'section':
@@ -220,7 +465,7 @@ function renderNode(node: ElementorNode): string {
     case 'column':
       return `<div class="sf-column">${children}</div>`;
     case 'widget':
-      return renderWidget(node);
+      return renderWidget(node, resolvedStyles);
     default:
       return children;
   }
@@ -231,14 +476,20 @@ export function renderElementorToHtml(
   options?: { title?: string; brandTokens?: BrandTokens }
 ): string {
   const brandTokens = options?.brandTokens;
-  const primary = brandTokens?.colors?.primary || '#2563eb';
-  const secondary = brandTokens?.colors?.secondary || '#1e40af';
-  const accent = brandTokens?.colors?.accent || '#06b6d4';
-  const headingFont = brandTokens?.typography?.headingFont || 'system-ui, sans-serif';
-  const bodyFont = brandTokens?.typography?.bodyFont || 'system-ui, sans-serif';
+  
+  // Extract and resolve kit styles from template
+  const kitStyles = extractKitStyles(elements);
+  const resolvedStyles = resolveKitStyles(kitStyles);
+  
+  // Use brand tokens if provided, otherwise use kit styles
+  const primary = brandTokens?.colors?.primary || resolvedStyles.colors.primary || '#2563eb';
+  const secondary = brandTokens?.colors?.secondary || resolvedStyles.colors.secondary || '#1e40af';
+  const accent = brandTokens?.colors?.accent || resolvedStyles.colors.accent || '#06b6d4';
+  const headingFont = brandTokens?.typography?.headingFont || resolvedStyles.defaultFonts.heading || 'system-ui, sans-serif';
+  const bodyFont = brandTokens?.typography?.bodyFont || resolvedStyles.defaultFonts.body || 'system-ui, sans-serif';
 
   const body = elements.length
-    ? elements.map(renderNode).join('\n')
+    ? elements.map(n => renderNode(n, resolvedStyles)).join('\n')
     : `<div class="sf-empty">No content to preview yet.</div>`;
 
   return `<!DOCTYPE html>
