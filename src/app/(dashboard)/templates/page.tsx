@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Search, FileStack, Eye, ChevronRight, ChevronDown, RefreshCw, 
-  Download, Loader2, X, LayoutGrid, Layers, Sparkles, ArrowRight 
+  Download, Loader2, X, LayoutGrid, Layers, Sparkles, ArrowRight,
+  Monitor, Image as ImageIcon, Code
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -85,6 +86,8 @@ export default function TemplatesPage() {
   const [expandedKit, setExpandedKit] = useState<string | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<{ template: TemplateItem; screenshotUrl: string } | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'screenshot' | 'rendered'>('screenshot');
+  const [renderedLoading, setRenderedLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'kits' | 'all'>('kits');
   const initialized = useRef(false);
 
@@ -482,6 +485,35 @@ export default function TemplatesPage() {
                 </p>
               </div>
               <div className="flex gap-2">
+                {/* Preview Mode Toggle */}
+                <div className="flex items-center bg-white/10 rounded-lg p-1">
+                  <button
+                    onClick={() => setPreviewMode('screenshot')}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                      previewMode === 'screenshot'
+                        ? "bg-white text-gray-900"
+                        : "text-white hover:bg-white/20"
+                    )}
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                    Screenshot
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPreviewMode('rendered');
+                    }}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                      previewMode === 'rendered'
+                        ? "bg-white text-gray-900"
+                        : "text-white hover:bg-white/20"
+                    )}
+                  >
+                    <Code className="h-4 w-4" />
+                    Rendered
+                  </button>
+                </div>
                 <Button variant="secondary" size="sm" asChild>
                   <Link href={`/projects/new?template=${previewTemplate.template.id}`}>
                     Use Template <ChevronRight className="ml-2 h-4 w-4" />
@@ -493,21 +525,45 @@ export default function TemplatesPage() {
               </div>
             </div>
             <div className="overflow-auto max-h-[95vh] pt-16 bg-gray-100">
-              <img
-                src={previewTemplate.screenshotUrl}
-                alt={previewTemplate.template.name}
-                className="w-full h-auto"
-                onError={(e) => {
-                  const img = e.target as HTMLImageElement;
-                  img.style.display = 'none';
-                  img.insertAdjacentHTML('afterend', `
-                    <div class="flex flex-col items-center justify-center h-96 bg-muted">
-                      <FileStack class="h-16 w-16 text-muted-foreground/50 mb-4" />
-                      <p class="text-muted-foreground">Preview unavailable</p>
+              {previewMode === 'screenshot' ? (
+                <img
+                  src={previewTemplate.screenshotUrl}
+                  alt={previewTemplate.template.name}
+                  className="w-full h-auto"
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.style.display = 'none';
+                    img.insertAdjacentHTML('afterend', `
+                      <div class="flex flex-col items-center justify-center h-96 bg-muted">
+                        <FileStack class="h-16 w-16 text-muted-foreground/50 mb-4" />
+                        <p class="text-muted-foreground">Screenshot preview unavailable</p>
+                        <button class="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors" onclick="this.closest('.overflow-auto').querySelector('button')?.click() || (document.querySelector('[data-preview-mode-btn]')?.click())">
+                          Try Rendered Preview
+                        </button>
+                      </div>
+                    `);
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full min-h-[600px] bg-white relative">
+                  {renderedLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+                      <div className="text-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+                        <p className="text-muted-foreground">Rendering template...</p>
+                      </div>
                     </div>
-                  `);
-                }}
-              />
+                  )}
+                  <iframe
+                    src={`/api/templates/preview?id=${previewTemplate.template.id}`}
+                    className="w-full h-full min-h-[600px] border-0"
+                    title={`Rendered preview of ${previewTemplate.template.name}`}
+                    onLoad={() => setRenderedLoading(false)}
+                    onError={() => setRenderedLoading(false)}
+                    sandbox="allow-scripts allow-same-origin"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
