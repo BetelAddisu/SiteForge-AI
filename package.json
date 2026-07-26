@@ -12,7 +12,10 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:phase0": "tsx scripts/phase0/smoke-test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1089.0",
@@ -68,6 +71,7 @@
     "prisma": "^5.20.0",
     "tailwindcss": "^3.4.11",
     "tsx": "^4.19.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.9"
   }
 }

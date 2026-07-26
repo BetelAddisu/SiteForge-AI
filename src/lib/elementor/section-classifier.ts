@@ -88,16 +88,19 @@ export function classifySections(nodes: ElementorNode[]): ClassifiedSection[] {
     }
 
     // No keyword match - fall back to position + structural heuristics.
+    // Structural signal comes first: a section with several repeated
+    // column/card groups is a strong services/features signal regardless
+    // of position, and should win over "it's the last section" - a
+    // services grid that happens to be the last section on the page
+    // should not be mislabeled as a footer.
+    if (countRepeatedGroups(node) >= 3) {
+      return { node, role: 'services', index };
+    }
     if (index === 0) {
       return { node, role: 'hero', index };
     }
     if (index === topLevel.length - 1) {
       return { node, role: 'footer', index };
-    }
-    // A middle section with several repeated column groups and no other
-    // signal is a reasonable guess for a services/features grid.
-    if (countRepeatedGroups(node) >= 3) {
-      return { node, role: 'services', index };
     }
 
     return { node, role: 'unknown', index };
