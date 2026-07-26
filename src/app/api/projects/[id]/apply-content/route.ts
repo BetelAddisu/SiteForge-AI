@@ -3,6 +3,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { findAllNodesByWidgetType, setNodeContent } from '@/lib/elementor/modifier';
+import { classifySections } from '@/lib/elementor/section-classifier';
 import type { ElementorNode } from '@/lib/elementor/parser';
 import { validateElementorJson } from '@/lib/elementor/validator';
 
@@ -68,42 +69,47 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const hero = generatedContent.homepage?.hero;
     const about = generatedContent.homepage?.about;
     const services = generatedContent.homepage?.services ?? [];
+    const aboutDescription = about?.paragraphs?.[0];
 
-    // Distribute across ALL matching widgets in document order, not just
-    // the first one of each type - matches the same strategy used in the
-    // generation pipeline (see pipeline.ts stepModifyJson), so edits made
-    // here behave the same way edits made during generation do.
-    const headingTexts = [hero?.heading, about?.heading, ...services.map(s => s.title)]
-      .filter((t): t is string => Boolean(t));
-    const textEditorTexts = [hero?.subheading, ...(about?.paragraphs ?? []), ...services.map(s => s.description)]
-      .filter((t): t is string => Boolean(t));
-    const buttonTexts = [hero?.ctaText].filter((t): t is string => Boolean(t));
-
+    // Classify sections by role and fill within each section only - matches
+    // the same strategy used in the generation pipeline (see pipeline.ts
+    // stepCreateElementorStructure), so edits here behave the same way
+    // edits made during generation do, and don't bleed content into
+    // sections they don't belong in.
     const appliedModifications: string[] = [];
+    const classified = classifySections(contentTree);
 
-    const headingNodes = findAllNodesByWidgetType(contentTree, 'heading');
-    headingTexts.forEach((text, i) => {
-      if (headingNodes[i]) {
-        setNodeContent(headingNodes[i], text);
-        appliedModifications.push(`heading[${i}] -> "${text.slice(0, 40)}"`);
-      }
-    });
+    const heroSection = classified.find(c => c.role === 'hero');
+    if (heroSection) {
+      const headings = findAllNodesByWidgetType(heroSection.node.elements || [], 'heading');
+      if (headings[0] && hero?.heading) { setNodeContent(headings[0], hero.heading); appliedModifications.push('hero heading'); }
 
-    const textEditorNodes = findAllNodesByWidgetType(contentTree, 'text-editor');
-    textEditorTexts.forEach((text, i) => {
-      if (textEditorNodes[i]) {
-        setNodeContent(textEditorNodes[i], text);
-        appliedModifications.push(`text-editor[${i}] -> "${text.slice(0, 40)}"`);
-      }
-    });
+      const textEditors = findAllNodesByWidgetType(heroSection.node.elements || [], 'text-editor');
+      if (textEditors[0] && hero?.subheading) { setNodeContent(textEditors[0], hero.subheading); appliedModifications.push('hero subheading'); }
 
-    const buttonNodes = findAllNodesByWidgetType(contentTree, 'button');
-    buttonTexts.forEach((text, i) => {
-      if (buttonNodes[i]) {
-        setNodeContent(buttonNodes[i], text);
-        appliedModifications.push(`button[${i}] -> "${text.slice(0, 40)}"`);
-      }
-    });
+      const buttons = findAllNodesByWidgetType(heroSection.node.elements || [], 'button');
+      if (buttons[0] && hero?.ctaText) { setNodeContent(buttons[0], hero.ctaText); appliedModifications.push('hero CTA'); }
+    }
+
+    const aboutSection = classified.find(c => c.role === 'about');
+    if (aboutSection) {
+      const headings = findAllNodesByWidgetType(aboutSection.node.elements || [], 'heading');
+      if (headings[0] && about?.heading) { setNodeContent(headings[0], about.heading); appliedModifications.push('about heading'); }
+
+      const textEditors = findAllNodesByWidgetType(aboutSection.node.elements || [], 'text-editor');
+      if (textEditors[0] && aboutDescription) { setNodeContent(textEditors[0], aboutDescription); appliedModifications.push('about description'); }
+    }
+
+    const servicesSection = classified.find(c => c.role === 'services');
+    if (servicesSection && services.length > 0) {
+      const headings = findAllNodesByWidgetType(servicesSection.node.elements || [], 'heading');
+      const textEditors = findAllNodesByWidgetType(servicesSection.node.elements || [], 'text-editor');
+
+      services.forEach((service, i) => {
+        if (headings[i] && service.title) { setNodeContent(headings[i], service.title); appliedModifications.push(`service[${i}] title`); }
+        if (textEditors[i] && service.description) { setNodeContent(textEditors[i], service.description); appliedModifications.push(`service[${i}] description`); }
+      });
+    }
 
     const validation = validateElementorJson(contentTree);
     if (!validation.valid) return NextResponse.json({ error: `Validation failed: ${validation.errors.map(e => e.message).join(', ')}` }, { status: 422 });

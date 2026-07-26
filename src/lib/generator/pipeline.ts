@@ -9,6 +9,8 @@ import { prisma } from '../prisma';
 import { matchTemplates, type ProjectContext } from '../elementor/template-matcher';
 import { AIContentEngine } from '../elementor/schemas';
 import { findAllNodesByWidgetType, setNodeContent } from '../elementor/modifier';
+import { classifySections } from '../elementor/section-classifier';
+import type { ElementorNode } from '../elementor/parser';
 import { validateElementorJson } from '../elementor/validator';
 import { generatePreview } from '../preview';
 
@@ -440,42 +442,56 @@ export class GenerationPipeline {
       const about = generatedContent?.homepage?.about;
       const services = generatedContent?.homepage?.services ?? [];
 
-      // Collect all texts to distribute
-      const headingTexts = [
-        hero?.heading,
-        about?.heading,
-        ...services.map(s => s.title),
-      ].filter((t): t is string => Boolean(t));
+      // Classify each top-level section by role (hero/about/services/etc.)
+      // using its own text content, then fill widgets ONLY within the
+      // section that role belongs to - not by raw document position across
+      // the whole page. Sections we can't confidently classify are left
+      // untouched rather than filled with a guess.
+      const classified = classifySections(contentTree as ElementorNode[]);
+      console.log(
+        '[Pipeline] Section roles:',
+        classified.map(c => `${c.index}:${c.role}`).join(', ')
+      );
 
-      const textEditorTexts = [
-        hero?.subheading,
-        about?.description,
-        ...services.map(s => s.description),
-      ].filter((t): t is string => Boolean(t));
+      const heroSection = classified.find(c => c.role === 'hero');
+      if (heroSection) {
+        const headings = findAllNodesByWidgetType(heroSection.node.elements || [], 'heading');
+        if (headings[0] && hero?.heading) setNodeContent(headings[0], hero.heading);
 
-      const buttonTexts = [hero?.ctaText].filter((t): t is string => Boolean(t));
+        const textEditors = findAllNodesByWidgetType(heroSection.node.elements || [], 'text-editor');
+        if (textEditors[0] && hero?.subheading) setNodeContent(textEditors[0], hero.subheading);
 
-      // Find and fill all widgets
-      const headingNodes = findAllNodesByWidgetType(contentTree as Parameters<typeof findAllNodesByWidgetType>[0], 'heading');
-      headingTexts.forEach((text, i) => {
-        if (headingNodes[i]) {
-          setNodeContent(headingNodes[i], text);
-        }
-      });
+        const buttons = findAllNodesByWidgetType(heroSection.node.elements || [], 'button');
+        if (buttons[0] && hero?.ctaText) setNodeContent(buttons[0], hero.ctaText);
+      }
 
-      const textEditorNodes = findAllNodesByWidgetType(contentTree as Parameters<typeof findAllNodesByWidgetType>[0], 'text-editor');
-      textEditorTexts.forEach((text, i) => {
-        if (textEditorNodes[i]) {
-          setNodeContent(textEditorNodes[i], text);
-        }
-      });
+      const aboutSection = classified.find(c => c.role === 'about');
+      if (aboutSection) {
+        const headings = findAllNodesByWidgetType(aboutSection.node.elements || [], 'heading');
+        if (headings[0] && about?.heading) setNodeContent(headings[0], about.heading);
 
-      const buttonNodes = findAllNodesByWidgetType(contentTree as Parameters<typeof findAllNodesByWidgetType>[0], 'button');
-      buttonTexts.forEach((text, i) => {
-        if (buttonNodes[i]) {
-          setNodeContent(buttonNodes[i], text);
-        }
-      });
+        const textEditors = findAllNodesByWidgetType(aboutSection.node.elements || [], 'text-editor');
+        if (textEditors[0] && about?.description) setNodeContent(textEditors[0], about.description);
+      }
+
+      const servicesSection = classified.find(c => c.role === 'services');
+      if (servicesSection && services.length > 0) {
+        // Fill within each repeated column/card in document order, so
+        // service N's title/description lands in card N, not spread
+        // across unrelated sections.
+        const headings = findAllNodesByWidgetType(servicesSection.node.elements || [], 'heading');
+        const textEditors = findAllNodesByWidgetType(servicesSection.node.elements || [], 'text-editor');
+
+        services.forEach((service, i) => {
+          if (headings[i] && service.title) setNodeContent(headings[i], service.title);
+          if (textEditors[i] && service.description) setNodeContent(textEditors[i], service.description);
+        });
+      }
+
+      const unmatchedRoles = classified.filter(c => c.role === 'unknown').length;
+      if (unmatchedRoles > 0) {
+        console.log(`[Pipeline] ${unmatchedRoles} section(s) left unmodified (role unknown) - original template content preserved there.`);
+      }
     } else {
       // Generate basic structure from scratch
       contentTree = this.generateBasicStructure(generatedContent);
