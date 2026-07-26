@@ -32,7 +32,7 @@ export interface ExtractedSection {
   id: string;
   type: string;
   title?: string;
-  content: Record<string, unknown>;
+  content: ElementorNode[];  // Store the actual element tree (columns + widgets)
   widgets: string[];
 }
 
@@ -303,7 +303,7 @@ export function extractSections(nodes: ElementorNode[]): ExtractedSection[] {
         id: node.id,
         type: sectionType,
         title: extractSectionTitle(node),
-        content: node.settings || {},
+        content: node.elements || [],  // Store the actual child tree (columns + widgets)
         widgets: sectionWidgets
       });
     }

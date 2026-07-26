@@ -58,6 +58,7 @@ export interface PipelineOptions {
     };
   };
   selectedTemplates?: string[];
+  resume?: boolean;  // Whether to resume from last checkpoint
   onStepComplete?: (step: PipelineStep, data: unknown) => void;
   onError?: (step: PipelineStep, error: string) => void;
 }
@@ -224,20 +225,20 @@ export class GenerationPipeline {
     options.onStepComplete?.('ANALYZE_BUSINESS', context);
   }
 
-  // Step 3: Select Templates - simplified to always work
+  // Step 3: Select Templates - loads ALL sections for multi-template composition
   private async stepSelectTemplates(options: PipelineOptions): Promise<void> {
     console.log('[Pipeline] stepSelectTemplates - Looking for templates...');
     
     // Get templates from database
     const templates = await this.prisma.template.findMany({
       where: options.selectedTemplates ? { id: { in: options.selectedTemplates } } : undefined,
-      include: { sections: true },
+      include: { sections: { orderBy: { order: 'asc' } } },
     });
 
     console.log(`[Pipeline] Found ${templates.length} templates in database`);
 
     let templateToUse = null;
-    let templateContent: unknown[] = [];
+    let templateContent: ElementorNode[] = [];
 
     if (templates.length > 0) {
       // Find the best matching template
@@ -261,29 +262,53 @@ export class GenerationPipeline {
         context
       );
 
-      // Use the first matched template
-      const firstMatch = matches.homepage?.[0] || matches.services?.[0];
-      if (firstMatch) {
-        templateToUse = templates.find(t => t.id === firstMatch.templateId);
-        if (templateToUse) {
-          // Get template content from sections
-          const section = await this.prisma.templateSection.findFirst({
-            where: { templateId: templateToUse.id },
-          });
-          templateContent = (section?.content as unknown[]) ?? [];
-          console.log(`[Pipeline] Template: ${templateToUse.name}, section content length: ${templateContent.length}`);
-        }
-      }
+      // Helper to load all sections from a template and flatten to nodes
+      const loadTemplateSections = async (templateId: string): Promise<ElementorNode[]> => {
+        const sections = await this.prisma.templateSection.findMany({
+          where: { templateId },
+          orderBy: { order: 'asc' },
+        });
+        // sections.content is now ElementorNode[] (columns + widgets), wrap each in a section wrapper
+        return sections.map(section => ({
+          id: section.id,
+          elType: 'section' as const,
+          elements: (section.content as unknown as ElementorNode[]) || [],
+        }));
+      };
 
-      // If no match, use the first template
+      // Compose page from multiple templates (hero + about + services + contact)
+      const composedElements: ElementorNode[] = [];
+      
+      // Load sections from each matched category
+      const addMatch = async (match: { templateId: string } | undefined) => {
+        if (!match) return;
+        const elements = await loadTemplateSections(match.templateId);
+        composedElements.push(...elements);
+      };
+
+      await addMatch(matches.homepage?.[0]);
+      await addMatch(matches.about?.[0]);
+      await addMatch(matches.services?.[0]);
+      await addMatch(matches.contact?.[0]);
+
+      // Use homepage match as primary template reference
+      if (matches.homepage?.[0]) {
+        templateToUse = templates.find(t => t.id === matches.homepage![0].templateId);
+      }
+      
+      // Fallback to first template if no match
       if (!templateToUse && templates.length > 0) {
         templateToUse = templates[0];
-        const section = await this.prisma.templateSection.findFirst({
-          where: { templateId: templateToUse.id },
-        });
-        templateContent = (section?.content as unknown[]) ?? [];
-        console.log(`[Pipeline] Using first template: ${templateToUse.name}, section content length: ${templateContent.length}`);
       }
+
+      // If we have composed elements, use them; otherwise load all from primary template
+      if (composedElements.length > 0) {
+        templateContent = composedElements;
+      } else if (templateToUse) {
+        templateContent = await loadTemplateSections(templateToUse.id);
+      }
+
+      console.log(`[Pipeline] Template: ${templateToUse?.name || 'none'}, composed ${templateContent.length} sections`);
 
       this.state!.checkpointData = {
         ...this.state!.checkpointData,
@@ -466,7 +491,7 @@ export class GenerationPipeline {
       id: string;
       name: string;
     } | null;
-    const templateContent = this.state!.checkpointData['templateContent'] as unknown[];
+    const templateContent = this.state!.checkpointData['templateContent'] as ElementorNode[];
 
     console.log('[Pipeline] stepCreateElementorStructure - Template:', templateToUse?.name || 'None');
 

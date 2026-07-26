@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
+import { validateElementorJson, type ElementorNode } from '@/lib/elementor/parser';
 
 async function createServerSupabaseClient() {
   const cookieStore = await cookies();
@@ -19,6 +20,30 @@ async function createServerSupabaseClient() {
       },
     }
   );
+}
+
+// Normalize elementor data to consistent shape
+function normalizeElementorData(rawData: unknown): {
+  version: string;
+  elements: ElementorNode[];
+  templateId: string | null;
+  templateName: string | null;
+} {
+  const raw = rawData as any;
+  // Raw data can be:
+  // - Array (from fallback generator)
+  // - { version, elements, templateId } object
+  // - null/undefined
+  const elements = Array.isArray(raw) 
+    ? raw 
+    : (raw?.elements ?? []);
+  
+  return {
+    version: raw?.version || '0.3',
+    elements: Array.isArray(elements) ? elements as ElementorNode[] : [],
+    templateId: raw?.templateId ?? null,
+    templateName: raw?.templateName ?? null,
+  };
 }
 
 // GET - Get project elementor data for editing
@@ -48,16 +73,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // Return elementor data
-    const elementorData = project.elementorData as {
-      version?: string;
-      elements?: unknown[];
-    } | null;
+    // Normalize elementor data to consistent shape
+    const normalized = normalizeElementorData(project.elementorData);
 
-    console.log('[Editor GET] Project:', id, 'elementorData:', JSON.stringify(elementorData)?.slice(0, 200));
+    console.log('[Editor GET] Project:', id, 'elements:', normalized.elements.length);
 
     return NextResponse.json({
-      elementorData: elementorData || { elements: [] },
+      elementorData: normalized,
       project: {
         id: project.id,
         businessName: project.businessName,
@@ -70,7 +92,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 }
 
-// PUT - Save editor changes
+// PUT - Save editor changes with validation
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -101,8 +123,19 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const body = await request.json();
     const { elementorData } = body;
 
-    if (!elementorData || !Array.isArray(elementorData.elements)) {
-      return NextResponse.json({ error: 'Invalid elementor data' }, { status: 400 });
+    if (!elementorData) {
+      return NextResponse.json({ error: 'Missing elementor data' }, { status: 400 });
+    }
+
+    // Normalize and validate the incoming data
+    const normalized = normalizeElementorData(elementorData);
+    
+    // Validate that elements is valid Elementor JSON
+    if (!validateElementorJson(normalized.elements)) {
+      return NextResponse.json({ 
+        error: 'Invalid Elementor structure',
+        details: 'Elements must be a valid array of Elementor nodes with id and elType fields'
+      }, { status: 400 });
     }
 
     // Save to project
@@ -110,9 +143,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       where: { id },
       data: {
         elementorData: {
-          version: '0.3',
-          ...elementorData,
-        },
+          version: normalized.version,
+          elements: normalized.elements as any,  // Cast for Prisma Json compatibility
+          templateId: normalized.templateId,
+          templateName: normalized.templateName,
+        } as any,  // Cast for Prisma Json compatibility
         status: 'PREVIEW', // Update status since content changed
       },
     });

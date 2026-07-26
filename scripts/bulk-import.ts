@@ -333,13 +333,14 @@ async function processTemplate(
       },
     });
     
-    // Create template sections
+    // Create template sections with actual Elementor nodes
     await prisma.templateSection.createMany({
-      data: extracted.sections.map(section => ({
+      data: extracted.sections.map((section, index) => ({
         templateId: processingJob.template!.id,
         type: section.type,
         title: section.title,
-        content: { widgets: section.widgets },
+        content: section.content,  // This is now ElementorNode[] from parser.ts
+        order: index,              // Track section order for composition
       })),
     });
     

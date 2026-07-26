@@ -109,13 +109,20 @@ export class WordPressClient {
     const jsonString = JSON.stringify(elementorData);
     
     try {
-      await this.request(`/pages/${pageId}/meta`, {
-        method: 'POST',
-        body: JSON.stringify({
-          key: '_elementor_data',
-          value: jsonString,
-        }),
-      });
+      // Write all required Elementor meta keys
+      const metaEntries = [
+        { key: '_elementor_data', value: jsonString },
+        { key: '_elementor_edit_mode', value: 'builder' },
+        { key: '_elementor_template_type', value: 'wp-page' },
+        { key: '_elementor_version', value: '3.20.0' },
+      ];
+
+      for (const entry of metaEntries) {
+        await this.request(`/pages/${pageId}/meta`, {
+          method: 'POST',
+          body: JSON.stringify(entry),
+        });
+      }
     } catch (error) {
       console.warn('Meta endpoint failed:', error);
       throw new Error(

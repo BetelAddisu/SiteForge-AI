@@ -227,7 +227,8 @@ model TemplateSection {
   templateId  String
   type        String   // hero, about, services, pricing, team, testimonial, FAQ, contact, footer
   title       String?  // Section title for identification
-  content     Json     // Extracted widget content
+  content     Json     // Extracted Elementor nodes (columns + widgets) from template
+  order       Int      @default(0)  // Section order for composition
   metadata    Json?    // Additional section metadata
   
   // Relations
@@ -235,6 +236,7 @@ model TemplateSection {
   
   @@index([templateId])
   @@index([type])
+  @@index([templateId, order])  // For ordered queries
 }
 
 // =============================================================================
