@@ -498,43 +498,79 @@ export function renderElementorToHtml(
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>${esc(options?.title || 'Website Preview')}</title>
-<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Roboto+Slab:wght@400;500&display=swap" rel="stylesheet" />
 <style>
-  * { box-sizing: border-box; }
+  /* Elementor Global Reset */
+  .elementor, .elementor * { box-sizing: border-box; }
+  .elementor a { box-shadow: none; text-decoration: none; }
+  .elementor img { height: auto; max-width: 100%; border: none; border-radius: 0; box-shadow: none; }
+  .elementor hr { margin: 0; background-color: transparent; }
+  
+  /* CSS Variables for Global Colors (Elementor style) */
+  :root {
+    --e-global-color-primary: ${primary};
+    --e-global-color-secondary: ${secondary};
+    --e-global-color-text: ${resolvedStyles.colors.text || '#7A7A7A'};
+    --e-global-color-accent: ${accent};
+    --e-global-typography-primary-font-family: ${resolvedStyles.typography.primary?.fontFamily || 'Roboto'};
+    --e-global-typography-secondary-font-family: ${resolvedStyles.typography.secondary?.fontFamily || 'Roboto Slab'};
+    --e-global-typography-text-font-family: ${resolvedStyles.typography.text?.fontFamily || 'Roboto'};
+  }
+
   body {
     margin: 0;
-    font-family: ${bodyFont};
-    color: #1a1a1a;
+    font-family: ${bodyFont}, 'Roboto', sans-serif;
+    color: #333;
     line-height: 1.6;
     background: #fff;
   }
   
-  /* Section & Container */
-  .sf-section { 
+  /* Elementor Section Structure */
+  .elementor-section-wrap { width: 100%; }
+  .elementor-section, .sf-section { 
+    position: relative;
+    display: flex;
+    flex-direction: column;
     padding: 60px 24px; 
     background: #fff;
+    min-height: 50px;
   }
-  .sf-section:empty { display: none; }
-  .sf-container { 
-    max-width: 1200px; 
-    margin: 0 auto; 
-    display: block;
+  .elementor-section:empty { display: none; }
+  .elementor-container, .sf-container { 
+    display: flex;
+    max-width: 1140px;
+    margin: 0 auto;
+    width: 100%;
+    flex-wrap: wrap;
   }
-  .sf-column { 
-    display: inline-block; 
-    vertical-align: top; 
-    padding: 16px; 
+  .elementor-column, .sf-column { 
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    width: 100%;
+    min-height: 1px;
+    flex: 1 1 0%;
+  }
+  .elementor-widget-wrap, .sf-widget-wrap {
+    display: flex;
+    flex-wrap: wrap;
     width: 100%;
   }
+  .elementor-widget, .sf-widget { width: 100%; }
   
-  /* Typography */
-  .sf-heading {
-    font-family: ${headingFont};
-    margin: 0 0 20px 0;
-    font-size: 2.5rem;
-    font-weight: 700;
+  /* Typography - Heading Widget (Elementor naming) */
+  .elementor-widget-heading .elementor-heading-title, .sf-heading {
+    font-family: ${headingFont}, 'Roboto', sans-serif;
+    margin: 0;
     line-height: 1.2;
   }
+  .elementor-size-xxl { font-size: 59px; }
+  .elementor-size-xl { font-size: 39px; }
+  .elementor-size-lg { font-size: 29px; }
+  .elementor-size-md { font-size: 19px; }
+  .elementor-size-sm { font-size: 15px; }
+  
+  /* Text Editor */
   .sf-text { 
     margin: 0 0 20px 0; 
     font-size: 1.1rem;
@@ -544,73 +580,115 @@ export function renderElementorToHtml(
   .sf-text p:last-child { margin-bottom: 0; }
   
   /* Image */
-  .sf-image { 
+  .elementor-image, .sf-image { display: inline-block; }
+  .elementor-image img, .sf-image { 
     max-width: 100%; 
     height: auto; 
     display: block;
-    margin-bottom: 16px;
   }
   
-  /* Button */
-  .sf-button-wrapper { margin: 20px 0; }
-  .sf-button {
+  /* Button - Elementor base styles */
+  .sf-button-wrapper { margin: 10px 0; }
+  .elementor-button, .sf-button {
     display: inline-block;
-    padding: 14px 32px;
-    background: ${primary};
+    line-height: 1;
+    background-color: var(--e-global-color-primary, ${primary});
+    font-size: 15px;
+    padding: 12px 24px;
+    border-radius: 3px;
     color: #fff;
-    text-decoration: none;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    border: none;
+    text-align: center;
+    transition: all 0.2s ease;
     cursor: pointer;
+    border: none;
+    text-decoration: none;
   }
-  .sf-button:hover {
-    background: ${secondary};
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  .elementor-button:hover, .sf-button:hover {
+    color: #fff;
+    background-color: var(--e-global-color-secondary, ${secondary});
   }
+  .elementor-button-content-wrapper { display: flex; justify-content: center; flex-direction: row; gap: 5px; }
+  .elementor-size-xs { font-size: 13px; padding: 10px 20px; border-radius: 2px; }
+  .elementor-size-sm { /* default */ }
+  .elementor-size-md { font-size: 16px; padding: 15px 30px; border-radius: 4px; }
+  .elementor-size-lg { font-size: 18px; padding: 20px 40px; border-radius: 5px; }
+  .elementor-size-xl { font-size: 20px; padding: 25px 50px; border-radius: 6px; }
   
   /* Spacer */
-  .sf-spacer { width: 100%; }
+  .elementor-widget-spacer .elementor-spacer, .sf-spacer { width: 100%; }
   
-  /* Counter Widget */
-  .sf-counter {
-    text-align: center;
-    padding: 24px;
-    background: linear-gradient(135deg, ${primary} 0%, ${accent} 100%);
-    border-radius: 16px;
-    color: #fff;
-    margin: 16px 0;
+  /* Counter Widget - Elementor base styles */
+  .elementor-counter, .sf-counter {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    flex-direction: column-reverse;
   }
-  .sf-counter-number {
-    font-family: 'Kanit', sans-serif;
-    font-size: 3rem;
-    font-weight: 700;
+  .elementor-counter-number-wrapper, .sf-counter-number-wrapper {
+    flex: 1;
+    display: flex;
+    font-size: 69px;
+    font-weight: 600;
     line-height: 1;
+    text-align: center;
   }
-  .sf-counter-title {
-    font-size: 0.95rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-top: 8px;
-    opacity: 0.9;
+  .elementor-counter-number, .sf-counter-number {
+    flex-grow: var(--counter-number-grow, 1);
+  }
+  .elementor-counter-number-prefix, .sf-counter-prefix {
+    text-align: end;
+    flex-grow: var(--counter-prefix-grow, 1);
+    white-space: pre-wrap;
+  }
+  .elementor-counter-number-suffix, .sf-counter-suffix {
+    text-align: start;
+    flex-grow: var(--counter-suffix-grow, 1);
+    white-space: pre-wrap;
+  }
+  .elementor-counter-title, .sf-counter-title {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    font-size: 19px;
+    font-weight: 400;
+    line-height: 2.5;
   }
   
-  /* Image Box Widget */
-  .sf-image-box {
-    padding: 24px;
-    background: #fff;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    margin: 16px 0;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  /* Image Box Widget - Elementor base styles */
+  .elementor-widget-image-box, .sf-image-box { display: flex; }
+  .elementor-image-box-wrapper, .sf-image-box-wrapper {
+    display: flex;
+    text-align: center;
+    flex-direction: column;
+    width: 100%;
   }
-  .sf-image-box:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+  .elementor-image-box-img, .sf-image-box-img {
+    display: inline-block;
+    margin: 0 auto 15px;
   }
+  .elementor-image-box-img img, .sf-image-box-img img {
+    display: block;
+    line-height: 0;
+  }
+  .elementor-image-box-content, .sf-image-box-content {
+    width: 100%;
+    flex-grow: 1;
+  }
+  .elementor-image-box-title, .sf-image-box-title {
+    margin: 0 0 8px;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+  .elementor-image-box-title a { color: inherit; }
+  .elementor-image-box-description, .sf-image-box-desc {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+  .sf-image-box { flex-direction: column; }
   .sf-image-box-img {
     width: 100%;
     height: 200px;
@@ -642,54 +720,70 @@ export function renderElementorToHtml(
   }
   .sf-image-box-left .sf-image-box-content { text-align: left; }
   
-  /* Icon Box Widget */
-  .sf-icon-box {
+  /* Icon Box Widget - Elementor base styles */
+  .elementor-widget-icon-box, .sf-icon-box { display: flex; }
+  .elementor-icon-box-wrapper, .sf-icon-box-wrapper {
+    display: flex;
     text-align: center;
-    padding: 32px 24px;
-    background: #fff;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    margin: 16px 0;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    flex-direction: column;
   }
-  .sf-icon-box:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+  .elementor-icon-box-icon, .sf-icon-box-icon {
+    display: inline-block;
+    flex: 0 0 auto;
+    line-height: 0;
   }
-  .sf-icon-box-icon {
-    font-size: 3rem;
-    margin-bottom: 20px;
-    color: ${primary};
+  .elementor-icon-box-icon i, .sf-icon-box-icon {
+    font-size: 50px;
+    color: var(--e-global-color-primary, ${primary});
   }
-  .sf-icon-box-title {
+  .elementor-icon-box-content, .sf-icon-box-content {
+    width: 100%;
+    flex-grow: 1;
+  }
+  .elementor-icon-box-title, .sf-icon-box-title {
+    margin: 0 0 8px;
     font-size: 1.25rem;
     font-weight: 600;
-    margin: 0 0 12px 0;
   }
-  .sf-icon-box-desc {
-    font-size: 0.95rem;
+  .elementor-icon-box-title a { color: inherit; }
+  .elementor-icon-box-description, .sf-icon-box-desc {
     margin: 0;
-    color: #6b7280;
+    font-size: 1rem;
     line-height: 1.6;
   }
-  .sf-icon-box-inline {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    text-align: left;
-  }
-  .sf-icon-box-inline .sf-icon-box-icon {
-    font-size: 2rem;
-    margin-bottom: 0;
-    flex-shrink: 0;
-  }
+  .sf-icon-box { flex-direction: column; }
+  .sf-icon-box-icon { font-size: 50px; margin-bottom: 15px; }
   
-  /* Icon List Widget */
-  .sf-icon-list {
-    list-style: none;
-    padding: 0;
-    margin: 16px 0;
+  /* Icon View Styles (shared between Icon, Icon Box, Social Icons) */
+  .elementor-view-stacked .elementor-icon {
+    padding: 0.5em;
+    background-color: var(--e-global-color-primary, ${primary});
+    color: #fff;
   }
+  .elementor-view-framed .elementor-icon {
+    padding: 0.5em;
+    color: var(--e-global-color-primary, ${primary});
+    border: 3px solid var(--e-global-color-primary, ${primary});
+    background-color: transparent;
+  }
+  .elementor-icon {
+    display: inline-block;
+    line-height: 1;
+    transition: all 0.2s ease;
+    color: var(--e-global-color-primary, ${primary});
+    font-size: 50px;
+    text-align: center;
+  }
+  .elementor-shape-circle .elementor-icon { border-radius: 50%; }
+  
+  /* Icon List Widget - Elementor base styles */
+  .elementor-icon-list-items, .sf-icon-list { list-style: none; padding: 0; margin: 0; }
+  .elementor-icon-list-item, .sf-icon-list-item { display: flex; align-items: center; }
+  .elementor-icon-list-icon, .sf-icon-list-icon {
+    color: var(--e-global-color-primary, ${primary});
+    font-size: 1.25rem;
+  }
+  .elementor-icon-list-text, .sf-icon-list-text { color: inherit; }
   .sf-icon-list-item {
     display: flex;
     align-items: center;
@@ -703,56 +797,32 @@ export function renderElementorToHtml(
     color: ${primary};
   }
   
-  /* Divider Widget */
-  .sf-divider {
+  /* Divider Widget - Elementor base styles */
+  .elementor-widget-divider, .sf-divider-widget { display: flex; }
+  .elementor-divider, .sf-divider {
+    display: flex;
+    margin: 0;
+    background-color: #d3d3d3;
     border: none;
-    margin: 32px auto;
   }
+  .elementor-divider-separator, .sf-divider-separator {
+    display: flex;
+    margin: 0 auto;
+    flex-direction: column;
+  }
+  .elementor-divider__symbol, .sf-divider-symbol {
+    width: 100%;
+    height: 1px;
+    background-color: #d3d3d3;
+  }
+  .sf-divider { height: 1px; width: 100%; background-color: #d3d3d3; margin: 10px 0; }
   
   /* Video Widget */
-  .sf-video {
-    position: relative;
-    width: 100%;
-    max-width: 800px;
-    margin: 24px auto;
-    border-radius: 16px;
-    overflow: hidden;
-    background: #1a1a1a;
-  }
-  .sf-video-thumb {
-    width: 100%;
-    height: auto;
-    display: block;
-  }
-  .sf-video-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,0.3);
-  }
-  .sf-video-play {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: ${primary};
-    color: #fff;
-    font-size: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    transition: transform 0.3s ease;
-  }
-  .sf-video-play:hover { transform: scale(1.1); }
-  .sf-video-placeholder {
-    font-size: 3rem;
-    color: #fff;
-  }
+  .elementor-widget-video .elementor-video-container, .sf-video { position: relative; width: 100%; max-width: 800px; margin: 0 auto; }
+  .sf-video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; }
+  .sf-video iframe, .sf-video video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  .sf-video-placeholder { display: flex; align-items: center; justify-content: center; background: #1a1a1a; color: #fff; min-height: 200px; }
+
   
   /* Image Carousel */
   .sf-carousel {
@@ -789,84 +859,73 @@ export function renderElementorToHtml(
     margin: 0 auto;
     padding: 40px;
     background: #fff;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border: 1px solid #e5e7eb;
     text-align: center;
-  }
-  .sf-form-placeholder-icon {
-    font-size: 3rem;
-    margin-bottom: 16px;
-  }
-  .sf-form-placeholder p {
-    margin: 0 0 8px 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-  }
-  .sf-form-placeholder-sub {
-    font-size: 0.875rem !important;
-    color: #6b7280;
-    margin-bottom: 24px !important;
   }
   .sf-form {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    text-align: left;
   }
   .sf-form input,
   .sf-form textarea {
-    padding: 14px 16px;
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    font-size: 1rem;
+    padding: 12px 16px;
+    border: 1px solid #d3d3d3;
+    border-radius: 3px;
+    font-size: 15px;
     font-family: inherit;
     transition: border-color 0.2s;
   }
   .sf-form input:focus,
   .sf-form textarea:focus {
     outline: none;
-    border-color: ${primary};
+    border-color: var(--e-global-color-primary, ${primary});
   }
   .sf-form textarea { min-height: 120px; resize: vertical; }
   .sf-form button {
-    padding: 14px 32px;
-    background: ${primary};
+    padding: 12px 24px;
+    background: var(--e-global-color-primary, ${primary});
     color: #fff;
     border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
+    border-radius: 3px;
+    font-size: 15px;
+    font-weight: 500;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: opacity 0.2s;
   }
-  .sf-form button:hover { background: ${secondary}; }
+  .sf-form button:hover { opacity: 0.9; }
   
   /* Unsupported Widget */
   .sf-unsupported {
     padding: 12px 16px;
-    margin: 16px 0;
+    margin: 10px 0;
     border: 1px dashed #cbd5e1;
-    color: #64748b;
+    color: #666;
     font-size: 13px;
     font-family: monospace;
     background: #f8fafc;
-    border-radius: 8px;
+    border-radius: 3px;
   }
   
   /* Empty State */
   .sf-empty {
     padding: 80px 24px;
     text-align: center;
-    color: #94a3b8;
-    font-size: 1.125rem;
+    color: #666;
+    font-size: 1rem;
   }
   
-  /* Responsive */
+  /* Responsive - Elementor breakpoints */
   @media (max-width: 768px) {
-    .sf-section { padding: 40px 16px; }
-    .sf-heading { font-size: 1.75rem; }
-    .sf-counter-number { font-size: 2.5rem; }
-    .sf-image-box-left { flex-direction: column; }
-    .sf-image-box-left .sf-image-box-content { text-align: center; }
+    .elementor-section, .sf-section { padding: 40px 16px; }
+    .elementor-container, .sf-container { flex-direction: column; }
+    .elementor-column, .sf-column { width: 100%; }
+    .elementor-size-xl { font-size: 29px; }
+    .elementor-size-lg { font-size: 24px; }
+    .elementor-size-md { font-size: 19px; }
+    .elementor-counter-number-wrapper, .sf-counter-number-wrapper { font-size: 48px; }
+    .sf-image-box-wrapper { flex-direction: column; }
   }
 </style>
 </head>
