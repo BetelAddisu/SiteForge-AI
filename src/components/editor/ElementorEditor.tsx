@@ -7,6 +7,7 @@ import {
   AlignLeft, AlignCenter, AlignRight,
   Layers
 } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -228,12 +229,14 @@ function ElementorWidget({
       );
       
     case 'text-editor':
+      // FIX: Sanitize HTML to prevent XSS attacks
+      const sanitizedHtml = DOMPurify.sanitize((settings.editor as string) || '<p>Text content</p>');
       return (
         <div 
           className={baseClasses}
           onClick={onClick}
           onDoubleClick={handleDoubleClick}
-          dangerouslySetInnerHTML={{ __html: (settings.editor as string) || '<p>Text content</p>' }}
+          dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
         />
       );
       
@@ -749,28 +752,52 @@ export default function ElementorEditor({
     });
   }, [history, historyIndex]);
   
-  // Move element
+  // Move element - FIX: Works recursively to find elements at any depth
   const moveElement = useCallback((element: ElementorElement, direction: 'up' | 'down') => {
     setElements(prev => {
-      const index = prev.findIndex(el => el.id === element.id);
-      if (index === -1) return prev;
+      const newTree = JSON.parse(JSON.stringify(prev)) as ElementorElement[];
       
-      const newIndex = direction === 'up' ? index - 1 : index + 1;
-      if (newIndex < 0 || newIndex >= prev.length) return prev;
+      const moveInTree = (nodes: ElementorElement[]): boolean => {
+        const idx = nodes.findIndex(el => el.id === element.id);
+        if (idx !== -1) {
+          const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+          if (newIdx < 0 || newIdx >= nodes.length) return false;
+          [nodes[idx], nodes[newIdx]] = [nodes[newIdx], nodes[idx]];
+          return true;
+        }
+        // Search in nested elements (columns, containers, etc.)
+        for (const node of nodes) {
+          if (node.elements && moveInTree(node.elements)) return true;
+        }
+        return false;
+      };
       
-      const updated = [...prev];
-      [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+      const moved = moveInTree(newTree);
+      if (!moved) return prev;
+      
       setIsDirty(true);
       
       // Add to history
       const newHistory = history.slice(0, historyIndex + 1);
-      newHistory.push(updated);
+      newHistory.push(newTree);
       setHistory(newHistory);
       setHistoryIndex(newHistory.length - 1);
       
-      return updated;
+      return newTree;
     });
   }, [history, historyIndex]);
+
+  // FIX: Helper to find element position for enabling/disabling move buttons
+  const findElementPosition = (elementId: string, tree: ElementorElement[]): { index: number; parent: ElementorElement[] } | null => {
+    for (let i = 0; i < tree.length; i++) {
+      if (tree[i].id === elementId) return { index: i, parent: tree };
+      if (tree[i].elements) {
+        const found = findElementPosition(elementId, tree[i].elements!);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
   
   // Undo/Redo
   const undo = useCallback(() => {
@@ -808,17 +835,35 @@ export default function ElementorEditor({
   
   // Render element in canvas
   const renderElement = (element: ElementorElement): React.ReactNode => {
+    // FIX: Update only the relevant field based on widget type
+    const handleEditTextForElement = (text: string) => {
+      const widgetType = getWidgetType(element);
+      const updates: Record<string, unknown> = {};
+      
+      switch (widgetType) {
+        case 'heading':
+          updates.heading = text;
+          break;
+        case 'text-editor':
+          updates.editor = text.includes('<') ? text : `<p>${text}</p>`;
+          break;
+        case 'button':
+          updates.text = text;
+          break;
+        default:
+          return; // Don't update for other widget types
+      }
+      
+      updateElementSettings(element.id, updates);
+    };
+    
     return (
       <div key={element.id}>
         <ElementorWidget 
           element={element}
           isSelected={selectedElement?.id === element.id}
           onClick={() => handleSelectElement(element.id, element, [])}
-          onEditText={(text) => updateElementSettings(element.id, { 
-            heading: text, 
-            editor: `<p>${text}</p>`,
-            text 
-          })}
+          onEditText={handleEditTextForElement}
         />
         {element.elements && (
           <div className="ml-4 border-l-2 border-blue-200 pl-2">
@@ -906,15 +951,21 @@ export default function ElementorEditor({
             {/* Selected element toolbar */}
             {selectedElement && (
               <div className="sticky top-0 z-10 bg-white border-b p-2 flex justify-center">
-                <ElementToolbar
-                  element={selectedElement.element}
-                  onDelete={() => deleteElement(selectedElement.id)}
-                  onDuplicate={() => duplicateElement(selectedElement.element)}
-                  onMoveUp={() => moveElement(selectedElement.element, 'up')}
-                  onMoveDown={() => moveElement(selectedElement.element, 'down')}
-                  isFirst={true}
-                  isLast={true}
-                />
+                {/* FIX: Compute position dynamically */}
+                {(() => {
+                  const pos = findElementPosition(selectedElement.element.id, elements);
+                  return (
+                    <ElementToolbar
+                      element={selectedElement.element}
+                      onDelete={() => deleteElement(selectedElement.id)}
+                      onDuplicate={() => duplicateElement(selectedElement.element)}
+                      onMoveUp={() => moveElement(selectedElement.element, 'up')}
+                      onMoveDown={() => moveElement(selectedElement.element, 'down')}
+                      isFirst={pos ? pos.index === 0 : true}
+                      isLast={pos ? pos.index === pos.parent.length - 1 : true}
+                    />
+                  );
+                })()}
               </div>
             )}
             

@@ -112,13 +112,13 @@ export class GenerationPipeline {
       // Step 1: Initialize
       await this.stepInitialize(options);
       
-      // Step 2: Generate content (try AI, fall back to basic content)
-      await this.stepGenerateContent(options);
-      
-      // Step 3: Find or create template
+      // Step 2: Find or create template (MUST come before content generation)
       await this.stepSelectTemplates(options);
       
-      // Step 4: Apply brand
+      // Step 3: Generate content (now aware of template structure)
+      await this.stepGenerateContent(options);
+      
+      // Step 4: Apply brand (and inject into elementor JSON)
       await this.stepApplyBrand(options);
       
       // Step 5: Create the Elementor structure
@@ -142,6 +142,10 @@ export class GenerationPipeline {
       };
     } catch (error) {
       console.error('[Pipeline] Generation failed:', error);
+      // FIX: Call handleError to properly update project status to FAILED
+      if (this.state?.currentStep) {
+        this.handleError(this.state.currentStep, String(error));
+      }
       return {
         success: false,
         error: String(error),
@@ -410,8 +414,42 @@ export class GenerationPipeline {
       brandTokens,
     };
 
+    // FIX: Apply brand tokens to the element tree if it exists
+    const elementorData = this.state!.checkpointData['elementorData'] as { elements?: ElementorNode[] } | undefined;
+    if (elementorData?.elements) {
+      this.applyBrandToTree(elementorData.elements, brandTokens);
+    }
+
     await this.saveCheckpoint('APPLY_BRAND');
     options.onStepComplete?.('APPLY_BRAND', brandTokens);
+  }
+
+  /**
+   * Apply brand tokens to the element tree
+   */
+  private applyBrandToTree(
+    nodes: ElementorNode[], 
+    brand: { colors: { primary?: string; secondary?: string }; typography: { headingFont?: string; bodyFont?: string } }
+  ): void {
+    for (const node of nodes) {
+      if (node.settings) {
+        // Apply colors to headings
+        if (node.widgetType === 'heading' && brand.colors.primary) {
+          node.settings.title_color = brand.colors.primary;
+        }
+        // Apply colors to buttons
+        if (node.widgetType === 'button' && brand.colors.primary) {
+          node.settings.background_color = brand.colors.primary;
+        }
+        // Apply typography to headings
+        if (node.widgetType === 'heading' && brand.typography.headingFont) {
+          node.settings.typography_font_family = brand.typography.headingFont;
+        }
+      }
+      if (node.elements) {
+        this.applyBrandToTree(node.elements, brand);
+      }
+    }
   }
 
   // Step 5: Create Elementor Structure - works with or without templates
@@ -527,6 +565,11 @@ export class GenerationPipeline {
     await this.saveCheckpoint('MODIFY_JSON');
   }
 
+  // FIX: Generate unique IDs to avoid collisions
+  private generateId(prefix: string): string {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  }
+
   // Generate a basic Elementor structure when no templates are available
   private generateBasicStructure(content?: {
     homepage?: {
@@ -546,10 +589,14 @@ export class GenerationPipeline {
     };
     const services = content?.homepage?.services || [];
     
+    // FIX: Use unique IDs to avoid collisions on regeneration
+    const heroSectionId = this.generateId('section-hero');
+    const aboutSectionId = this.generateId('section-about');
+    
     const elements: unknown[] = [
       // Hero Section
       {
-        id: 'section-hero',
+        id: heroSectionId,
         elType: 'section',
         settings: {
           layout: 'full_width',
@@ -557,12 +604,12 @@ export class GenerationPipeline {
         },
         elements: [
           {
-            id: 'column-hero-1',
+            id: this.generateId('column-hero'),
             elType: 'column',
             settings: { _column_size: 100 },
             elements: [
               {
-                id: 'heading-hero',
+                id: this.generateId('heading-hero'),
                 elType: 'widget',
                 widgetType: 'heading',
                 settings: {
@@ -572,7 +619,7 @@ export class GenerationPipeline {
                 },
               },
               {
-                id: 'text-hero',
+                id: this.generateId('text-hero'),
                 elType: 'widget',
                 widgetType: 'text-editor',
                 settings: {
@@ -580,7 +627,7 @@ export class GenerationPipeline {
                 },
               },
               {
-                id: 'button-hero',
+                id: this.generateId('button-hero'),
                 elType: 'widget',
                 widgetType: 'button',
                 settings: {
@@ -595,7 +642,7 @@ export class GenerationPipeline {
       },
       // About Section
       {
-        id: 'section-about',
+        id: aboutSectionId,
         elType: 'section',
         settings: {
           layout: 'full_width',
@@ -605,12 +652,12 @@ export class GenerationPipeline {
         },
         elements: [
           {
-            id: 'column-about-1',
+            id: this.generateId('column-about'),
             elType: 'column',
             settings: { _column_size: 100 },
             elements: [
               {
-                id: 'heading-about',
+                id: this.generateId('heading-about'),
                 elType: 'widget',
                 widgetType: 'heading',
                 settings: {
@@ -620,7 +667,7 @@ export class GenerationPipeline {
                 },
               },
               {
-                id: 'text-about',
+                id: this.generateId('text-about'),
                 elType: 'widget',
                 widgetType: 'text-editor',
                 settings: {
@@ -636,7 +683,7 @@ export class GenerationPipeline {
     // Add services section if we have services
     if (services.length > 0) {
       elements.push({
-        id: 'section-services',
+        id: this.generateId('section-services'),
         elType: 'section',
         settings: {
           layout: 'full_width',
@@ -644,12 +691,12 @@ export class GenerationPipeline {
         },
         elements: [
           {
-            id: 'column-services-1',
+            id: this.generateId('column-services'),
             elType: 'column',
             settings: { _column_size: 100 },
             elements: [
               {
-                id: 'heading-services',
+                id: this.generateId('heading-services'),
                 elType: 'widget',
                 widgetType: 'heading',
                 settings: {
@@ -659,7 +706,7 @@ export class GenerationPipeline {
                 },
               },
               ...services.slice(0, 3).map((service, index) => ({
-                id: `text-service-${index}`,
+                id: this.generateId('text-service'),
                 elType: 'widget',
                 widgetType: 'text-editor',
                 settings: {
@@ -795,7 +842,37 @@ export class GenerationPipeline {
     if (!this.state) {
       await this.initialize(options.projectId);
     }
-    return this.run(options);
+    
+    // FIX: Skip completed steps instead of re-running all
+    const allSteps: PipelineStep[] = [
+      'INITIALIZE', 'SELECT_TEMPLATES', 'GENERATE_CONTENT',
+      'APPLY_BRAND', 'MODIFY_JSON', 'VALIDATE_JSON',
+      'GENERATE_PREVIEW', 'READY_FOR_PUBLISH'
+    ];
+    
+    const completed = new Set(this.state!.completedSteps);
+    
+    try {
+      for (const step of allSteps) {
+        if (!completed.has(step)) {
+          await this.executeStep(step, options);
+        } else {
+          console.log(`[Pipeline] Skipping completed step: ${step}`);
+        }
+      }
+      return {
+        success: true,
+        previewUrl: this.state?.checkpointData['previewUrl'] as string,
+        completedSteps: this.state!.completedSteps
+      };
+    } catch (error) {
+      this.handleError(this.state!.currentStep, String(error));
+      return {
+        success: false,
+        error: String(error),
+        completedSteps: this.state?.completedSteps ?? []
+      };
+    }
   }
 }
 
