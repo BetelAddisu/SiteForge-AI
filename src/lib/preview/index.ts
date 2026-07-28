@@ -10,352 +10,1110 @@
  */
 
 import { prisma } from '../prisma';
-import type { ElementorNode } from '../elementor/parser';
 
-// ============================================================================
-// Types
-// ============================================================================
 
-export type Viewport = 'desktop' | 'tablet' | 'mobile';
+type Viewport = 'desktop' | 'tablet' | 'mobile';
 
-export interface ViewportConfig {
-  width: number;
-  height: number;
-  label: string;
-  icon: string;
+
+interface ElementorNode {
+  id?: string;
+  elType?: string;
+  widgetType?: string;
+  settings?: Record<string, unknown>;
+  elements?: ElementorNode[];
+  isInner?: boolean;
 }
 
-export const VIEWPORT_CONFIGS: Record<Viewport, ViewportConfig> = {
-  desktop: {
-    width: 1440,
-    height: 900,
-    label: 'Desktop',
-    icon: 'monitor',
-  },
-  tablet: {
-    width: 768,
-    height: 1024,
-    label: 'Tablet',
-    icon: 'tablet',
-  },
-  mobile: {
-    width: 375,
-    height: 812,
-    label: 'Mobile',
-    icon: 'smartphone',
-  },
+
+const VIEWPORT_CONFIGS = {
+  desktop: { width: 1440, height: 900 },
+  tablet: { width: 768, height: 1024 },
+  mobile: { width: 375, height: 812 },
 };
+
 
 export interface PreviewOptions {
   projectId: string;
   elementorData?: unknown[];
   stylePreset?: string;
   brandTokens?: {
-    colors?: { primary?: string; secondary?: string };
+    colors?: { primary?: string; secondary?: string; accent?: string };
     typography?: { headingFont?: string; bodyFont?: string };
   };
 }
 
+
 // ============================================================================
-// Minimal HTML Renderer for Previews
+// Elementor DOM Replicator
 // ============================================================================
+
 
 /**
- * Render Elementor nodes to HTML string
+ * Render Elementor JSON tree to HTML that looks identical to Elementor frontend
  */
-function renderNodesToHtml(nodes: ElementorNode[], viewport: Viewport): string {
-  return nodes.map(node => renderNodeToHtml(node, viewport)).join('\n');
+function renderElementorTree(nodes: ElementorNode[], viewport: Viewport): string {
+  if (!Array.isArray(nodes) || nodes.length === 0) return '';
+  
+  // Wrap entire page like Elementor does
+  return `<div class="elementor elementor-page">
+  <div class="elementor-section-wrap">
+    ${nodes.map(n => renderNode(n, viewport, false)).join('\n')}
+  </div>
+</div>`;
 }
 
-function renderNodeToHtml(node: ElementorNode, viewport: Viewport): string {
+
+function renderNode(node: ElementorNode, viewport: Viewport, isInner: boolean): string {
+  if (!node) return '';
+  
   switch (node.elType) {
     case 'section':
-      const sectionStyle = buildSectionStyle(node, viewport);
-      return `<section style="${sectionStyle}">\n${renderNodesToHtml(node.elements || [], viewport)}\n</section>`;
-    
+      return renderSection(node, viewport, isInner);
     case 'column':
-      const colStyle = buildColumnStyle(node, viewport);
-      return `<div style="${colStyle}">\n${renderNodesToHtml(node.elements || [], viewport)}\n</div>`;
-    
+      return renderColumn(node, viewport, isInner);
+    case 'container':
+      return renderContainer(node, viewport);
     case 'widget':
-      return renderWidgetToHtml(node);
-    
+      return renderWidget(node, viewport);
     default:
       return '';
   }
 }
 
-function renderWidgetToHtml(widget: ElementorNode): string {
-  const settings = widget.settings || {};
-  
-  switch (widget.widgetType) {
-    case 'heading':
-      const level = (settings.size as string) || 'h2';
-      const color = settings.title_color as string || '#000';
-      const fontSize = getHeadingFontSize(settings.size as string, settings._css_classes as string);
-      return `<${level} style="color:${color};font-size:${fontSize};margin:0 0 1rem;">${settings.heading || ''}</${level}>`;
-    
-    case 'text-editor':
-      return `<div style="line-height:1.7;">${settings.editor || ''}</div>`;
-    
-    case 'button':
-      const bgColor = settings.background_color || '#3B82F6';
-      const textColor = settings.button_text_color || '#fff';
-      const padding = settings.padding || '12px 24px';
-      return `<button style="background:${bgColor};color:${textColor};padding:${padding};border:none;border-radius:4px;cursor:pointer;font-size:1rem;">${settings.text || 'Button'}</button>`;
-    
-    case 'image':
-      const imgUrl = typeof settings.image === 'object' ? (settings.image as any).url : settings.image || settings.url || '';
-      const alt = settings.alt || '';
-      const width = settings.width || '100%';
-      return imgUrl ? `<img src="${imgUrl}" alt="${alt}" style="max-width:${width};height:auto;">` : '';
-    
-    case 'icon-box':
-    case 'icon':
-      const iconObj = settings.selected_icon as any;
-      const iconVal = iconObj?.value || (settings.icon as any)?.value || '★';
-      const iconColor = settings.primary_color || '#000';
-      return `<div style="font-size:2rem;color:${iconColor};">${typeof iconVal === 'string' ? iconVal : '&#9733;'}</div>`;
-    
-    case 'spacer':
-      const spacerHeight = settings.space || 30;
-      return `<div style="height:${spacerHeight}px;"></div>`;
-    
-    case 'divider':
-      return `<hr style="border:none;border-top:1px solid #ddd;margin:1rem 0;">`;
-    
-    case 'counter':
-      const start = settings.starting_number || 0;
-      const end = settings.ending_number || 100;
-      const suffix = settings.thousand_separator ? ',' : '';
-      return `<div style="font-size:2rem;font-weight:bold;">${Number(end).toLocaleString()}${suffix}</div>`;
-    
-    case 'image-box':
-      const boxImgUrl = typeof settings.image === 'object' ? (settings.image as any).url : settings.image_url || '';
-      const boxTitle = settings.title_text || '';
-      const boxDesc = settings.description_text || '';
-      return `<div style="text-align:center;">
-        ${boxImgUrl ? `<img src="${boxImgUrl}" alt="${boxTitle}" style="max-width:100%;margin-bottom:1rem;">` : ''}
-        <h3>${boxTitle}</h3>
-        <p>${boxDesc}</p>
-      </div>`;
-    
-    default:
-      // For unsupported widgets, return empty
-      return '';
-  }
-}
-
-function buildSectionStyle(section: ElementorNode, viewport: Viewport): string {
-  const settings = section.settings || {};
-  const styles: string[] = [];
-  
-  // Content width
-  if (viewport === 'mobile') {
-    styles.push('padding: 20px 15px');
-  } else if (viewport === 'tablet') {
-    styles.push('padding: 30px 20px');
-  } else {
-    styles.push('padding: 40px 20px');
-  }
-  
-  // Background
-  if (settings.background_background === 'classic') {
-    if (settings.background_color) {
-      styles.push(`background-color: ${settings.background_color}`);
-    }
-    if (settings.background_image) {
-      const imgUrl = typeof settings.background_image === 'object' 
-        ? (settings.background_image as any).url 
-        : settings.background_image;
-      if (imgUrl) {
-        styles.push(`background-image: url(${imgUrl});background-size:cover;background-position:center;`);
-      }
-    }
-  }
-  
-  return styles.join(';');
-}
-
-function buildColumnStyle(column: ElementorNode, viewport: Viewport): string {
-  const settings = column.settings || {};
-  const size = settings._column_size || 100;
-  const styles: string[] = [];
-  
-  styles.push(`width: ${size}%;`);
-  styles.push('display: flex');
-  styles.push('flex-direction: column');
-  
-  // Alignment
-  if (viewport === 'mobile') {
-    styles.push('text-align: center');
-  }
-  
-  return styles.join(';');
-}
-
-function getHeadingFontSize(size: string | undefined, cssClasses: string | undefined): string {
-  if (cssClasses?.includes('elementor-size-xl')) return '3rem';
-  if (cssClasses?.includes('elementor-size-lg')) return '2.5rem';
-  if (cssClasses?.includes('elementor-size-md')) return '2rem';
-  if (size === 'h1') return '2.5rem';
-  if (size === 'h2') return '2rem';
-  if (size === 'h3') return '1.5rem';
-  if (size === 'h4') return '1.25rem';
-  if (size === 'h5') return '1rem';
-  if (size === 'h6') return '0.875rem';
-  return '1.5rem'; // default
-}
 
 /**
- * Generate complete HTML document from Elementor data
+ * Section rendering - matches Elementor 3.0+ DOM
  */
-function generatePreviewHtml(elementorData: ElementorNode[], viewport: Viewport, brandTokens?: PreviewOptions['brandTokens']): string {
-  const primaryColor = brandTokens?.colors?.primary || '#3B82F6';
-  const fontFamily = brandTokens?.typography?.headingFont || 'system-ui, -apple-system, sans-serif';
-  const contentWidth = VIEWPORT_CONFIGS[viewport].width;
+function renderSection(node: ElementorNode, viewport: Viewport, isInner: boolean): string {
+  const settings = node.settings || {};
+  const id = node.id || generateId();
+  
+  // Build class list exactly like Elementor
+  const classes: string[] = [
+    'elementor-element',
+    `elementor-element-${id}`,
+    'elementor-section',
+    isInner ? 'elementor-inner-section' : 'elementor-top-section',
+  ];
+  
+  // Layout type
+  const layout = settings.layout || 'boxed';
+  if (layout === 'full_width') {
+    classes.push('elementor-section-full_width');
+  } else if (layout === 'boxed') {
+    classes.push('elementor-section-boxed');
+  }
+  
+  // Height
+  const height = settings.height || 'default';
+  classes.push(`elementor-section-height-${height}`);
+  
+  // Content position
+  if (settings.content_position) {
+    classes.push(`elementor-section-items-${settings.content_position}`);
+  }
+  
+  // Column gap
+  const columnGap = settings.gap || 'default';
+  classes.push(`elementor-column-gap-${columnGap}`);
+  
+  // Custom CSS classes
+  if (settings.css_classes) {
+    classes.push(String(settings.css_classes));
+  }
+  
+  // Custom ID
+  const customId = settings._element_id ? ` id="${escapeHtml(String(settings._element_id))}"` : '';
+  
+  // HTML tag (section, div, header, footer, etc.)
+  const htmlTag = settings.html_tag || 'section';
+  
+  // Background overlay
+  const bgOverlay = renderBackgroundOverlay(settings);
+  
+  // Shape dividers
+  const shapeTop = renderShapeDivider(settings, 'top');
+  const shapeBottom = renderShapeDivider(settings, 'bottom');
+  
+  const children = node.elements || [];
+  
+  return `<${htmlTag} class="${classes.join(' ')}" data-id="${id}" data-element_type="section"${customId}>
+  ${bgOverlay}
+  ${shapeTop}
+  <div class="elementor-container">
+    ${children.map(c => renderNode(c, viewport, isInner)).join('\n')}
+  </div>
+  ${shapeBottom}
+</${htmlTag}>`;
+}
+
+
+/**
+ * Column rendering - matches Elementor 3.0+ DOM
+ */
+function renderColumn(node: ElementorNode, viewport: Viewport, isInner: boolean): string {
+  const settings = node.settings || {};
+  const id = node.id || generateId();
+  
+  // Column size classes
+  const size = getColumnSize(settings, viewport);
+  
+  const classes: string[] = [
+    'elementor-element',
+    `elementor-element-${id}`,
+    'elementor-column',
+    `elementor-col-${size}`,
+    isInner ? 'elementor-inner-column' : 'elementor-top-column',
+  ];
+  
+  if (settings.css_classes) {
+    classes.push(String(settings.css_classes));
+  }
+  
+  const customId = settings._element_id ? ` id="${escapeHtml(String(settings._element_id))}"` : '';
+  
+  const children = node.elements || [];
+  const hasChildren = children.length > 0;
+  
+  return `<div class="${classes.join(' ')}" data-id="${id}" data-element_type="column"${customId}>
+  <div class="elementor-widget-wrap${hasChildren ? ' elementor-element-populated' : ''}">
+    ${children.map(c => renderNode(c, viewport, isInner)).join('\n')}
+  </div>
+</div>`;
+}
+
+
+/**
+ * Container rendering (Elementor 3.6+ flexbox containers)
+ */
+function renderContainer(node: ElementorNode, viewport: Viewport): string {
+  const settings = node.settings || {};
+  const id = node.id || generateId();
+  
+  const classes: string[] = [
+    'elementor-element',
+    `elementor-element-${id}`,
+    'e-con',
+  ];
+  
+  if (settings.content_width === 'full') {
+    classes.push('e-con-full');
+  } else {
+    classes.push('e-con-boxed');
+  }
+  
+  // Flex direction
+  const flexDir = settings.flex_direction || 'row';
+  classes.push(`e-con-${flexDir}`);
+  
+  if (settings.css_classes) {
+    classes.push(String(settings.css_classes));
+  }
+  
+  const customId = settings._element_id ? ` id="${escapeHtml(String(settings._element_id))}"` : '';
+  
+  const children = node.elements || [];
+  
+  return `<div class="${classes.join(' ')}" data-id="${id}" data-element_type="container"${customId}>
+  ${children.map(c => renderNode(c, viewport, false)).join('\n')}
+</div>`;
+}
+
+
+/**
+ * Widget rendering - matches Elementor widget wrapper DOM
+ */
+function renderWidget(node: ElementorNode, viewport: Viewport): string {
+  const settings = node.settings || {};
+  const id = node.id || generateId();
+  const widgetType = node.widgetType || 'html';
+  
+  const classes: string[] = [
+    'elementor-element',
+    `elementor-element-${id}`,
+    'elementor-widget',
+    `elementor-widget-${widgetType}`,
+  ];
+  
+  if (settings._css_classes) {
+    classes.push(String(settings._css_classes));
+  }
+  
+  // Alignment classes
+  const align = settings.align;
+  if (align && align !== 'default') {
+    classes.push(`elementor-align-${align}`);
+  }
+  
+  const customId = settings._element_id ? ` id="${escapeHtml(String(settings._element_id))}"` : '';
+  
+  const content = renderWidgetContent(node, viewport);
+  
+  return `<div class="${classes.join(' ')}" data-id="${id}" data-element_type="widget" data-widget_type="${widgetType}.default"${customId}>
+  <div class="elementor-widget-container">
+    ${content}
+  </div>
+</div>`;
+}
+
+
+// ============================================================================
+// Widget Content Renderers
+// ============================================================================
+
+
+function renderWidgetContent(node: ElementorNode, viewport: Viewport): string {
+  const settings = node.settings || {};
+  
+  switch (node.widgetType) {
+    case 'heading':
+      return renderHeading(settings);
+    case 'text-editor':
+      return renderTextEditor(settings);
+    case 'button':
+      return renderButton(settings);
+    case 'image':
+      return renderImage(settings);
+    case 'video':
+      return renderVideo(settings);
+    case 'divider':
+      return renderDivider(settings);
+    case 'spacer':
+      return renderSpacer(settings);
+    case 'icon':
+      return renderIcon(settings);
+    case 'icon-box':
+      return renderIconBox(settings);
+    case 'image-box':
+      return renderImageBox(settings);
+    case 'image-carousel':
+      return renderImageCarousel(settings);
+    case 'google_maps':
+      return renderGoogleMaps(settings);
+    case 'shortcode':
+      return renderShortcode(settings);
+    case 'html':
+      return renderHtmlWidget(settings);
+    case 'menu-anchor':
+      return `<div id="${escapeHtml(String(settings.anchor || ''))}"></div>`;
+    case 'sidebar':
+      return `<div class="elementor-sidebar">${settings.sidebar || ''}</div>`;
+    default:
+      // For unknown widgets, show placeholder with widget name
+      return `<div style="padding:20px;border:2px dashed #ddd;text-align:center;color:#999;">
+        <small>Widget: ${node.widgetType}</small>
+      </div>`;
+  }
+}
+
+
+function renderHeading(settings: Record<string, unknown>): string {
+  const text = String(settings.heading || settings.title || '');
+  const size = String(settings.header_size || settings.size || 'h2');
+  const align = settings.align || 'left';
+  
+  // Elementor uses these classes
+  const classes = ['elementor-heading-title', 'elementor-size-default'];
+  if (settings.size) {
+    classes.push(`elementor-size-${settings.size}`);
+  }
+  
+  return `<${size} class="${classes.join(' ')}" style="text-align:${align}">
+    ${text}
+  </${size}>`;
+}
+
+
+function renderTextEditor(settings: Record<string, unknown>): string {
+  const content = String(settings.editor || settings.wysiwyg || '');
+  const align = settings.align || 'left';
+  
+  return `<div class="elementor-text-editor elementor-clearfix" style="text-align:${align}">
+    ${content}
+  </div>`;
+}
+
+
+function renderButton(settings: Record<string, unknown>): string {
+  const text = String(settings.text || 'Click Here');
+  const link = (settings.link as { url?: string })?.url || '#';
+  const align = settings.align || 'left';
+  const size = settings.size || 'md';
+  
+  // Elementor button classes
+  const btnClasses = ['elementor-button', `elementor-size-${size}`];
+  if (settings.button_type) {
+    btnClasses.push(`elementor-button-${settings.button_type}`);
+  }
+  
+  return `<div class="elementor-button-wrapper" style="text-align:${align}">
+    <a href="${escapeHtml(link)}" class="${btnClasses.join(' ')}">
+      <span class="elementor-button-content-wrapper">
+        ${settings.icon ? `<span class="elementor-button-icon elementor-align-icon-left"><i class="${settings.icon}"></i></span>` : ''}
+        <span class="elementor-button-text">${text}</span>
+      </span>
+    </a>
+  </div>`;
+}
+
+
+function renderImage(settings: Record<string, unknown>): string {
+  const img = settings.image as { url?: string; alt?: string; id?: number } | undefined;
+  const url = img?.url || String(settings.image || '');
+  const alt = img?.alt || String(settings.alt || '');
+  
+  const width = settings.image_size === 'custom' 
+    ? `${(settings.image_custom_dimension as any)?.width || 'auto'}px` 
+    : '100%';
+  
+  const link = (settings.link as { url?: string })?.url;
+  
+  const imgHtml = `<img 
+    decoding="async" 
+    width="${width}" 
+    src="${escapeHtml(url)}" 
+    class="attachment-large size-large" 
+    alt="${escapeHtml(alt)}" 
+    srcset="${escapeHtml(url)} 1024w" 
+    sizes="(max-width: 1024px) 100vw, 1024px"
+  />`;
+  
+  if (link) {
+    return `<a href="${escapeHtml(link)}">${imgHtml}</a>`;
+  }
+  return `<div class="elementor-image">${imgHtml}</div>`;
+}
+
+
+function renderVideo(settings: Record<string, unknown>): string {
+  const source = String(settings.video_type || 'youtube');
+  const url = String(settings.youtube_url || settings.vimeo_url || settings.dailymotion_url || settings.url || '');
+  
+  if (!url) return '';
+  
+  // Extract YouTube ID
+  let embedUrl = url;
+  if (source === 'youtube') {
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+    if (match) embedUrl = `https://www.youtube.com/embed/${match[1]}`;
+  }
+  
+  return `<div class="elementor-wrapper elementor-open-lightbox">
+    <div class="elementor-video">
+      <iframe src="${escapeHtml(embedUrl)}" frameborder="0" allowfullscreen loading="lazy"></iframe>
+    </div>
+  </div>`;
+}
+
+
+function renderDivider(settings: Record<string, unknown>): string {
+  const style = settings.divider_style || 'solid';
+  const weight = (settings.weight as any)?.size || 1;
+  const color = settings.color || '#000';
+  
+  return `<div class="elementor-divider">
+    <span class="elementor-divider-separator" style="border-top-style:${style};border-top-width:${weight}px;border-top-color:${color}"></span>
+  </div>`;
+}
+
+
+function renderSpacer(settings: Record<string, unknown>): string {
+  const height = (settings.space as any)?.size || settings.space || 50;
+  const unit = (settings.space as any)?.unit || 'px';
+  
+  return `<div class="elementor-spacer">
+    <div class="elementor-spacer-inner" style="height:${height}${unit}"></div>
+  </div>`;
+}
+
+
+function renderIcon(settings: Record<string, unknown>): string {
+  const iconObj = settings.selected_icon as { value?: string; library?: string } | undefined;
+  const iconValue = iconObj?.value || String(settings.icon || '★');
+  const iconLibrary = iconObj?.library || 'fa';
+  
+  return `<div class="elementor-icon-wrapper">
+    <div class="elementor-icon">
+      <i class="${iconLibrary} ${iconValue}" aria-hidden="true"></i>
+    </div>
+  </div>`;
+}
+
+
+function renderIconBox(settings: Record<string, unknown>): string {
+  const iconObj = settings.selected_icon as { value?: string; library?: string } | undefined;
+  const iconValue = iconObj?.value || 'fa-star';
+  const iconLibrary = iconObj?.library || 'fa';
+  const title = String(settings.title_text || '');
+  const description = String(settings.description_text || '');
+  const position = settings.icon_position || 'top';
+  
+  return `<div class="elementor-icon-box-wrapper elementor-icon-box-${position}">
+    <div class="elementor-icon-box-icon">
+      <span class="elementor-icon elementor-animation-">
+        <i class="${iconLibrary} ${iconValue}" aria-hidden="true"></i>
+      </span>
+    </div>
+    <div class="elementor-icon-box-content">
+      <h3 class="elementor-icon-box-title">${title}</h3>
+      <p class="elementor-icon-box-description">${description}</p>
+    </div>
+  </div>`;
+}
+
+
+function renderImageBox(settings: Record<string, unknown>): string {
+  const img = settings.image as { url?: string; alt?: string } | undefined;
+  const url = img?.url || String(settings.image_url || '');
+  const title = String(settings.title_text || '');
+  const description = String(settings.description_text || '');
+  const position = settings.image_position || 'top';
+  
+  return `<div class="elementor-image-box-wrapper elementor-image-box-${position}">
+    <div class="elementor-image-box-img">
+      <img src="${escapeHtml(url)}" alt="" />
+    </div>
+    <div class="elementor-image-box-content">
+      <h3 class="elementor-image-box-title">${title}</h3>
+      <p class="elementor-image-box-description">${description}</p>
+    </div>
+  </div>`;
+}
+
+
+function renderImageCarousel(settings: Record<string, unknown>): string {
+  const slides = (settings.carousel || []) as Array<{ url?: string }>;
+  
+  return `<div class="elementor-image-carousel-wrapper">
+    <div class="elementor-image-carousel">
+      ${slides.map(s => `<div class="swiper-slide"><img src="${escapeHtml(s.url || '')}" /></div>`).join('')}
+    </div>
+  </div>`;
+}
+
+
+function renderGoogleMaps(settings: Record<string, unknown>): string {
+  const address = encodeURIComponent(String(settings.address || ''));
+  const zoom = (settings.zoom as any)?.size || 10;
+  
+  return `<div class="elementor-custom-embed">
+    <iframe frameborder="0" scrolling="no" marginheight="0" marginwidth="0"
+      src="https://maps.google.com/maps?q=${address}&t=m&z=${zoom}&output=embed&iwloc=near"
+      title="${settings.address}" aria-label="${settings.address}"></iframe>
+  </div>`;
+}
+
+
+function renderShortcode(settings: Record<string, unknown>): string {
+  return `<div class="elementor-shortcode">${settings.shortcode || ''}</div>`;
+}
+
+
+function renderHtmlWidget(settings: Record<string, unknown>): string {
+  return String(settings.html || '');
+}
+
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+
+function renderBackgroundOverlay(settings: Record<string, unknown>): string {
+  const bg = settings.background_background;
+  if (!bg || bg === 'none') return '';
+  
+  let overlay = '';
+  
+  if (bg === 'classic' && settings.background_image) {
+    const imgUrl = typeof settings.background_image === 'object' 
+      ? (settings.background_image as any).url 
+      : settings.background_image;
+    if (imgUrl) {
+      overlay += `<div class="elementor-background-holder">
+        <div class="elementor-background" style="background-image:url(${escapeHtml(imgUrl)});background-size:cover;background-position:center;"></div>
+      </div>`;
+    }
+  }
+  
+  if (settings.background_overlay_background === 'classic' && settings.background_overlay_color) {
+    overlay += `<div class="elementor-background-overlay" style="background-color:${settings.background_overlay_color};opacity:${(settings.background_overlay_opacity as any)?.size || 0.5}"></div>`;
+  }
+  
+  return overlay;
+}
+
+
+function renderShapeDivider(settings: Record<string, unknown>, position: 'top' | 'bottom'): string {
+  const shape = settings[`shape_divider_${position}`];
+  if (!shape || shape === 'none' || shape === '') return '';
+  
+  const color = settings[`shape_divider_${position}_color`] || '#fff';
+  const height = (settings[`shape_divider_${position}_height`] as any)?.size || 50;
+  const flip = settings[`shape_divider_${position}_flip`] === 'yes';
+  const negative = settings[`shape_divider_${position}_negative`] === 'yes';
+  
+  return `<div class="elementor-shape elementor-shape-${position}" data-negative="${negative ? 'true' : 'false'}">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" preserveAspectRatio="none" style="height:${height}px;fill:${color};transform:${flip ? 'scaleX(-1)' : 'none'}">
+      <path class="elementor-shape-fill" d="M500,10L0,0v90h1000V0L500,10z"/>
+    </svg>
+  </div>`;
+}
+
+
+function getColumnSize(settings: Record<string, unknown>, viewport: Viewport): string {
+  // Elementor uses: 10, 11, 12, 14, 16, 20, 25, 30, 33, 40, 50, 60, 66, 70, 75, 80, 83, 90, 100
+  const size = settings._column_size as number | undefined;
+  if (!size) return '100';
+  
+  // Map to nearest Elementor column class
+  const sizes = [10, 11, 12, 14, 16, 20, 25, 30, 33, 40, 50, 60, 66, 70, 75, 80, 83, 90, 100];
+  const nearest = sizes.reduce((prev, curr) => 
+    Math.abs(curr - size) < Math.abs(prev - size) ? curr : prev
+  );
+  
+  return String(nearest);
+}
+
+
+function generateId(): string {
+  return Math.random().toString(36).substring(2, 10);
+}
+
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+
+// ============================================================================
+// Critical Elementor CSS (Inline)
+// ============================================================================
+
+
+/**
+ * This is a stripped-down but complete version of Elementor's frontend CSS.
+ * It includes all the layout rules that make sections, columns, and widgets
+ * render correctly without needing the full Elementor plugin files.
+ */
+function getCriticalCSS(brandTokens?: PreviewOptions['brandTokens']): string {
+  const primary = brandTokens?.colors?.primary || '#3B82F6';
+  const secondary = brandTokens?.colors?.secondary || '#10B981';
+  const headingFont = brandTokens?.typography?.headingFont || 'Inter, system-ui, sans-serif';
+  const bodyFont = brandTokens?.typography?.bodyFont || 'Inter, system-ui, sans-serif';
+  
+  return `
+/* === Elementor Base Reset === */
+.elementor {
+  -webkit-hyphens: manual;
+  -ms-hyphens: manual;
+  hyphens: manual;
+}
+.elementor *,
+.elementor *::before,
+.elementor *::after {
+  box-sizing: border-box;
+}
+.elementor a {
+  box-shadow: none;
+  text-decoration: none;
+}
+.elementor hr {
+  margin: 0;
+  background-color: transparent;
+}
+.elementor img {
+  height: auto;
+  max-width: 100%;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+.elementor embed,
+.elementor iframe,
+.elementor object,
+.elementor video {
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  line-height: 1;
+  border: none;
+}
+
+
+/* === Section Layout === */
+.elementor-section {
+  position: relative;
+}
+.elementor-section .elementor-container {
+  display: flex;
+  margin-right: auto;
+  margin-left: auto;
+  position: relative;
+  max-width: 1140px;
+}
+.elementor-section.elementor-section-boxed > .elementor-container {
+  max-width: 1140px;
+}
+.elementor-section.elementor-section-full_width > .elementor-container {
+  max-width: 100%;
+}
+.elementor-section.elementor-section-items-top > .elementor-container {
+  align-items: flex-start;
+}
+.elementor-section.elementor-section-items-middle > .elementor-container {
+  align-items: center;
+}
+.elementor-section.elementor-section-items-bottom > .elementor-container {
+  align-items: flex-end;
+}
+.elementor-section.elementor-section-height-full {
+  height: 100vh;
+}
+.elementor-section.elementor-section-height-min-height {
+  min-height: 400px;
+}
+
+
+/* === Column Layout === */
+.elementor-column {
+  position: relative;
+  min-height: 1px;
+  display: flex;
+}
+.elementor-column-gap-default > .elementor-column > .elementor-element-populated {
+  padding: 10px;
+}
+.elementor-column-gap-narrow > .elementor-column > .elementor-element-populated {
+  padding: 5px;
+}
+.elementor-column-gap-extended > .elementor-column > .elementor-element-populated {
+  padding: 15px;
+}
+.elementor-column-gap-wide > .elementor-column > .elementor-element-populated {
+  padding: 20px;
+}
+.elementor-column-gap-wider > .elementor-column > .elementor-element-populated {
+  padding: 30px;
+}
+
+
+/* Column widths */
+.elementor-col-10 { width: 10%; }
+.elementor-col-11 { width: 11.111%; }
+.elementor-col-12 { width: 12.5%; }
+.elementor-col-14 { width: 14.285%; }
+.elementor-col-16 { width: 16.666%; }
+.elementor-col-20 { width: 20%; }
+.elementor-col-25 { width: 25%; }
+.elementor-col-30 { width: 30%; }
+.elementor-col-33 { width: 33.333%; }
+.elementor-col-40 { width: 40%; }
+.elementor-col-50 { width: 50%; }
+.elementor-col-60 { width: 60%; }
+.elementor-col-66 { width: 66.666%; }
+.elementor-col-70 { width: 70%; }
+.elementor-col-75 { width: 75%; }
+.elementor-col-80 { width: 80%; }
+.elementor-col-83 { width: 83.333%; }
+.elementor-col-90 { width: 90%; }
+.elementor-col-100 { width: 100%; }
+
+
+/* === Widget Wrapper === */
+.elementor-widget {
+  position: relative;
+}
+.elementor-widget:not(:last-child) {
+  margin-bottom: 20px;
+}
+.elementor-widget-wrap {
+  position: relative;
+  width: 100%;
+  flex-wrap: wrap;
+  align-content: flex-start;
+}
+.elementor-widget-wrap > .elementor-element {
+  width: 100%;
+}
+.elementor-widget-container {
+  transition: background 0.3s, border 0.3s, border-radius 0.3s, box-shadow 0.3s;
+}
+
+
+/* === Widget Specific === */
+.elementor-heading-title {
+  padding: 0;
+  margin: 0;
+  line-height: 1.2;
+  font-family: ${headingFont};
+}
+.elementor-text-editor {
+  font-family: ${bodyFont};
+  line-height: 1.6;
+}
+.elementor-button {
+  display: inline-block;
+  line-height: 1;
+  background-color: ${primary};
+  color: #fff;
+  fill: #fff;
+  text-align: center;
+  transition: all 0.3s;
+  border-radius: 3px;
+  padding: 12px 24px;
+  font-size: 15px;
+  font-family: ${bodyFont};
+  text-decoration: none;
+  cursor: pointer;
+}
+.elementor-button:hover {
+  background-color: ${secondary};
+}
+.elementor-button-wrapper {
+  text-align: center;
+}
+.elementor-button-content-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+.elementor-button .elementor-button-text {
+  display: inline-block;
+}
+.elementor-button .elementor-button-icon {
+  flex-grow: 0;
+  order: 5;
+}
+.elementor-divider {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.elementor-divider .elementor-divider-separator {
+  display: block;
+  width: 100%;
+}
+.elementor-spacer {
+  height: 100%;
+}
+.elementor-spacer-inner {
+  height: 100%;
+}
+.elementor-image img {
+  display: block;
+  width: 100%;
+}
+.elementor-icon-box-wrapper {
+  display: flex;
+  text-align: left;
+  flex-direction: column;
+}
+.elementor-icon-box-icon {
+  flex: 0 0 auto;
+  margin-bottom: 15px;
+}
+.elementor-icon-box-content {
+  flex-grow: 1;
+}
+.elementor-icon-box-title {
+  margin: 0 0 10px;
+  font-family: ${headingFont};
+}
+.elementor-icon-box-description {
+  margin: 0;
+  font-family: ${bodyFont};
+  color: #666;
+}
+.elementor-image-box-wrapper {
+  overflow: hidden;
+  text-align: center;
+}
+.elementor-image-box-img {
+  margin-bottom: 15px;
+}
+.elementor-image-box-title {
+  margin: 0 0 10px;
+  font-family: ${headingFont};
+}
+.elementor-image-box-description {
+  margin: 0;
+  font-family: ${bodyFont};
+  color: #666;
+}
+.elementor-video {
+  position: relative;
+  padding-bottom: 56.25%;
+  height: 0;
+  overflow: hidden;
+}
+.elementor-video iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+
+/* === Background === */
+.elementor-background-holder,
+.elementor-background {
+  inset: 0;
+  position: absolute;
+  overflow: hidden;
+  z-index: 0;
+}
+.elementor-background-overlay {
+  inset: 0;
+  position: absolute;
+  z-index: 1;
+}
+.elementor-section > .elementor-container {
+  position: relative;
+  z-index: 2;
+}
+
+
+/* === Shape Dividers === */
+.elementor-shape {
+  overflow: hidden;
+  position: absolute;
+  left: 0;
+  width: 100%;
+  line-height: 0;
+  direction: ltr;
+  z-index: 3;
+}
+.elementor-shape-top {
+  top: -1px;
+}
+.elementor-shape-bottom {
+  bottom: -1px;
+}
+.elementor-shape[data-negative="false"].elementor-shape-bottom,
+.elementor-shape[data-negative="true"].elementor-shape-top {
+  transform: rotate(180deg);
+}
+.elementor-shape svg {
+  display: block;
+  width: calc(100% + 1.3px);
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+
+/* === Responsive === */
+@media (max-width: 1024px) {
+  .elementor-section .elementor-container {
+    flex-wrap: wrap;
+  }
+  .elementor-col-10,
+  .elementor-col-11,
+  .elementor-col-12,
+  .elementor-col-14,
+  .elementor-col-16,
+  .elementor-col-20,
+  .elementor-col-25,
+  .elementor-col-30,
+  .elementor-col-33,
+  .elementor-col-40,
+  .elementor-col-50,
+  .elementor-col-60,
+  .elementor-col-66,
+  .elementor-col-70,
+  .elementor-col-75,
+  .elementor-col-80,
+  .elementor-col-83,
+  .elementor-col-90,
+  .elementor-col-100 {
+    width: 100%;
+  }
+}
+@media (max-width: 767px) {
+  .elementor-section .elementor-container {
+    flex-wrap: wrap;
+  }
+  .elementor-column {
+    width: 100% !important;
+  }
+}
+
+
+/* === Container (Flexbox) === */
+.e-con {
+  display: flex;
+  flex-direction: var(--flex-direction);
+  flex-wrap: var(--flex-wrap);
+  justify-content: var(--justify-content);
+  align-items: var(--align-items);
+  align-content: var(--align-content);
+  gap: var(--gap);
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+.e-con-boxed {
+  text-align: initial;
+  gap: initial;
+  flex-wrap: initial;
+  padding-inline-start: 0;
+  padding-inline-end: 0;
+  padding-block-start: 0;
+  padding-block-end: 0;
+}
+.e-con-full {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+}
+
+
+/* === Global Colors === */
+:root {
+  --e-global-color-primary: ${primary};
+  --e-global-color-secondary: ${secondary};
+  --e-global-color-accent: ${brandTokens?.colors?.accent || primary};
+  --e-global-color-text: #333;
+  --e-global-color-title: #1a1a1a;
+}
+`;
+}
+
+
+// ============================================================================
+// HTML Document Generator
+// ============================================================================
+
+
+function generatePreviewHtml(
+  elementorData: ElementorNode[],
+  viewport: Viewport,
+  brandTokens?: PreviewOptions['brandTokens']
+): string {
+  const content = renderElementorTree(elementorData, viewport);
+  const css = getCriticalCSS(brandTokens);
   
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Preview</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; line-height: 1.6; }
-    .elementor-section-wrap { max-width: ${contentWidth}px; margin: 0 auto; }
-    .elementor-row { display: flex; flex-wrap: wrap; gap: 20px; }
-    img { max-width: 100%; height: auto; }
-    h1, h2, h3, h4, h5, h6 { line-height: 1.2; }
-    button { font-family: inherit; }
-    a { color: ${primaryColor}; }
+    /* Reset */
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; padding: 0; font-family: Inter, system-ui, sans-serif; line-height: 1.5; color: #333; background: #fff; }
+    ${css}
   </style>
 </head>
 <body>
-  <div class="elementor-section-wrap">
-    ${renderNodesToHtml(elementorData, viewport)}
-  </div>
+  ${content}
 </body>
 </html>`;
 }
 
+
 // ============================================================================
-// Preview Generation
+// Public API
 // ============================================================================
 
-/**
- * Generate preview for a project
- */
+
 export async function generatePreview(options: PreviewOptions): Promise<{
   success: boolean;
   previewUrl?: string;
   error?: string;
 }> {
-  const projectId = options.projectId;
-  
+  const { projectId, brandTokens } = options;
+
+
   try {
-    // Get project data
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       select: { elementorData: true },
     });
-    
+
+
     if (!project) {
       return { success: false, error: 'Project not found' };
     }
-    
-    // Get elementor data (normalize if needed)
+
+
     let elementorData: ElementorNode[] = [];
     const rawData = project.elementorData as any;
-    
+
+
     if (Array.isArray(rawData)) {
       elementorData = rawData;
     } else if (rawData?.elements) {
       elementorData = rawData.elements;
     }
+
+
+    const html = generatePreviewHtml(elementorData, 'desktop', brandTokens);
     
-    // Generate HTML preview
-    const html = generatePreviewHtml(elementorData, 'desktop', options.brandTokens);
-    
-    // Store as data URI (for small previews) or save to storage
-    // For now, we'll store the base64 encoded HTML as a previewImage field
-    // In production, you'd upload to Supabase Storage or S3
-    const maxDataUriLength = 500000; // ~500KB limit for data URIs
-    let previewUrl: string;
-    
-    if (html.length < maxDataUriLength) {
-      // Use data URI for small previews
-      const base64 = Buffer.from(html).toString('base64');
-      previewUrl = `data:text/html;base64,${base64}`;
-    } else {
-      // For larger previews, store a placeholder with a note
-      // In production, you'd upload to cloud storage
-      previewUrl = `https://storage.example.com/previews/${projectId}/desktop.html`;
-    }
-    
-    // Save to database
+    // Use data URI for immediate preview
+    const base64 = Buffer.from(html).toString('base64');
+    const previewUrl = `data:text/html;base64,${base64}`;
+
+
     await prisma.project.update({
       where: { id: projectId },
-      data: {
-        previewImage: previewUrl,
-      },
+      data: { previewImage: previewUrl },
     });
-    
-    return {
-      success: true,
-      previewUrl,
-    };
+
+
+    return { success: true, previewUrl };
   } catch (error) {
     console.error('Preview generation failed:', error);
-    return {
-      success: false,
-      error: String(error),
-    };
+    return { success: false, error: String(error) };
   }
 }
 
-/**
- * Generate preview for all viewports
- */
+
 export async function generateAllViewports(options: PreviewOptions): Promise<{
   success: boolean;
   previews?: Record<Viewport, string>;
   error?: string;
 }> {
-  const previews: Record<Viewport, string> = {} as Record<Viewport, string>;
-  
+  const previews = {} as Record<Viewport, string>;
+
+
   for (const viewport of ['desktop', 'tablet', 'mobile'] as Viewport[]) {
     const result = await generatePreview({ ...options });
-    
     if (result.success && result.previewUrl) {
       previews[viewport] = result.previewUrl;
-    } else {
-      return { success: false, error: result.error };
     }
   }
+
 
   return { success: true, previews };
 }
 
-/**
- * Get cached preview for a project
- */
+
 export async function getCachedPreview(projectId: string): Promise<{
   success: boolean;
   previewUrl?: string;
   timestamp?: Date;
   error?: string;
 }> {
-  
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: { previewImage: true, updatedAt: true },
   });
 
+
   if (!project) return { success: false, error: 'Project not found' };
   if (!project.previewImage) return { success: false, error: 'No preview available' };
+
 
   return {
     success: true,
@@ -364,127 +1122,34 @@ export async function getCachedPreview(projectId: string): Promise<{
   };
 }
 
-/**
- * Check if preview needs regeneration
- */
-export async function isPreviewStale(projectId: string, maxAgeHours = 24): Promise<boolean> {
-  
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { updatedAt: true },
-  });
 
-  if (!project) return true;
-  const ageHours = (Date.now() - project.updatedAt.getTime()) / (1000 * 60 * 60);
-  return ageHours > maxAgeHours;
-}
-
-/**
- * Invalidate cached preview
- */
 export async function invalidatePreview(projectId: string): Promise<void> {
-  
   await prisma.project.update({
     where: { id: projectId },
     data: { previewImage: null },
   });
 }
 
-// ============================================================================
-// Preview Actions
-// ============================================================================
-
-export interface PreviewAction {
-  type: 'REGENERATE_SECTION' | 'CHANGE_STYLE' | 'REVERT';
-  sectionId?: string;
-  stylePreset?: string;
-  versionId?: string;
-}
-
-/**
- * Execute a preview action
- */
-export async function executePreviewAction(
-  projectId: string,
-  action: PreviewAction
-): Promise<{ success: boolean; previewUrl?: string; error?: string }> {
-  switch (action.type) {
-    case 'REGENERATE_SECTION':
-      return generatePreview({ projectId });
-    case 'CHANGE_STYLE':
-      return generatePreview({ projectId, stylePreset: action.stylePreset });
-    case 'REVERT':
-      if (!action.versionId) return { success: false, error: 'Version ID required' };
-      return generatePreview({ projectId });
-    default:
-      return { success: false, error: 'Unknown action type' };
-  }
-}
 
 // ============================================================================
-// Version Management
+// Additional exports for backward compatibility
 // ============================================================================
 
-/**
- * Create a version snapshot before changes
- */
-export async function createPreviewVersion(
-  projectId: string,
-  reason: string
-): Promise<{ success: boolean; versionId?: string; error?: string }> {
-  
-  const project = await prisma.project.findUnique({ where: { id: projectId } });
-  if (!project) return { success: false, error: 'Project not found' };
+export type { Viewport };
+export const VIEWPORT_CONFIGS_EXPORT = VIEWPORT_CONFIGS;
 
-  const latestVersion = await prisma.templateVersion.findFirst({
-    where: { templateId: projectId },
-    orderBy: { version: 'desc' },
-  });
-
-  const newVersion = (latestVersion?.version || 0) + 1;
-
-  const version = await prisma.templateVersion.create({
-    data: {
-      templateId: projectId,
-      version: newVersion,
-      reason,
-      snapshot: { projectData: project.businessInfo },
-    },
-  });
-
-  return { success: true, versionId: version.id };
+export interface ViewportConfig {
+  width: number;
+  height: number;
+  label: string;
+  icon: string;
 }
 
-/**
- * Get available versions for a project
- */
-export async function getPreviewVersions(projectId: string): Promise<Array<{
-  id: string;
-  version: number;
-  reason: string;
-  createdAt: Date;
-}>> {
-  
-  return prisma.templateVersion.findMany({
-    where: { templateId: projectId },
-    orderBy: { version: 'desc' },
-    select: { id: true, version: true, reason: true, createdAt: true },
-  });
-}
+export const VIEWPORT_CONFIGS_LEGACY: Record<Viewport, ViewportConfig> = {
+  desktop: { width: 1440, height: 900, label: 'Desktop', icon: 'monitor' },
+  tablet: { width: 768, height: 1024, label: 'Tablet', icon: 'tablet' },
+  mobile: { width: 375, height: 812, label: 'Mobile', icon: 'smartphone' },
+};
 
-/**
- * Generate shareable expiring link (Deferred to post-MVP)
- */
-export async function generateShareableLink(
-  projectId: string,
-  expiresInHours = 24
-): Promise<{ success: boolean; link?: string; expiresAt?: Date; error?: string }> {
-  const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
-  const token = Buffer.from(`${projectId}:${expiresAt.getTime()}`).toString('base64url');
-  
-  return {
-    success: true,
-    link: `https://preview.siteforge.ai/share/${token}`,
-    expiresAt,
-  };
-}
+// Alias for backward compatibility
+export { generatePreview as generatePreviewForProject };
