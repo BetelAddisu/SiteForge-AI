@@ -335,7 +335,7 @@ export class GenerationPipeline {
     
     console.log('[Pipeline] stepGenerateContent - Starting for:', businessData.businessName);
     
-    // Start with basic content
+    // Start with basic content as fallback
     let generatedContent = {
       homepage: {
         hero: {
@@ -352,39 +352,48 @@ export class GenerationPipeline {
       businessData: options.businessData,
     };
 
-    // Try AI generation, but don't fail if it doesn't work
-    try {
-      const homepageResult = await this.ai.generateHomepageContent(
-        businessData.businessName,
-        businessData.industry
-      );
+    // FIX: Strict AI generation - throw on failure per Rule #1
+    // "Never catch a failure and continue with empty or placeholder data"
+    const homepageResult = await this.ai.generateHomepageContent(
+      businessData.businessName,
+      businessData.industry
+    );
+    
+    console.log('[Pipeline] Homepage AI generation:', homepageResult.success ? 'SUCCESS' : 'FAILED');
+    
+    if (homepageResult.success && homepageResult.data) {
+      // Merge AI content with defaults to ensure all required fields exist
+      const aiData = homepageResult.data;
       
-      console.log('[Pipeline] Homepage AI generation:', homepageResult.success ? 'SUCCESS' : 'FAILED');
-      
-      if (homepageResult.success && homepageResult.data) {
-        // Merge AI content with defaults to ensure all required fields exist
-        const aiData = homepageResult.data;
-        generatedContent.homepage = {
-          hero: {
-            heading: aiData.hero.heading,
-            subheading: aiData.hero.subheading || `${businessData.businessName} - Professional Services`,
-            ctaText: aiData.hero.ctaText || 'Learn More',
-          },
-          about: {
-            heading: aiData.about.heading,
-            description: aiData.about.paragraphs?.join(' ') || aiData.about.heading,
-          },
-          services: (aiData.services || []).map(s => ({
-            title: s.title,
-            description: s.description,
-          })),
-        };
-        console.log('[Pipeline] Using AI-generated content');
-      } else {
-        console.log('[Pipeline] Using basic content (AI failed)');
+      // Validate required fields exist and are non-empty
+      if (!aiData.hero?.heading) {
+        throw new Error('AI returned empty hero heading');
       }
-    } catch (error) {
-      console.warn('[Pipeline] AI generation failed, using basic content:', error);
+      if (!aiData.about?.heading) {
+        throw new Error('AI returned empty about heading');
+      }
+      
+      generatedContent.homepage = {
+        hero: {
+          heading: aiData.hero.heading,
+          subheading: aiData.hero.subheading || `${businessData.businessName} - Professional Services`,
+          ctaText: aiData.hero.ctaText || 'Learn More',
+        },
+        about: {
+          heading: aiData.about.heading,
+          description: aiData.about.paragraphs?.join(' ') || aiData.about.heading,
+        },
+        services: (aiData.services || []).map(s => ({
+          title: s.title || 'Service',
+          description: s.description || '',
+        })),
+      };
+      console.log('[Pipeline] Using AI-generated content');
+    } else {
+      // AI failed - this is a real error, don't silently continue with defaults
+      const errorMsg = homepageResult.error || 'AI generation returned no data';
+      console.error('[Pipeline] AI generation failed:', errorMsg);
+      throw new Error(`Content generation failed: ${errorMsg}`);
     }
 
     this.state!.checkpointData = {
