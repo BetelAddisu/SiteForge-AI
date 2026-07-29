@@ -264,6 +264,130 @@ function resolveColor(value: unknown, resolvedStyles: ResolvedStyles, fallback: 
   return (value as string) || fallback;
 }
 
+// ============================================================
+// Elementor Dimension Helpers
+// ============================================================
+
+function dimVal(v: unknown, fallback = ''): string {
+  if (v == null || v === '') return fallback;
+  if (typeof v === 'number') return `${v}px`;
+  if (typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    if (typeof o.size === 'number') return `${o.size}${o.unit || 'px'}`;
+  }
+  return String(v);
+}
+
+function dimStr(v: unknown, fallback = ''): string {
+  if (v == null || v === '') return fallback;
+  if (typeof v === 'number') return `${v}px`;
+  if (typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    if (typeof o.top === 'number') {
+      const u = o.unit || 'px';
+      const t = String(o.top), r = String(o.right ?? o.top), b = String(o.bottom ?? o.top), l = String(o.left ?? o.right ?? o.top);
+      return `${t}${u} ${r}${u} ${b}${u} ${l}${u}`;
+    }
+    if (typeof o.size === 'number') return `${o.size}${o.unit || 'px'}`;
+    if (typeof o.top === 'string') {
+      const u = o.unit || 'px';
+      const t = o.top, r = o.right ?? t, b = o.bottom ?? t, l = o.left ?? r;
+      return `${t} ${r} ${b} ${l}`;
+    }
+  }
+  return String(v);
+}
+
+function buildContainerStyle(settings: Record<string, unknown>): string {
+  const parts: string[] = [];
+
+  // Background
+  const bg = settings.background_background as string;
+  if (bg === 'gradient') {
+    const type = (settings.background_gradient_type as string) || 'linear';
+    const angle = ((settings.background_gradient_angle as { size?: number })?.size) ?? 180;
+    const color1 = settings.background_color as string;
+    const color2 = settings.background_gradient_second_color as string;
+    const pos = (settings.background_gradient_position as string) || 'center center';
+    if (color1 && color2) {
+      const grad = type === 'radial' ? `radial-gradient(at ${pos}, ${color1}, ${color2})` : `linear-gradient(${angle}deg, ${color1}, ${color2})`;
+      parts.push(`background:${grad}`);
+    } else if (color1) {
+      parts.push(`background:${color1}`);
+    }
+  }
+
+  // Padding
+  const pad = dimStr(settings.padding);
+  if (pad) parts.push(`padding:${pad}`);
+
+  // Margin
+  const marg = dimStr(settings.margin);
+  if (marg) parts.push(`margin:${marg}`);
+
+  // Border
+  const bs = settings.border_border as string;
+  if (bs && bs !== 'none') {
+    const bw = dimStr(settings.border_width) || '1px';
+    const bc = (settings.border_color as string) || '#e5e7eb';
+    parts.push(`border:${bw} ${bs} ${bc}`);
+  }
+  const br = dimStr(settings.border_radius);
+  if (br) parts.push(`border-radius:${br}`);
+
+  // Box shadow
+  if (settings.box_shadow_box_shadow === 'yes') {
+    const h = dimVal(settings.box_shadow_horizontal) || '0';
+    const v = dimVal(settings.box_shadow_vertical) || '2px';
+    const bl = dimVal(settings.box_shadow_blur) || '4px';
+    const sp = dimVal(settings.box_shadow_spread) || '0';
+    const cl = (settings.box_shadow_color as string) || 'rgba(0,0,0,0.1)';
+    parts.push(`box-shadow:${h} ${v} ${bl} ${sp} ${cl}`);
+  }
+
+  // Opacity
+  const opacity = settings.hover_opacity as { size?: number } | number | undefined;
+  const opVal = typeof opacity === 'object' ? opacity?.size : (opacity as number | undefined);
+  if (opVal != null) parts.push(`opacity:${opVal}`);
+
+  return parts.join(';');
+}
+
+function buildTypoStyle(settings: Record<string, unknown>): string {
+  const parts: string[] = [];
+  const ff = settings.typography_font_family as string;
+  if (ff) parts.push(`font-family:${ff}`);
+  const fs = dimVal(settings.typography_font_size);
+  if (fs) parts.push(`font-size:${fs}`);
+  const fw = settings.typography_font_weight as string;
+  if (fw) parts.push(`font-weight:${fw}`);
+  const lh = dimVal(settings.typography_line_height);
+  if (lh) parts.push(`line-height:${lh}`);
+  const ls = dimVal(settings.typography_letter_spacing);
+  if (ls) parts.push(`letter-spacing:${ls}`);
+  const tt = settings.typography_text_transform as string;
+  if (tt && tt !== 'none') parts.push(`text-transform:${tt}`);
+  const fsStyle = settings.typography_font_style as string;
+  if (fsStyle) parts.push(`font-style:${fsStyle}`);
+  return parts.join(';');
+}
+
+function buildHoverContainerStyle(settings: Record<string, unknown>): string {
+  const parts: string[] = [];
+  if (settings.background_hover_color) parts.push(`background:${settings.background_hover_color}`);
+  if (settings.hover_color) parts.push(`color:${settings.hover_color}`);
+  if (settings.border_hover_color) parts.push(`border-color:${settings.border_hover_color}`);
+  if (settings.box_shadow_box_shadow_hover === 'yes') {
+    const h = dimVal(settings.box_shadow_horizontal_hover) || '0';
+    const v = dimVal(settings.box_shadow_vertical_hover) || '2px';
+    const bl = dimVal(settings.box_shadow_blur_hover) || '4px';
+    const sp = dimVal(settings.box_shadow_spread_hover) || '0';
+    const cl = (settings.box_shadow_color_hover as string) || 'rgba(0,0,0,0.1)';
+    parts.push(`box-shadow:${h} ${v} ${bl} ${sp} ${cl}`);
+  }
+  return parts.join(';');
+}
+
 function renderWidgetContent(node: ElementorNode, resolvedStyles: ResolvedStyles): string {
   const settings = node.settings || {};
   switch (node.widgetType) {
@@ -318,26 +442,22 @@ function renderWidgetContent(node: ElementorNode, resolvedStyles: ResolvedStyles
   }
 }
 
-function getFontFamily(settings: Record<string, unknown>): string {
-  const ff = settings.typography_font_family as string | undefined;
-  return ff ? `font-family:${ff};` : '';
-}
-
 function renderHeading(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
   const text = (settings.heading as string) || (settings.title as string) || '';
   const tag = (settings.header_size as string) || 'h2';
   const align = (settings.align as string) || 'left';
   const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
-  const fontFamily = getFontFamily(settings);
+  const typoStyle = buildTypoStyle(settings);
+  const colorStyle = titleColor ? `color:${titleColor}` : '';
   const sizeClass = settings.size ? ` elementor-size-${settings.size}` : ' elementor-size-default';
-  return `<${tag} class="elementor-heading-title${sizeClass}" style="text-align:${align};color:${titleColor};${fontFamily}">${esc(text)}</${tag}>`;
+  return `<${tag} class="elementor-heading-title${sizeClass}" style="text-align:${align};${colorStyle};${typoStyle}">${esc(text)}</${tag}>`;
 }
 
 function renderTextEditor(settings: Record<string, unknown>): string {
   const html = (settings.editor as string) || (settings.wysiwyg as string) || '';
   const align = (settings.align as string) || 'left';
-  const fontFamily = getFontFamily(settings);
-  return `<div class="elementor-text-editor elementor-clearfix" style="text-align:${align};${fontFamily}">${html}</div>`;
+  const typoStyle = buildTypoStyle(settings);
+  return `<div class="elementor-text-editor elementor-clearfix" style="text-align:${align};${typoStyle}">${html}</div>`;
 }
 
 function renderImage(settings: Record<string, unknown>): string {
@@ -346,7 +466,20 @@ function renderImage(settings: Record<string, unknown>): string {
   const alt = image?.alt || (settings.alt as string) || '';
   if (!url) return '';
   const link = (settings.link as { url?: string })?.url;
-  const imgHtml = `<img decoding="async" src="${esc(url)}" class="attachment-large size-large" alt="${esc(alt)}" loading="lazy" />`;
+  let imgStyle = '';
+  const w = settings.width as { size?: number; unit?: string } | undefined;
+  const h = settings.height as { size?: number; unit?: string } | undefined;
+  if (w?.size && w.size > 0) imgStyle += `width:${w.size}${w.unit || 'px'};`;
+  if (h?.size && h.size > 0) imgStyle += `height:${h.size}${h.unit || 'px'};`;
+  if (settings.image_size_type === 'custom' && settings.image_custom_dimension) {
+    const dim = settings.image_custom_dimension as { width?: number; height?: number };
+    if (dim?.width) imgStyle += `width:${dim.width}px;`;
+    if (dim?.height) imgStyle += `height:${dim.height}px;`;
+  }
+  if (settings.hover_animation) imgStyle += `transition:transform 0.3s;`;
+  if (settings.object_fit) imgStyle += `object-fit:${settings.object_fit};`;
+  const imgAttr = imgStyle ? ` style="${imgStyle}"` : '';
+  const imgHtml = `<img decoding="async" src="${esc(url)}" class="attachment-large size-large" alt="${esc(alt)}" loading="lazy"${imgAttr} />`;
   if (link) return `<a href="${esc(link)}">${imgHtml}</a>`;
   return `<div class="elementor-image">${imgHtml}</div>`;
 }
@@ -357,10 +490,14 @@ function renderButton(settings: Record<string, unknown>, resolvedStyles: Resolve
   const align = (settings.align as string) || 'left';
   const size = (settings.size as string) || 'md';
   const bgColor = resolveColor(settings.background_color, resolvedStyles, '#3B82F6');
+  const hoverBg = settings.background_hover_color as string || '';
+  const hoverColor = settings.hover_color as string || '';
   const btnClasses = ['elementor-button', `elementor-size-${size}`];
   if (settings.button_type) btnClasses.push(`elementor-button-${settings.button_type}`);
+  const typoStyle = buildTypoStyle(settings);
+  const hoverAttr = hoverBg || hoverColor ? ` data-sf-normal-bg="${bgColor}" data-sf-hover-bg="${hoverBg}" data-sf-normal-color="inherit" data-sf-hover-color="${hoverColor}" onmouseover="var el=this;if(el.dataset.sfHoverBg)el.style.background=el.dataset.sfHoverBg;if(el.dataset.sfHoverColor)el.style.color=el.dataset.sfHoverColor;" onmouseout="var el=this;if(el.dataset.sfHoverBg)el.style.background=el.dataset.sfNormalBg;if(el.dataset.sfHoverColor)el.style.color=el.dataset.sfNormalColor;"` : '';
   return `<div class="elementor-button-wrapper" style="text-align:${align}">
-    <a href="${esc(link)}" class="${btnClasses.join(' ')}" style="background-color:${bgColor};">
+    <a href="${esc(link)}" class="${btnClasses.join(' ')}" style="background-color:${bgColor};${typoStyle}"${hoverAttr}>
       <span class="elementor-button-content-wrapper">
         ${settings.icon ? `<span class="elementor-button-icon elementor-align-icon-left"><i class="${settings.icon}"></i></span>` : ''}
         <span class="elementor-button-text">${esc(text)}</span>
@@ -398,10 +535,11 @@ function renderCounter(settings: Record<string, unknown>, resolvedStyles: Resolv
   const title = (settings.title as string) || '';
   const numberColor = resolveColor(settings.number_color, resolvedStyles, '#3B82F6');
   const titleColor = resolveColor(settings.title_color, resolvedStyles, '#666');
+  const numTypo = buildTypoStyle(settings);
   return `<div class="elementor-counter">
     <div class="elementor-counter-number-wrapper">
       <span class="elementor-counter-number-prefix">${esc(prefix)}</span>
-      <span class="elementor-counter-number" data-target="${endingNumber}" style="color:${numberColor}">${endingNumber}</span>
+      <span class="elementor-counter-number" data-target="${endingNumber}" style="color:${numberColor};${numTypo}">${endingNumber}</span>
       <span class="elementor-counter-number-suffix">${esc(suffix)}</span>
     </div>
     ${title ? `<div class="elementor-counter-title" style="color:${titleColor}">${esc(title)}</div>` : ''}
@@ -417,9 +555,10 @@ function renderImageBox(settings: Record<string, unknown>, resolvedStyles: Resol
   const position = (settings.image_position as string) || 'top';
   const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
   const descColor = resolveColor(settings.description_color, resolvedStyles, '#666');
+  const titleTypo = buildTypoStyle(settings);
   const imageHtml = url ? `<figure class="elementor-image-box-img"><img src="${esc(url)}" alt="${esc(imageAlt)}" loading="lazy" /></figure>` : '';
   const contentHtml = `<div class="elementor-image-box-content">
-    <h3 class="elementor-image-box-title" style="color:${titleColor}">${esc(title)}</h3>
+    <h3 class="elementor-image-box-title" style="color:${titleColor};${titleTypo}">${esc(title)}</h3>
     <p class="elementor-image-box-description" style="color:${descColor}">${esc(description)}</p>
   </div>`;
   const cls = position === 'left' ? ` elementor-image-box-${position}` : '';
@@ -435,6 +574,7 @@ function renderIconBox(settings: Record<string, unknown>, resolvedStyles: Resolv
   const position = (settings.icon_position as string) || 'top';
   const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
   const descColor = resolveColor(settings.description_color, resolvedStyles, '#666');
+  const titleTypo = buildTypoStyle(settings);
   return `<div class="elementor-icon-box-wrapper elementor-icon-box-${position}">
     <div class="elementor-icon-box-icon">
       <span class="elementor-icon elementor-animation-">
@@ -442,7 +582,7 @@ function renderIconBox(settings: Record<string, unknown>, resolvedStyles: Resolv
       </span>
     </div>
     <div class="elementor-icon-box-content">
-      <h3 class="elementor-icon-box-title" style="color:${titleColor}">${esc(title)}</h3>
+      <h3 class="elementor-icon-box-title" style="color:${titleColor};${titleTypo}">${esc(title)}</h3>
       <p class="elementor-icon-box-description" style="color:${descColor}">${esc(description)}</p>
     </div>
   </div>`;
@@ -612,8 +752,10 @@ function renderCallToAction(settings: Record<string, unknown>, resolvedStyles: R
   const btnText = (settings.button_text as string) || 'Learn More';
   const btnLink = ((settings.link as { url?: string })?.url) || '#';
   const bgColor = resolveColor(settings.background_color, resolvedStyles, '#3B82F6');
-  return `<div class="elementor-cta" style="background-color:${bgColor};border-radius:8px;padding:40px;text-align:center;color:#fff;">
-    <h2 class="elementor-cta__title" style="margin:0 0 12px;">${esc(title)}</h2>
+  const titleTypo = buildTypoStyle(settings);
+  const hoverAttr = settings.background_hover_color ? ` data-sf-hover-bg="${settings.background_hover_color}" data-sf-normal-bg="${bgColor}" onmouseover="if(this.dataset.sfHoverBg)this.style.background=this.dataset.sfHoverBg" onmouseout="if(this.dataset.sfNormalBg)this.style.background=this.dataset.sfNormalBg"` : '';
+  return `<div class="elementor-cta" style="background-color:${bgColor};border-radius:8px;padding:40px;text-align:center;color:#fff;"${hoverAttr}>
+    <h2 class="elementor-cta__title" style="margin:0 0 12px;${titleTypo}">${esc(title)}</h2>
     <p class="elementor-cta__description" style="margin:0 0 20px;">${esc(description)}</p>
     <a href="${esc(btnLink)}" class="elementor-button" style="background-color:#fff;color:#333;">${esc(btnText)}</a>
   </div>`;
@@ -877,10 +1019,7 @@ function renderSection(node: ElementorNode, resolvedStyles: ResolvedStyles): str
   const shapeBottom = renderShapeDivider(settings, 'bottom');
   const children = node.elements || [];
 
-  let sectionStyle = '';
-  if (!bgOverlay && settings.background_color) {
-    sectionStyle += `background-color:${settings.background_color};`;
-  }
+  let sectionStyle = buildContainerStyle(settings);
 
   return `<${htmlTag} class="${classes.join(' ')}" data-id="${id}" data-element_type="section"${customId}${sectionStyle ? ` style="${sectionStyle}"` : ''}>
 ${bgOverlay}
@@ -903,7 +1042,8 @@ function renderColumn(node: ElementorNode, resolvedStyles: ResolvedStyles): stri
   const customId = settings._element_id ? ` id="${esc(String(settings._element_id))}"` : '';
   const children = node.elements || [];
   const hasChildren = children.length > 0;
-  return `<div class="${classes.join(' ')}" data-id="${id}" data-element_type="column"${customId}>
+  const colStyle = buildContainerStyle(settings);
+  return `<div class="${classes.join(' ')}" data-id="${id}" data-element_type="column"${customId}${colStyle ? ` style="${colStyle}"` : ''}>
   <div class="elementor-widget-wrap${hasChildren ? ' elementor-element-populated' : ''}">
     ${children.map(c => renderNode(c, resolvedStyles)).join('\n')}
   </div>
@@ -935,8 +1075,16 @@ function renderWidget(node: ElementorNode, resolvedStyles: ResolvedStyles): stri
   const align = settings.align as string | undefined;
   if (align && align !== 'default') classes.push(`elementor-align-${align}`);
   const customId = settings._element_id ? ` id="${esc(String(settings._element_id))}"` : '';
+  // Responsive hide
+  const hideOn = settings.hide_on as string[] | undefined;
+  if (Array.isArray(hideOn)) {
+    hideOn.forEach(h => classes.push(`elementor-hidden-${h}`));
+  }
+  const widgetStyle = buildContainerStyle(settings);
+  const hoverStyle = buildHoverContainerStyle(settings);
+  const hoverAttr = hoverStyle ? ` onmouseover="this.style.cssText=this.dataset.sfNormal+';'+'${hoverStyle}'" onmouseout="this.style.cssText=this.dataset.sfNormal"` : '';
   const content = renderWidgetContent(node, resolvedStyles);
-  return `<div class="${classes.join(' ')}" data-id="${id}" data-element_type="widget" data-widget_type="${widgetType}.default"${customId}>
+  return `<div class="${classes.join(' ')}" data-id="${id}" data-element_type="widget" data-widget_type="${widgetType}.default"${customId}${widgetStyle ? ` style="${widgetStyle}" data-sf-normal="${widgetStyle}"` : ''}${hoverAttr}>
   <div class="elementor-widget-container">
     ${content}
   </div>
@@ -1139,7 +1287,7 @@ export function renderElementorToHtml(
   .elementor-slide-heading { font-size: 2.5rem; margin: 0 0 16px; }
   .elementor-slide-description { font-size: 1.2rem; margin: 0 0 24px; max-width: 600px; }
 
-  .elementor-background-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+  .elementor-background-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
   .elementor-section > .elementor-container { position: relative; z-index: 2; }
   .elementor-shape { overflow: hidden; position: absolute; left: 0; width: 100%; line-height: 0; direction: ltr; z-index: 3; }
   .elementor-shape-top { top: -1px; }
@@ -1183,6 +1331,21 @@ export function renderElementorToHtml(
   .elementor-alert { position: relative; }
   .elementor-alert-title { margin: 0 0 8px; font-size: 1.1rem; }
   .elementor-alert-description { font-size: 0.95rem; }
+
+  /* --- Container-level transitions --- */
+  .elementor-element { transition: background 0.3s, border 0.3s, box-shadow 0.3s, opacity 0.3s; }
+
+  /* --- Box shadow --- */
+  .elementor-element { transition: box-shadow 0.3s; }
+
+  /* --- Responsive hide --- */
+  @media (max-width: 767px) { .elementor-hidden-mobile { display: none !important; } }
+  @media (min-width: 768px) and (max-width: 1024px) { .elementor-hidden-tablet { display: none !important; } }
+  @media (min-width: 1025px) { .elementor-hidden-desktop { display: none !important; } }
+
+  /* --- Image hover animation --- */
+  .elementor-image img { transition: transform 0.3s, filter 0.3s; }
+  .elementor-image img:hover { transform: var(--sf-img-hover-scale, none); }
 
   /* --- Animations --- */
   @keyframes sf-fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
