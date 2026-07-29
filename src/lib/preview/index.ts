@@ -30,8 +30,8 @@ export interface PreviewOptions {
 // HTML Document Generator (uses unified render.ts)
 // ============================================================================
 
-function generatePreviewHtml(elements: Record<string, unknown>[], brandTokens?: PreviewOptions['brandTokens']): string {
-  return renderElementorToHtml(elements as Parameters<typeof renderElementorToHtml>[0], {
+function generatePreviewHtml(elements: unknown[], brandTokens?: PreviewOptions['brandTokens']): string {
+  return renderElementorToHtml(elements as ElementorNode[], {
     title: 'Website Preview',
     brandTokens,
   });
