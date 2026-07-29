@@ -25,8 +25,25 @@ const HANDLED_WIDGET_TYPES = [
   'icon-box',
   'icon-list',
   'divider',
+  'video',
   'elementskit-video',
   'image-carousel',
+  'social-icons',
+  'progress',
+  'accordion',
+  'elementskit-accordion',
+  'elementskit-countdown-timer',
+  'posts',
+  'elementskit-blog-posts',
+  'call-to-action',
+  'blockquote',
+  'google_maps',
+  'form',
+  'slides',
+  'shortcode',
+  'html',
+  'menu-anchor',
+  'sidebar',
   'metform',
 ];
 
@@ -82,5 +99,44 @@ describe('renderWidget coverage', () => {
     const html = renderElementorToHtml(tree, { title: 'Custom Page Title' });
 
     expect(html).toContain('<title>Custom Page Title</title>');
+  });
+
+  it('includes CSS keyframe animations in the style block', () => {
+    const tree = makeMinimalWidget('heading') as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('@keyframes sf-fadeInUp');
+    expect(html).toContain('@keyframes sf-countUp');
+    expect(html).toContain('@keyframes sf-pulse');
+  });
+
+  it('includes interactive JavaScript for counters, accordions, and carousels', () => {
+    const tree = makeMinimalWidget('heading') as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('counter count-up');
+    expect(html).toContain('Accordion toggle');
+    expect(html).toContain('carousel auto-play');
+  });
+
+  it('reads per-widget typography_font_family from heading settings', () => {
+    const tree = [{
+      id: 'test-root',
+      elType: 'section' as const,
+      elements: [{
+        id: 'test-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'widget-heading',
+          elType: 'widget' as const,
+          widgetType: 'heading',
+          settings: { heading: 'Test', typography_font_family: 'Georgia' },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    // The inline style should contain the per-widget font family
+    expect(html).toContain('font-family:Georgia');
   });
 });

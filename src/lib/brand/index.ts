@@ -178,11 +178,9 @@ export function mergeBrandTokens(
  * Apply brand tokens directly to an Elementor node tree.
  * Mutates nodes in place — caller should deep-clone before calling.
  *
- * Supported node types:
- *   - heading: title_color, typography_font_family
- *   - button: background_color
- *   - text-editor (future)
- *   - icon-box, image-box (future)
+ * Covers all widget types that the renderer supports for brand-color-aware
+ * rendering. Any widget added to renderWidget()'s switch with a resolveColor
+ * call should also be handled here.
  */
 export function applyBrandToTree(
   nodes: ElementorNode[],
@@ -190,21 +188,43 @@ export function applyBrandToTree(
 ): void {
   for (const node of nodes) {
     if (node.settings) {
-      if (node.widgetType === 'heading') {
-        if (brand.colors.primary) {
-          node.settings.title_color = brand.colors.primary;
-        }
-        if (brand.typography.headingFont) {
-          node.settings.typography_font_family = brand.typography.headingFont;
-        }
-      }
-      if (node.widgetType === 'button') {
-        if (brand.colors.primary) {
-          node.settings.background_color = brand.colors.primary;
-        }
-      }
-      if (node.widgetType === 'text-editor' && brand.typography.bodyFont) {
-        node.settings.typography_font_family = brand.typography.bodyFont;
+      switch (node.widgetType) {
+        case 'heading':
+          if (brand.colors.primary) node.settings.title_color = brand.colors.primary;
+          if (brand.typography.headingFont) node.settings.typography_font_family = brand.typography.headingFont;
+          break;
+        case 'button':
+          if (brand.colors.primary) node.settings.background_color = brand.colors.primary;
+          break;
+        case 'text-editor':
+          if (brand.typography.bodyFont) node.settings.typography_font_family = brand.typography.bodyFont;
+          break;
+        case 'counter':
+          if (brand.colors.primary) node.settings.number_color = brand.colors.primary;
+          if (brand.colors.text) node.settings.title_color = brand.colors.text;
+          break;
+        case 'progress':
+        case 'progress-bar':
+          if (brand.colors.primary) node.settings.inner_color = brand.colors.primary;
+          if (brand.colors.background) node.settings.background_color = brand.colors.background;
+          break;
+        case 'call-to-action':
+          if (brand.colors.primary) node.settings.background_color = brand.colors.primary;
+          break;
+        case 'icon-box':
+          if (brand.colors.primary) node.settings.title_color = brand.colors.primary;
+          if (brand.colors.text) node.settings.description_color = brand.colors.text;
+          break;
+        case 'image-box':
+          if (brand.colors.primary) node.settings.title_color = brand.colors.primary;
+          if (brand.colors.text) node.settings.description_color = brand.colors.text;
+          break;
+        case 'divider':
+          if (brand.colors.primary) node.settings.color = brand.colors.primary;
+          break;
+        case 'social-icons':
+          if (brand.colors.primary) node.settings.icon_color = brand.colors.primary;
+          break;
       }
     }
     if (node.elements) {

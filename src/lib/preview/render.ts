@@ -312,19 +312,26 @@ function renderWidgetContent(node: ElementorNode, resolvedStyles: ResolvedStyles
   }
 }
 
+function getFontFamily(settings: Record<string, unknown>): string {
+  const ff = settings.typography_font_family as string | undefined;
+  return ff ? `font-family:${ff};` : '';
+}
+
 function renderHeading(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
   const text = (settings.heading as string) || (settings.title as string) || '';
   const tag = (settings.header_size as string) || 'h2';
   const align = (settings.align as string) || 'left';
   const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
+  const fontFamily = getFontFamily(settings);
   const sizeClass = settings.size ? ` elementor-size-${settings.size}` : ' elementor-size-default';
-  return `<${tag} class="elementor-heading-title${sizeClass}" style="text-align:${align};color:${titleColor}">${esc(text)}</${tag}>`;
+  return `<${tag} class="elementor-heading-title${sizeClass}" style="text-align:${align};color:${titleColor};${fontFamily}">${esc(text)}</${tag}>`;
 }
 
 function renderTextEditor(settings: Record<string, unknown>): string {
   const html = (settings.editor as string) || (settings.wysiwyg as string) || '';
   const align = (settings.align as string) || 'left';
-  return `<div class="elementor-text-editor elementor-clearfix" style="text-align:${align}">${html}</div>`;
+  const fontFamily = getFontFamily(settings);
+  return `<div class="elementor-text-editor elementor-clearfix" style="text-align:${align};${fontFamily}">${html}</div>`;
 }
 
 function renderImage(settings: Record<string, unknown>): string {
@@ -1030,6 +1037,29 @@ export function renderElementorToHtml(
 
   .sf-unsupported { padding: 12px 16px; margin: 4px 0; border: 1px dashed #cbd5e1; color: #94a3b8; font-size: 13px; font-family: monospace; background: #f8fafc; border-radius: 3px; }
 
+  /* --- Animations --- */
+  @keyframes sf-fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes sf-fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes sf-slideInLeft { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes sf-slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes sf-countUp { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes sf-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  @keyframes sf-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+  .elementor-section { animation: sf-fadeInUp 0.6s ease-out both; }
+  .elementor-section:nth-child(2) { animation-delay: 0.1s; }
+  .elementor-section:nth-child(3) { animation-delay: 0.2s; }
+  .elementor-section:nth-child(4) { animation-delay: 0.3s; }
+  .elementor-section:nth-child(5) { animation-delay: 0.4s; }
+
+  .elementor-counter-number-animate { animation: sf-countUp 0.8s ease-out both; }
+  .elementor-accordion-item { transition: all 0.3s ease; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .elementor-section { animation: none; }
+    .elementor-counter-number-animate { animation: none; }
+  }
+
   @media (max-width: 1024px) {
     .elementor-col-10, .elementor-col-11, .elementor-col-12, .elementor-col-14, .elementor-col-16,
     .elementor-col-20, .elementor-col-25, .elementor-col-30, .elementor-col-33, .elementor-col-40,
@@ -1050,6 +1080,58 @@ export function renderElementorToHtml(
 </head>
 <body>
 ${body}
+<script>
+(function() {
+  // Counter count-up animation
+  var counters = document.querySelectorAll('.elementor-counter-number[data-target]');
+  counters.forEach(function(el) {
+    var target = parseInt(el.getAttribute('data-target')) || 0;
+    if (target === 0) return;
+    var duration = 1200;
+    var step = Math.max(1, Math.floor(target / 60));
+    var current = 0;
+    el.classList.add('elementor-counter-number-animate');
+    function tick() {
+      current += step;
+      if (current >= target) { current = target; el.textContent = current; return; }
+      el.textContent = current;
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+
+  // Accordion toggle
+  var accordionTitles = document.querySelectorAll('.elementor-tab-title');
+  accordionTitles.forEach(function(title) {
+    title.addEventListener('click', function() {
+      var content = this.nextElementSibling;
+      var isOpen = content.style.display !== 'none';
+      var parent = this.closest('.elementor-accordion');
+      if (parent) {
+        parent.querySelectorAll('.elementor-tab-content').forEach(function(c) { c.style.display = 'none'; });
+        parent.querySelectorAll('.elementor-tab-title').forEach(function(t) { t.classList.remove('elementor-active'); });
+      }
+      if (!isOpen) {
+        content.style.display = 'block';
+        this.classList.add('elementor-active');
+      }
+    });
+  });
+
+  // Image carousel auto-play
+  var carousels = document.querySelectorAll('.elementor-image-carousel');
+  carousels.forEach(function(carousel) {
+    if (carousel.dataset.autoplay === 'false') return;
+    var scrollAmount = carousel.clientWidth;
+    setInterval(function() {
+      var maxScroll = carousel.scrollWidth - carousel.clientWidth;
+      var next = carousel.scrollLeft + scrollAmount;
+      if (next >= maxScroll) { next = 0; }
+      carousel.scrollTo({ left: next, behavior: 'smooth' });
+    }, 4000);
+  });
+})();
+</script>
 </body>
 </html>`;
 }

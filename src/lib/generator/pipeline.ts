@@ -120,11 +120,11 @@ export class GenerationPipeline {
       // Step 3: Generate content (now aware of template structure)
       await this.stepGenerateContent(options);
       
-      // Step 4: Apply brand (and inject into elementor JSON)
-      await this.stepApplyBrand(options);
-      
-      // Step 5: Create the Elementor structure
+      // Step 4: Create the Elementor structure (MUST come before brand so elementorData exists)
       await this.stepCreateElementorStructure(options);
+      
+      // Step 5: Apply brand (injects brand colors/fonts into the elementor JSON tree)
+      await this.stepApplyBrand(options);
       
       // Step 6: Validate
       await this.stepValidateJson(options);

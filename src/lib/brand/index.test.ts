@@ -91,6 +91,13 @@ describe('applyBrandToTree', () => {
           { id: 'h1', elType: 'widget', widgetType: 'heading', settings: {} },
           { id: 'b1', elType: 'widget', widgetType: 'button', settings: {} },
           { id: 't1', elType: 'widget', widgetType: 'text-editor', settings: {} },
+          { id: 'c1', elType: 'widget', widgetType: 'counter', settings: {} },
+          { id: 'p1', elType: 'widget', widgetType: 'progress', settings: {} },
+          { id: 'ct1', elType: 'widget', widgetType: 'call-to-action', settings: {} },
+          { id: 'ib1', elType: 'widget', widgetType: 'icon-box', settings: {} },
+          { id: 'im1', elType: 'widget', widgetType: 'image-box', settings: {} },
+          { id: 'd1', elType: 'widget', widgetType: 'divider', settings: {} },
+          { id: 's1', elType: 'widget', widgetType: 'social-icons', settings: {} },
         ],
       }],
     }] as ElementorNode[];
@@ -99,27 +106,60 @@ describe('applyBrandToTree', () => {
   it('applies primary color to heading and button', () => {
     const tree = makeTree();
     applyBrandToTree(tree, {
-      colors: { primary: '#FF0000', secondary: '#00FF00' },
+      colors: { primary: '#FF0000', secondary: '#00FF00', text: '#333333', background: '#FFFFFF' },
       typography: { headingFont: 'Roboto', bodyFont: 'Inter' },
     });
 
-    const heading = tree[0].elements![0].elements![0];
-    const button = tree[0].elements![0].elements![1];
+    const el = (i: number) => tree[0].elements![0].elements![i];
 
-    expect(heading.settings?.title_color).toBe('#FF0000');
-    expect(heading.settings?.typography_font_family).toBe('Roboto');
-    expect(button.settings?.background_color).toBe('#FF0000');
+    expect(el(0).settings?.title_color).toBe('#FF0000');
+    expect(el(0).settings?.typography_font_family).toBe('Roboto');
+    expect(el(1).settings?.background_color).toBe('#FF0000');
   });
 
   it('applies typography to text-editor', () => {
     const tree = makeTree();
     applyBrandToTree(tree, {
-      colors: { primary: '#000', secondary: '#000' },
+      colors: { primary: '#000', secondary: '#000', text: '#666', background: '#fff' },
       typography: { headingFont: 'HeadingFont', bodyFont: 'BodyFont' },
     });
 
-    const textEditor = tree[0].elements![0].elements![2];
-    expect(textEditor.settings?.typography_font_family).toBe('BodyFont');
+    expect(tree[0].elements![0].elements![2].settings?.typography_font_family).toBe('BodyFont');
+  });
+
+  it('applies brand to counter, progress, cta, icon-box, image-box, divider, social-icons', () => {
+    const tree = makeTree();
+    applyBrandToTree(tree, {
+      colors: { primary: '#FF0000', secondary: '#00FF00', text: '#333333', background: '#FFFFFF' },
+      typography: { headingFont: 'A', bodyFont: 'B' },
+    });
+
+    const el = (i: number) => tree[0].elements![0].elements![i];
+
+    // counter: number_color = primary, title_color = text
+    expect(el(3).settings?.number_color).toBe('#FF0000');
+    expect(el(3).settings?.title_color).toBe('#333333');
+
+    // progress: inner_color = primary, background_color = background
+    expect(el(4).settings?.inner_color).toBe('#FF0000');
+    expect(el(4).settings?.background_color).toBe('#FFFFFF');
+
+    // call-to-action: background_color = primary
+    expect(el(5).settings?.background_color).toBe('#FF0000');
+
+    // icon-box: title_color = primary, description_color = text
+    expect(el(6).settings?.title_color).toBe('#FF0000');
+    expect(el(6).settings?.description_color).toBe('#333333');
+
+    // image-box: title_color = primary, description_color = text
+    expect(el(7).settings?.title_color).toBe('#FF0000');
+    expect(el(7).settings?.description_color).toBe('#333333');
+
+    // divider: color = primary
+    expect(el(8).settings?.color).toBe('#FF0000');
+
+    // social-icons: icon_color = primary
+    expect(el(9).settings?.icon_color).toBe('#FF0000');
   });
 });
 
