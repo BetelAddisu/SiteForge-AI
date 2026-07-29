@@ -13,6 +13,7 @@ import { classifySections } from '../elementor/section-classifier';
 import type { ElementorNode } from '../elementor/parser';
 import { validateElementorJson } from '../elementor/validator';
 import { generatePreview } from '../preview';
+import { createBrandFromProjectData, applyBrandToTree } from '../brand';
 
 // ============================================================================
 // Types
@@ -431,59 +432,23 @@ export class GenerationPipeline {
 
   // Step 6: Apply Brand
   private async stepApplyBrand(options: PipelineOptions): Promise<void> {
-    const brandTokens = {
-      colors: {
-        primary: options.businessData.brandColors?.primary ?? '#3B82F6',
-        secondary: options.businessData.brandColors?.secondary ?? '#10B981',
-      },
-      style: options.businessData.stylePreset ?? 'modern',
-      typography: {
-        headingFont: 'Inter',
-        bodyFont: 'Inter',
-      },
-    };
+    const brandTokens = createBrandFromProjectData({
+      brandColors: options.businessData.brandColors,
+      stylePreset: options.businessData.stylePreset,
+    });
 
     this.state!.checkpointData = {
       ...this.state!.checkpointData,
       brandTokens,
     };
 
-    // FIX: Apply brand tokens to the element tree if it exists
     const elementorData = this.state!.checkpointData['elementorData'] as { elements?: ElementorNode[] } | undefined;
     if (elementorData?.elements) {
-      this.applyBrandToTree(elementorData.elements, brandTokens);
+      applyBrandToTree(elementorData.elements, brandTokens);
     }
 
     await this.saveCheckpoint('APPLY_BRAND');
     options.onStepComplete?.('APPLY_BRAND', brandTokens);
-  }
-
-  /**
-   * Apply brand tokens to the element tree
-   */
-  private applyBrandToTree(
-    nodes: ElementorNode[], 
-    brand: { colors: { primary?: string; secondary?: string }; typography: { headingFont?: string; bodyFont?: string } }
-  ): void {
-    for (const node of nodes) {
-      if (node.settings) {
-        // Apply colors to headings
-        if (node.widgetType === 'heading' && brand.colors.primary) {
-          node.settings.title_color = brand.colors.primary;
-        }
-        // Apply colors to buttons
-        if (node.widgetType === 'button' && brand.colors.primary) {
-          node.settings.background_color = brand.colors.primary;
-        }
-        // Apply typography to headings
-        if (node.widgetType === 'heading' && brand.typography.headingFont) {
-          node.settings.typography_font_family = brand.typography.headingFont;
-        }
-      }
-      if (node.elements) {
-        this.applyBrandToTree(node.elements, brand);
-      }
-    }
   }
 
   // Step 5: Create Elementor Structure - works with or without templates

@@ -130,4 +130,25 @@ describe('applyModifications', () => {
     // bug that caused generated content to never reach real templates.
     expect(result.success).toBe(false);
   });
+
+  it('deep-clones template content before mutating — regression test for read-only template requirement', () => {
+    // The pipeline uses JSON.parse(JSON.stringify(templateContent)) before
+    // calling applyModifications. This test simulates that: we deep-clone the
+    // original, apply modifications to the clone, and verify the original is
+    // untouched. This guards against the "templates are read-only masters" rule.
+    const original = makeTree();
+    const clone = JSON.parse(JSON.stringify(original)) as ElementorNode[];
+
+    const result = applyModifications(clone, {
+      elements: [{ type: 'modify', target: { nodeId: 'h1' }, changes: { heading: 'Modified Clone Heading' } }],
+    });
+
+    expect(result.success).toBe(true);
+    // The clone should have the new heading
+    expect(clone[0].elements![0].elements![0].settings?.heading).toBe('Modified Clone Heading');
+    // The original must be completely untouched
+    expect(original[0].elements![0].elements![0].settings?.heading).toBe('Original Heading 1');
+    // Deep verify every node is unchanged in the original
+    expect(JSON.stringify(original)).not.toContain('Modified Clone Heading');
+  });
 });

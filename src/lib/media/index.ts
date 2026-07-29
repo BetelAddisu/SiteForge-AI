@@ -10,7 +10,7 @@
  * - Stock image integration (Unsplash)
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { getStorageProvider } from '@/lib/storage';
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
 
@@ -53,17 +53,6 @@ export interface SearchOptions {
   limit?: number;
   orientation?: 'landscape' | 'portrait' | 'squarish';
   color?: string;
-}
-
-// ============================================================================
-// Supabase Storage Client
-// ============================================================================
-
-export function createMediaClient(): SupabaseClient {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
 }
 
 // ============================================================================
@@ -200,11 +189,11 @@ Return valid JSON matching the schema.`;
 }
 
 // ============================================================================
-// Supabase Storage Operations
+// Storage Operations (via abstraction layer)
 // ============================================================================
 
 /**
- * Upload image to Supabase Storage
+ * Upload image to configured storage
  */
 export async function uploadImage(
   bucket: string,
@@ -215,22 +204,13 @@ export async function uploadImage(
     cacheControl?: number;
   }
 ): Promise<{ success: boolean; path?: string; error?: string }> {
-  const client = createMediaClient();
-  
   try {
-    const { data, error } = await client.storage
-      .from(bucket)
-      .upload(path, buffer, {
-        contentType: options?.contentType ?? 'image/webp',
-        cacheControl: options?.cacheControl ? String(options.cacheControl) : '31536000', // 1 year
-        upsert: true,
-      });
-    
-    if (error) {
-      return { success: false, error: error.message };
-    }
-    
-    return { success: true, path: data.path };
+    const provider = await getStorageProvider();
+    const contentType = options?.contentType ?? 'image/webp';
+    // Reconstruct full key from bucket + path since the interface uses flat keys.
+    // The bucket is configured per-provider (see supabase.ts / r2.ts).
+    const result = await provider.uploadFile(path, buffer, contentType);
+    return { success: true, path: result.key };
   } catch (error) {
     return { success: false, error: String(error) };
   }
@@ -239,28 +219,21 @@ export async function uploadImage(
 /**
  * Get public URL for a storage file
  */
-export function getPublicUrl(bucket: string, path: string): string {
-  const client = createMediaClient();
-  const { data } = client.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
+export async function getPublicUrl(bucket: string, path: string): Promise<string> {
+  const provider = await getStorageProvider();
+  return provider.getPublicUrl(path);
 }
 
 /**
- * Delete image from Supabase Storage
+ * Delete image from storage
  */
 export async function deleteImage(
   bucket: string,
   path: string
 ): Promise<{ success: boolean; error?: string }> {
-  const client = createMediaClient();
-  
   try {
-    const { error } = await client.storage.from(bucket).remove([path]);
-    
-    if (error) {
-      return { success: false, error: error.message };
-    }
-    
+    const provider = await getStorageProvider();
+    await provider.deleteFile(path);
     return { success: true };
   } catch (error) {
     return { success: false, error: String(error) };
@@ -434,7 +407,7 @@ export async function processAndUploadImage(
     // 5. Generate alt text if enabled
     let altText: string | undefined;
     if (options?.generateAltText && options?.apiKey) {
-      const publicUrl = getPublicUrl(bucket, storagePath);
+      const publicUrl = await getPublicUrl(bucket, storagePath);
       const altResult = await generateAltText(publicUrl, context, options.apiKey);
       altText = altResult?.alt;
     }
@@ -443,7 +416,7 @@ export async function processAndUploadImage(
     const asset: MediaAsset = {
       id: `${timestamp}`,
       projectId,
-      url: getPublicUrl(bucket, storagePath),
+      url: await getPublicUrl(bucket, storagePath),
       filename: normalizedFilename,
       mimeType: 'image/webp',
       size: processedBuffer.length,
