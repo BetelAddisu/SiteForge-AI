@@ -225,6 +225,23 @@ export function applyBrandToTree(
         case 'social-icons':
           if (brand.colors.primary) node.settings.icon_color = brand.colors.primary;
           break;
+        case 'testimonial':
+          if (brand.colors.text) node.settings.testimonial_content_color = brand.colors.text;
+          if (brand.colors.primary) node.settings.testimonial_name_color = brand.colors.primary;
+          break;
+        case 'star-rating':
+        case 'rating':
+          if (brand.colors.accent) node.settings.stars_color = brand.colors.accent;
+          if (brand.colors.primary) node.settings.title_color = brand.colors.primary;
+          break;
+        case 'alert':
+          if (brand.colors.primary) node.settings.title_color = brand.colors.primary;
+          if (brand.colors.text) node.settings.description_color = brand.colors.text;
+          break;
+        case 'tabs':
+        case 'toggle':
+          if (brand.colors.primary) node.settings.title_color = brand.colors.primary;
+          break;
       }
     }
     if (node.elements) {

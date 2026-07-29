@@ -45,6 +45,12 @@ const HANDLED_WIDGET_TYPES = [
   'menu-anchor',
   'sidebar',
   'metform',
+  'tabs',
+  'star-rating',
+  'rating',
+  'testimonial',
+  'toggle',
+  'alert',
 ];
 
 function makeMinimalWidget(widgetType: string) {

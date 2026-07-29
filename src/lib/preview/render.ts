@@ -298,6 +298,12 @@ function renderWidgetContent(node: ElementorNode, resolvedStyles: ResolvedStyles
     case 'menu-anchor': return renderMenuAnchor(settings);
     case 'sidebar': return renderSidebar(settings);
     case 'metform': return renderMetForm(settings);
+    case 'tabs': return renderTabs(settings, resolvedStyles);
+    case 'rating': return renderRating(settings, resolvedStyles);
+    case 'star-rating': return renderStarRating(settings, resolvedStyles);
+    case 'testimonial': return renderTestimonial(settings, resolvedStyles);
+    case 'toggle': return renderToggle(settings);
+    case 'alert': return renderAlert(settings, resolvedStyles);
     default: {
       const titleKey = Object.keys(settings).find(k => k === 'title_text' || k === 'title' || k === 'heading');
       const descKey = Object.keys(settings).find(k => k === 'description_text' || k === 'description' || k === 'editor');
@@ -692,6 +698,116 @@ function renderMetForm(settings: Record<string, unknown>): string {
   </div>`;
 }
 
+function renderTestimonial(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
+  const content = (settings.testimonial_content as string) || '';
+  const name = (settings.testimonial_name as string) || '';
+  const job = (settings.testimonial_job as string) || '';
+  const image = settings.testimonial_image as { url?: string; alt?: string } | undefined;
+  const imageUrl = image?.url || '';
+  const nameColor = resolveColor(settings.testimonial_name_color, resolvedStyles, '#1a1a1a');
+  const contentColor = resolveColor(settings.testimonial_content_color, resolvedStyles, '#666');
+  const alignment = (settings.testimonial_alignment as string) || 'center';
+  let html = `<div class="elementor-testimonial" style="text-align:${alignment}">`;
+  if (imageUrl) {
+    html += `<div class="elementor-testimonial__image"><img src="${esc(imageUrl)}" alt="${esc(image?.alt || name)}" loading="lazy" style="width:60px;height:60px;border-radius:50%;object-fit:cover;margin:0 auto 12px;" /></div>`;
+  }
+  html += `<blockquote class="elementor-testimonial__content" style="color:${contentColor};font-style:italic;margin:0 0 12px;font-size:1.05rem;">${esc(content)}</blockquote>`;
+  if (name) html += `<cite class="elementor-testimonial__name" style="font-style:normal;font-weight:600;color:${nameColor}">${esc(name)}</cite>`;
+  if (job) html += `<span class="elementor-testimonial__job" style="display:block;font-size:0.9rem;color:#999;margin-top:4px;">${esc(job)}</span>`;
+  html += '</div>';
+  return html;
+}
+
+function renderStarRating(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
+  const scale = (settings.rating_scale as number) || 5;
+  const rating = (settings.rating as number) || 0;
+  const title = (settings.title as string) || '';
+  const align = (settings.align as string) || 'left';
+  const starColor = resolveColor(settings.stars_color, resolvedStyles, '#f0ad4e');
+  const unmarkedColor = resolveColor(settings.stars_unmarked_color, resolvedStyles, '#e2e8f0');
+  const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
+  let stars = '';
+  for (let i = 0; i < scale; i++) {
+    const filled = i < Math.round(rating);
+    stars += `<span class="elementor-star" style="color:${filled ? starColor : unmarkedColor};font-size:1.5rem;">&#9733;</span>`;
+  }
+  return `<div class="elementor-star-rating" style="text-align:${align}">
+    ${title ? `<p class="elementor-star-rating__title" style="color:${titleColor};margin:0 0 8px;font-weight:600;">${esc(title)}</p>` : ''}
+    <div class="elementor-star-rating__wrapper">${stars}</div>
+  </div>`;
+}
+
+function renderRating(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
+  const scale = (settings.rating_scale as number) || 5;
+  const rating = (settings.rating as number) || 0;
+  const iconColor = resolveColor(settings.icon_color, resolvedStyles, '#f0ad4e');
+  const icon = (settings.icon as { value?: string })?.value || 'fa-star';
+  let icons = '';
+  for (let i = 0; i < scale; i++) {
+    const filled = i < Math.round(rating);
+    icons += `<i class="fa ${esc(icon)}" style="color:${filled ? iconColor : '#e2e8f0'};font-size:1.5rem;margin:0 2px;" aria-hidden="true"></i>`;
+  }
+  return `<div class="elementor-rating">${icons}</div>`;
+}
+
+function renderTabs(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
+  const items = (settings.tabs as Array<{ tab_title?: string; tab_content?: string; _id?: string }>) || [];
+  if (items.length === 0) return '';
+  const type = (settings.type as string) || 'horizontal';
+  const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
+  const titles = items.map((item, i) =>
+    `<div class="elementor-tab-title elementor-tab-desktop-title${i === 0 ? ' elementor-active' : ''}" data-tab="${i}" style="color:${titleColor}">
+      <a style="color:inherit;text-decoration:none;">${esc(item.tab_title || `Tab ${i + 1}`)}</a>
+    </div>`
+  ).join('');
+  const contents = items.map((item, i) =>
+    `<div class="elementor-tab-content elementor-clearfix${i === 0 ? ' elementor-active' : ''}" data-tab="${i}"${i !== 0 ? ' style="display:none;"' : ''}>
+      ${item.tab_content || ''}
+    </div>`
+  ).join('');
+  return `<div class="elementor-tabs elementor-tabs-${type}">
+    <div class="elementor-tabs-wrapper">${titles}</div>
+    <div class="elementor-tabs-content-wrapper">${contents}</div>
+  </div>`;
+}
+
+function renderToggle(settings: Record<string, unknown>): string {
+  const items = (settings.tabs as Array<{ tab_title?: string; tab_content?: string; _id?: string }>) || [];
+  if (items.length === 0) return '';
+  const titleTag = (settings.title_html_tag as string) || 'div';
+  const toggleItems = items.map((item, i) => {
+    const title = item.tab_title || `Item ${i + 1}`;
+    const content = item.tab_content || '';
+    return `<div class="elementor-toggle-item">
+      <${titleTag} class="elementor-tab-title" data-tab="${i}">
+        <a class="elementor-toggle-title" tabindex="0" style="text-decoration:none;color:inherit;">${esc(title)}</a>
+      </${titleTag}>
+      <div class="elementor-tab-content elementor-clearfix" data-tab="${i}" style="display:${i === 0 ? 'block' : 'none'}">
+        ${content}
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="elementor-toggle" role="tablist">${toggleItems}</div>`;
+}
+
+function renderAlert(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
+  const type = (settings.alert_type as string) || 'info';
+  const title = (settings.alert_title as string) || '';
+  const description = (settings.alert_description as string) || '';
+  const showDismiss = (settings.show_dismiss as string) !== 'no';
+  const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
+  const descColor = resolveColor(settings.description_color, resolvedStyles, '#555');
+  const typeColors: Record<string, string> = { info: '#31708f', success: '#3c763d', warning: '#8a6d3b', danger: '#a94442' };
+  const typeBgs: Record<string, string> = { info: '#d9edf7', success: '#dff0d8', warning: '#fcf8e3', danger: '#f2dede' };
+  const borderColor = typeColors[type] || '#31708f';
+  const bgColor = typeBgs[type] || '#d9edf7';
+  return `<div class="elementor-alert elementor-alert-${esc(type)}" style="background-color:${bgColor};border-left:4px solid ${borderColor};border-radius:4px;padding:16px;position:relative;">
+    ${title ? `<h5 class="elementor-alert-title" style="color:${titleColor};margin:0 0 8px;font-size:1.1rem;">${esc(title)}</h5>` : ''}
+    ${description ? `<div class="elementor-alert-description" style="color:${descColor};font-size:0.95rem;">${esc(description)}</div>` : ''}
+    ${showDismiss ? `<button class="elementor-alert-dismiss" style="position:absolute;top:8px;right:12px;background:none;border:none;font-size:1.25rem;cursor:pointer;color:${borderColor};">&times;</button>` : ''}
+  </div>`;
+}
+
 function renderBackgroundOverlay(settings: Record<string, unknown>): string {
   const bg = settings.background_background;
   if (!bg || bg === 'none' || bg === '') return '';
@@ -1037,6 +1153,37 @@ export function renderElementorToHtml(
 
   .sf-unsupported { padding: 12px 16px; margin: 4px 0; border: 1px dashed #cbd5e1; color: #94a3b8; font-size: 13px; font-family: monospace; background: #f8fafc; border-radius: 3px; }
 
+  .elementor-testimonial { padding: 20px; }
+  .elementor-testimonial__image img { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; margin: 0 auto 12px; }
+  .elementor-testimonial__content { font-style: italic; margin: 0 0 12px; font-size: 1.05rem; line-height: 1.6; }
+  .elementor-testimonial__name { font-style: normal; font-weight: 600; }
+  .elementor-testimonial__job { display: block; font-size: 0.9rem; color: #999; margin-top: 4px; }
+
+  .elementor-star-rating { margin: 10px 0; }
+  .elementor-star-rating__title { margin: 0 0 8px; font-weight: 600; }
+  .elementor-star-rating__wrapper { display: flex; gap: 4px; }
+  .elementor-star { transition: color 0.2s; }
+
+  .elementor-rating { display: flex; gap: 4px; align-items: center; }
+
+  .elementor-tabs { display: flex; flex-direction: column; }
+  .elementor-tabs-horizontal .elementor-tabs-wrapper { display: flex; border-bottom: 2px solid #e5e7eb; }
+  .elementor-tab-desktop-title { padding: 12px 20px; cursor: pointer; font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+  .elementor-tab-desktop-title.elementor-active { border-bottom-color: var(--e-global-color-primary, ${primary}); color: var(--e-global-color-primary, ${primary}) !important; }
+  .elementor-tabs-content-wrapper { padding: 16px 0; }
+  .elementor-tabs-content-wrapper .elementor-tab-content { padding: 12px 0; line-height: 1.6; }
+
+  .elementor-toggle { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+  .elementor-toggle-item { border-bottom: 1px solid #e5e7eb; }
+  .elementor-toggle-item:last-child { border-bottom: none; }
+  .elementor-toggle .elementor-tab-title { padding: 16px; background: #f9fafb; cursor: pointer; font-weight: 600; }
+  .elementor-toggle .elementor-tab-title a { color: inherit; }
+  .elementor-toggle .elementor-tab-content { padding: 16px; }
+
+  .elementor-alert { position: relative; }
+  .elementor-alert-title { margin: 0 0 8px; font-size: 1.1rem; }
+  .elementor-alert-description { font-size: 0.95rem; }
+
   /* --- Animations --- */
   @keyframes sf-fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes sf-fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -1129,6 +1276,30 @@ ${body}
       if (next >= maxScroll) { next = 0; }
       carousel.scrollTo({ left: next, behavior: 'smooth' });
     }, 4000);
+  });
+
+  // Tabs switching
+  var tabTitles = document.querySelectorAll('.elementor-tab-desktop-title');
+  tabTitles.forEach(function(title) {
+    title.addEventListener('click', function() {
+      var tab = parseInt(this.getAttribute('data-tab'));
+      var parent = this.closest('.elementor-tabs');
+      if (!parent) return;
+      parent.querySelectorAll('.elementor-tab-desktop-title').forEach(function(t) { t.classList.remove('elementor-active'); });
+      parent.querySelectorAll('.elementor-tab-content').forEach(function(c) { c.style.display = 'none'; c.classList.remove('elementor-active'); });
+      this.classList.add('elementor-active');
+      var content = parent.querySelector('.elementor-tab-content[data-tab="' + tab + '"]');
+      if (content) { content.style.display = 'block'; content.classList.add('elementor-active'); }
+    });
+  });
+
+  // Alert dismiss
+  var dismissButtons = document.querySelectorAll('.elementor-alert-dismiss');
+  dismissButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var alertEl = this.closest('.elementor-alert');
+      if (alertEl) alertEl.style.display = 'none';
+    });
   });
 })();
 </script>
