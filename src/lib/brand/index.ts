@@ -226,6 +226,7 @@ export function applyBrandToTree(
           if (brand.colors.primary) node.settings.icon_color = brand.colors.primary;
           break;
         case 'testimonial':
+        case 'testimonial-carousel':
           if (brand.colors.text) node.settings.testimonial_content_color = brand.colors.text;
           if (brand.colors.primary) node.settings.testimonial_name_color = brand.colors.primary;
           break;

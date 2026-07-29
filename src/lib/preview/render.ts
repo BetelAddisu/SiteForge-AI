@@ -81,7 +81,10 @@ const ELEMENTOR_DEFAULT_TYPOGRAPHY = {
  * Extract global kit styles from Elementor template settings.
  * Templates may embed their own global styles in settings or page settings.
  */
-export function extractKitStyles(elements: ElementorNode[]): ElementorKitStyles {
+export function extractKitStyles(
+  elements: ElementorNode[],
+  extraPageSettings?: Record<string, unknown>
+): ElementorKitStyles {
   const kitStyles: ElementorKitStyles = {
     systemColors: [
       { _id: 'primary', title: 'Primary', color: ELEMENTOR_DEFAULT_COLORS.primary },
@@ -100,59 +103,92 @@ export function extractKitStyles(elements: ElementorNode[]): ElementorKitStyles 
     defaultGenericFonts: 'Sans-serif',
   };
 
-  // Search for global settings in elements
-  function searchForSettings(node: ElementorNode) {
-    const settings = node.settings || {};
-    
-    // Check for page settings (Elementor stores kit settings here sometimes)
-    if (settings.page_settings) {
-      const pageSettings = settings.page_settings as Record<string, unknown>;
-      
-      // Extract system colors
-      if (Array.isArray(pageSettings.system_colors)) {
-        pageSettings.system_colors.forEach((c: unknown) => {
-          const color = c as { _id?: string; title?: string; color?: string };
-          if (color._id && color.color) {
-            const existing = kitStyles.systemColors.find(sc => sc._id === color._id);
-            if (existing) {
-              existing.color = color.color;
-            }
+  // Helper: apply theme-style page_settings onto kitStyles
+  function applyPageSettings(ps: Record<string, unknown>): void {
+    // System colors array (Digicy format)
+    if (Array.isArray(ps.system_colors)) {
+      ps.system_colors.forEach((c: unknown) => {
+        const color = c as { _id?: string; title?: string; color?: string };
+        if (color._id && color.color) {
+          const existing = kitStyles.systemColors.find(sc => sc._id === color._id);
+          if (existing) existing.color = color.color;
+        }
+      });
+    }
+    // Custom colors array
+    if (Array.isArray(ps.custom_colors)) {
+      kitStyles.customColors = ps.custom_colors as ElementorKitStyles['customColors'];
+    }
+    // System typography array
+    if (Array.isArray(ps.system_typography)) {
+      ps.system_typography.forEach((t: unknown) => {
+        const typo = t as Record<string, unknown>;
+        const id = typo._id as string;
+        if (id) {
+          const existing = kitStyles.systemTypography.find(st => st._id === id);
+          if (existing) {
+            existing.typography_font_family = typo.typography_font_family as string || existing.typography_font_family;
+            existing.typography_font_weight = typo.typography_font_weight as string || existing.typography_font_weight;
           }
-        });
-      }
-      
-      // Extract custom colors
-      if (Array.isArray(pageSettings.custom_colors)) {
-        kitStyles.customColors = pageSettings.custom_colors as ElementorKitStyles['customColors'];
-      }
-      
-      // Extract system typography
-      if (Array.isArray(pageSettings.system_typography)) {
-        pageSettings.system_typography.forEach((t: unknown) => {
-          const typo = t as Record<string, unknown>;
-          const id = typo._id as string;
-          if (id) {
-            const existing = kitStyles.systemTypography.find(st => st._id === id);
-            if (existing) {
-              existing.typography_font_family = typo.typography_font_family as string || existing.typography_font_family;
-              existing.typography_font_weight = typo.typography_font_weight as string || existing.typography_font_weight;
-            }
-          }
-        });
-      }
-      
-      // Extract custom typography
-      if (Array.isArray(pageSettings.custom_typography)) {
-        kitStyles.customTypography = pageSettings.custom_typography as ElementorKitStyles['customTypography'];
+        }
+      });
+    }
+    // Custom typography array
+    if (Array.isArray(ps.custom_typography)) {
+      kitStyles.customTypography = ps.custom_typography as ElementorKitStyles['customTypography'];
+    }
+
+    // --- Theme Styles individual fields (Saras format) ---
+    // Map: h1 → primary, h2 → secondary, body → text, link → accent
+    const headingColorMap: Record<string, string> = {
+      h1_color: 'primary', h2_color: 'secondary', h3_color: 'primary',
+      h4_color: 'secondary', h5_color: 'primary', h6_color: 'secondary',
+      body_color: 'text',
+      link_normal_color: 'accent',
+    };
+    for (const [key, sysId] of Object.entries(headingColorMap)) {
+      const val = ps[key] as string | undefined;
+      if (val) {
+        const existing = kitStyles.systemColors.find(sc => sc._id === sysId);
+        if (existing) existing.color = val;
       }
     }
-    
-    // Check for nested settings (some templates store kit data in widgets)
-    if (node.elements) {
-      node.elements.forEach(searchForSettings);
+
+    // Individual font-family mappings
+    const headingFontMap: Record<string, string> = {
+      h1_typography_font_family: 'primary', body_typography_font_family: 'text',
+      h2_typography_font_family: 'secondary', link_normal_typography_font_family: 'accent',
+    };
+    for (const [key, sysId] of Object.entries(headingFontMap)) {
+      const val = ps[key] as string | undefined;
+      if (val) {
+        const existing = kitStyles.systemTypography.find(st => st._id === sysId);
+        if (existing) existing.typography_font_family = val;
+      }
     }
+
+    // Button theme styles
+    const btnBg = ps.button_background_color as string;
+    const btnColor = ps.button_text_color as string;
+    const btnHoverBg = ps.button_hover_background_color as string;
+    const btnHoverColor = ps.button_hover_text_color as string;
+    if (btnBg) kitStyles.customColors.push({ _id: 'button-bg', title: 'Button Background', color: btnBg });
+    if (btnColor) kitStyles.customColors.push({ _id: 'button-text', title: 'Button Text', color: btnColor });
+    if (btnHoverBg) kitStyles.customColors.push({ _id: 'button-hover-bg', title: 'Button Hover Background', color: btnHoverBg });
+    if (btnHoverColor) kitStyles.customColors.push({ _id: 'button-hover-text', title: 'Button Hover Text', color: btnHoverColor });
   }
 
+  // Apply extra page settings first (from global-kit-styles.json)
+  if (extraPageSettings) applyPageSettings(extraPageSettings);
+
+  // Then search tree
+  function searchForSettings(node: ElementorNode) {
+    const settings = node.settings || {};
+    if (settings.page_settings) {
+      applyPageSettings(settings.page_settings as Record<string, unknown>);
+    }
+    if (node.elements) node.elements.forEach(searchForSettings);
+  }
   elements.forEach(searchForSettings);
   return kitStyles;
 }
@@ -417,6 +453,8 @@ function renderWidgetContent(node: ElementorNode, resolvedStyles: ResolvedStyles
     case 'google_maps': return renderGoogleMaps(settings);
     case 'form': return renderForm(settings);
     case 'slides': return renderSlides(settings, resolvedStyles);
+    case 'testimonial-carousel': return renderTestimonial(settings, resolvedStyles);
+    case 'media-carousel': return renderImageCarousel(settings);
     case 'shortcode': return renderShortcode(settings);
     case 'html': return renderHtmlWidget(settings);
     case 'menu-anchor': return renderMenuAnchor(settings);
@@ -660,10 +698,16 @@ function renderImageCarousel(settings: Record<string, unknown>): string {
   const slides = (settings.slides as Array<{ image?: { url?: string; alt?: string } }>) || [];
   let carouselImages = images.length > 0 ? images : slides.map(s => s.image || { url: '', alt: '' });
   if (carouselImages.length === 0) return `<div class="elementor-image-carousel-wrapper"><div class="elementor-image-carousel" style="padding:40px;text-align:center;color:#999;">[Image Carousel]</div></div>`;
-  const items = carouselImages.map(img =>
-    `<div class="swiper-slide"><img src="${esc(img.url || '')}" alt="${esc(img.alt || '')}" loading="lazy" style="width:100%;display:block;" /></div>`
+  const items = carouselImages.map((img, i) =>
+    `<div class="swiper-slide" data-slide="${i}"><img src="${esc(img.url || '')}" alt="${esc(img.alt || '')}" loading="lazy" style="width:100%;display:block;" /></div>`
   ).join('');
-  return `<div class="elementor-image-carousel-wrapper"><div class="elementor-image-carousel swiper-container">${items}</div></div>`;
+  const dots = carouselImages.map((_, i) =>
+    `<span class="sf-img-dot${i === 0 ? ' sf-active' : ''}" data-slide="${i}"></span>`
+  ).join('');
+  return `<div class="elementor-image-carousel-wrapper sf-carousel" data-total="${carouselImages.length}">
+    <div class="elementor-image-carousel swiper-container">${items}</div>
+    <div class="sf-img-dots" style="display:flex;justify-content:center;gap:8px;margin-top:12px;">${dots}</div>
+  </div>`;
 }
 
 function renderSocialIcons(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
@@ -798,16 +842,24 @@ function renderForm(settings: Record<string, unknown>): string {
 function renderSlides(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
   const slides = (settings.slides as Array<{ heading?: string; description?: string; button_text?: string; link?: { url?: string }; background_image?: { url?: string } }>) || [];
   if (slides.length === 0) return `<div class="elementor-slides-wrapper" style="padding:80px;text-align:center;background:#1a1a1a;color:#fff;">[Slideshow]</div>`;
-  const items = slides.map(slide => {
+  const items = slides.map((slide, i) => {
     const bg = slide.background_image?.url || '';
     const bgStyle = bg ? `background-image:url(${esc(bg)});background-size:cover;background-position:center;` : 'background:#1a1a1a;';
-    return `<div class="elementor-slide" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:400px;${bgStyle}padding:40px;text-align:center;color:#fff;">
+    return `<div class="elementor-slide" data-slide="${i}" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:500px;${bgStyle}padding:60px 40px;text-align:center;color:#fff;">
       ${slide.heading ? `<h2 class="elementor-slide-heading" style="font-size:2.5rem;margin:0 0 16px;">${esc(slide.heading)}</h2>` : ''}
       ${slide.description ? `<p class="elementor-slide-description" style="font-size:1.2rem;margin:0 0 24px;max-width:600px;">${esc(slide.description)}</p>` : ''}
       ${slide.button_text ? `<a href="${esc(slide.link?.url || '#')}" class="elementor-button" style="background-color:#fff;color:#333;">${esc(slide.button_text)}</a>` : ''}
     </div>`;
   }).join('');
-  return `<div class="elementor-slides-wrapper">${items}</div>`;
+  const dots = slides.map((_, i) =>
+    `<span class="sf-slide-dot${i === 0 ? ' sf-active' : ''}" data-slide="${i}"></span>`
+  ).join('');
+  return `<div class="elementor-slides-wrapper sf-carousel" data-total="${slides.length}">
+    ${items}
+    <button class="sf-slide-arrow sf-slide-prev" aria-label="Previous">&#10094;</button>
+    <button class="sf-slide-arrow sf-slide-next" aria-label="Next">&#10095;</button>
+    <div class="sf-slide-dots">${dots}</div>
+  </div>`;
 }
 
 function renderShortcode(settings: Record<string, unknown>): string {
@@ -1104,10 +1156,10 @@ function renderNode(node: ElementorNode, resolvedStyles: ResolvedStyles): string
 
 export function renderElementorToHtml(
   elements: ElementorNode[],
-  options?: { title?: string; brandTokens?: BrandTokens }
+  options?: { title?: string; brandTokens?: BrandTokens; globalKitPageSettings?: Record<string, unknown> }
 ): string {
   const brandTokens = options?.brandTokens;
-  const kitStyles = extractKitStyles(elements);
+  const kitStyles = extractKitStyles(elements, options?.globalKitPageSettings);
   const resolvedStyles = resolveKitStyles(kitStyles);
 
   const primary = brandTokens?.colors?.primary || resolvedStyles.colors.primary || '#3B82F6';
@@ -1282,10 +1334,19 @@ export function renderElementorToHtml(
   .elementor-form input, .elementor-form textarea { padding: 12px; border: 1px solid #d3d3d3; border-radius: 3px; font-size: 15px; font-family: inherit; }
   .elementor-form textarea { min-height: 100px; resize: vertical; }
 
-  .elementor-slides-wrapper { position: relative; overflow: hidden; }
-  .elementor-slide { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; padding: 40px; text-align: center; color: #fff; }
+  .elementor-slides-wrapper { position: relative; overflow: hidden; min-height: 500px; }
+  .elementor-slide { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 500px; padding: 60px 40px; text-align: center; color: #fff; position: relative; }
+  .elementor-slide.sf-active { display: flex; }
   .elementor-slide-heading { font-size: 2.5rem; margin: 0 0 16px; }
   .elementor-slide-description { font-size: 1.2rem; margin: 0 0 24px; max-width: 600px; }
+  .sf-slide-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 10; background: rgba(0,0,0,0.3); color: #fff; border: none; font-size: 2rem; padding: 12px 16px; cursor: pointer; border-radius: 4px; transition: background 0.2s; }
+  .sf-slide-arrow:hover { background: rgba(0,0,0,0.6); }
+  .sf-slide-prev { left: 16px; }
+  .sf-slide-next { right: 16px; }
+  .sf-slide-dots { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 10; }
+  .sf-slide-dot { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.5); cursor: pointer; transition: background 0.2s; }
+  .sf-slide-dot.sf-active { background: #fff; }
+  .sf-slide-dot:hover { background: rgba(255,255,255,0.8); }
 
   .elementor-background-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
   .elementor-section > .elementor-container { position: relative; z-index: 2; }
@@ -1428,16 +1489,72 @@ ${body}
     });
   });
 
-  // Image carousel auto-play
-  var carousels = document.querySelectorAll('.elementor-image-carousel');
-  carousels.forEach(function(carousel) {
+  // --- Slide carousel (slides widget) ---
+  function initSlideCarousel(wrapper) {
+    var slides = wrapper.querySelectorAll('.elementor-slide');
+    var dots = wrapper.querySelectorAll('.sf-slide-dot');
+    var prev = wrapper.querySelector('.sf-slide-prev');
+    var next = wrapper.querySelector('.sf-slide-next');
+    var current = 0, total = slides.length;
+    if (total === 0) return;
+    function show(idx) {
+      idx = (idx + total) % total;
+      slides.forEach(function(s) { s.classList.remove('sf-active'); s.style.display = 'none'; });
+      dots.forEach(function(d) { d.classList.remove('sf-active'); });
+      slides[idx].classList.add('sf-active');
+      slides[idx].style.display = 'flex';
+      dots[idx].classList.add('sf-active');
+      current = idx;
+    }
+    if (slides[0]) { slides[0].style.display = 'flex'; slides[0].classList.add('sf-active'); }
+    if (next) next.addEventListener('click', function() { show(current + 1); });
+    if (prev) prev.addEventListener('click', function() { show(current - 1); });
+    dots.forEach(function(dot) {
+      dot.addEventListener('click', function() { show(parseInt(this.getAttribute('data-slide'))); });
+    });
+    setInterval(function() { show(current + 1); }, 5000);
+  }
+  document.querySelectorAll('.sf-carousel').forEach(initSlideCarousel);
+
+  // Image carousel with dots
+  var imgCarousels = document.querySelectorAll('.elementor-image-carousel');
+  imgCarousels.forEach(function(carousel) {
+    var wrapper = carousel.closest('.sf-carousel');
+    var imgDots = wrapper ? wrapper.querySelectorAll('.sf-img-dot') : [];
+    if (imgDots.length) {
+      imgDots.forEach(function(dot) {
+        dot.addEventListener('click', function() {
+          var idx = parseInt(this.getAttribute('data-slide'));
+          var slideEl = carousel.querySelector('.swiper-slide[data-slide="' + idx + '"]');
+          if (slideEl) slideEl.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+          imgDots.forEach(function(d) { d.classList.remove('sf-active'); });
+          this.classList.add('sf-active');
+        });
+      });
+      // Update active dot on scroll
+      carousel.addEventListener('scroll', function() {
+        var scrollLeft = this.scrollLeft;
+        var slides = this.querySelectorAll('.swiper-slide');
+        var activeIdx = 0;
+        slides.forEach(function(s, idx) {
+          var rect = s.getBoundingClientRect();
+          var carouselRect = carousel.getBoundingClientRect();
+          if (rect.left >= carouselRect.left && rect.left < carouselRect.left + carouselRect.width / 2) {
+            activeIdx = idx;
+          }
+        });
+        imgDots.forEach(function(d) { d.classList.remove('sf-active'); });
+        if (imgDots[activeIdx]) imgDots[activeIdx].classList.add('sf-active');
+      });
+    }
+    // Auto-play
     if (carousel.dataset.autoplay === 'false') return;
     var scrollAmount = carousel.clientWidth;
     setInterval(function() {
       var maxScroll = carousel.scrollWidth - carousel.clientWidth;
-      var next = carousel.scrollLeft + scrollAmount;
-      if (next >= maxScroll) { next = 0; }
-      carousel.scrollTo({ left: next, behavior: 'smooth' });
+      var nextScroll = carousel.scrollLeft + scrollAmount;
+      if (nextScroll >= maxScroll) { nextScroll = 0; }
+      carousel.scrollTo({ left: nextScroll, behavior: 'smooth' });
     }, 4000);
   });
 
