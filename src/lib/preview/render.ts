@@ -721,6 +721,10 @@ function renderShapeDivider(settings: Record<string, unknown>, position: 'top' |
   </div>`;
 }
 
+function generateId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
 function getColumnSize(settings: Record<string, unknown>): number {
   const size = settings._column_size as number | undefined;
   if (!size) return 100;
