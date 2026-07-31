@@ -1,0 +1,896 @@
+{
+    "version": "0.4",
+    "title": "About",
+    "type": "page",
+    "metadata": {
+        "template_type": "single-page",
+        "include_in_zip": "1",
+        "elementor_pro_required": null,
+        "wp_page_template": "elementor_header_footer"
+    },
+    "content": [
+        {
+            "id": "5d4d11ca",
+            "settings": {
+                "flex_direction": "column",
+                "flex_gap": {
+                    "column": "",
+                    "row": "",
+                    "isLinked": true,
+                    "unit": "px",
+                    "size": null
+                },
+                "background_background": "classic",
+                "background_image": {
+                    "url": "https:\/\/site.sociolib.com\/creato\/wp-content\/uploads\/sites\/24\/2024\/04\/25.jpg",
+                    "id": 639,
+                    "size": "",
+                    "alt": "",
+                    "source": "library"
+                },
+                "background_position": "center center",
+                "background_repeat": "no-repeat",
+                "background_size": "cover",
+                "background_overlay_background": "gradient",
+                "background_overlay_gradient_angle": {
+                    "unit": "deg",
+                    "size": 135,
+                    "sizes": []
+                },
+                "background_overlay_opacity": {
+                    "unit": "px",
+                    "size": 0.75,
+                    "sizes": []
+                },
+                "padding": {
+                    "unit": "px",
+                    "top": "120",
+                    "right": "0",
+                    "bottom": "120",
+                    "left": "0",
+                    "isLinked": false
+                },
+                "__globals__": {
+                    "background_overlay_color": "globals\/colors?id=text",
+                    "background_overlay_color_b": "globals\/colors?id=979996f"
+                },
+                "flex_gap_tablet": {
+                    "column": "",
+                    "row": "",
+                    "isLinked": true,
+                    "unit": "px",
+                    "size": null
+                },
+                "flex_gap_mobile": {
+                    "column": "20",
+                    "row": "20",
+                    "isLinked": true,
+                    "unit": "px",
+                    "size": 20
+                },
+                "padding_tablet": {
+                    "unit": "px",
+                    "top": "60",
+                    "right": "20",
+                    "bottom": "60",
+                    "left": "20",
+                    "isLinked": false
+                }
+            },
+            "elements": [
+                {
+                    "id": "7f30576b",
+                    "settings": {
+                        "title": "About Us",
+                        "align": "center",
+                        "_animation": "fadeInUp",
+                        "header_size": "h1"
+                    },
+                    "elements": [],
+                    "isInner": false,
+                    "widgetType": "heading",
+                    "elType": "widget"
+                },
+                {
+                    "id": "6bc28837",
+                    "settings": {
+                        "align": "center",
+                        "_padding": {
+                            "unit": "%",
+                            "top": "0",
+                            "right": "25",
+                            "bottom": "0",
+                            "left": "25",
+                            "isLinked": false
+                        },
+                        "_padding_widescreen": {
+                            "unit": "%",
+                            "top": "",
+                            "right": "",
+                            "bottom": "",
+                            "left": "",
+                            "isLinked": true
+                        },
+                        "_padding_tablet": {
+                            "unit": "%",
+                            "top": "0",
+                            "right": "15",
+                            "bottom": "0",
+                            "left": "15",
+                            "isLinked": false
+                        },
+                        "_padding_mobile": {
+                            "unit": "%",
+                            "top": "0",
+                            "right": "0",
+                            "bottom": "0",
+                            "left": "0",
+                            "isLinked": true
+                        },
+                        "_animation": "fadeInUp"
+                    },
+                    "elements": [],
+                    "isInner": false,
+                    "widgetType": "text-editor",
+                    "elType": "widget"
+                }
+            ],
+            "isInner": false,
+            "elType": "container"
+        },
+        {
+            "id": "61b175e4",
+            "settings": {
+                "flex_direction": "column",
+                "flex_gap": {
+                    "column": "60",
+                    "row": "60",
+                    "isLinked": true,
+                    "unit": "px",
+                    "size": 60
+                },
+                "padding": {
+                    "unit": "px",
+                    "top": "120",
+                    "right": "0",
+                    "bottom": "60",
+                    "left": "0",
+                    "isLinked": false
+                },
+                "flex_gap_tablet": {
+                    "column": "30",
+                    "row": "30",
+                    "isLinked": true,
+                    "unit": "px",
+                    "size": 30
+                },
+                "flex_gap_mobile": {
+                    "column": "20",
+                    "row": "20",
+                    "isLinked": true,
+                    "unit": "px",
+                    "size": 20
+                },
+                "padding_tablet": {
+                    "unit": "px",
+                    "top": "60",
+                    "right": "20",
+                    "bottom": "30",
+                    "left": "20",
+                    "isLinked": false
+                }
+            },
+            "elements": [
+                {
+                    "id": "74b4fe05",
+                    "settings": {
+                        "title": "Through strategic thinking, creative execution, and a deep understanding of the latest digital trends, we help our clients thrive in an ever-evolving marketplace.",
+                        "_animation": "fadeInUp"
+                    },
+                    "elements": [],
+                    "isInner": false,
+                    "widgetType": "heading",
+                    "elType": "widget"
+                },
+                {
+                    "id": "2d9952bd",
+                    "settings": {
+                        "flex_direction": "row",
+                        "flex_gap_mobile": {
+                            "column": "0",
+                            "row": "0",
+                            "isLinked": true,
+                            "unit": "px",
+                            "size": 0
+                        }
+                    },
+                    "elements": [
+                        {
+                            "id": "2731d9fa",
+                            "settings": [],
+                            "elements": [
+                                {
+                                    "id": "609f010b",
+                                    "settings": {
+                                        "ending_number": 125,
+                                        "suffix": "+",
+                                        "title": "Projects",
+                                        "__globals__": {
+                                            "typography_number_typography": "globals\/typography?id=primary",
+                                            "typography_title_typography": "globals\/typography?id=accent",
+                                            "title_color": "globals\/colors?id=accent"
+                                        },
+                                        "_animation": "fadeInUp"
+                                    },
+                                    "elements": [],
+                                    "isInner": false,
+                                    "widgetType": "counter",
+                                    "elType": "widget"
+                                }
+                            ],
+                            "isInner": true,
+                            "elType": "container"
+                        },
+                        {
+                            "id": "572cca1b",
+                            "settings": [],
+                            "elements": [
+                                {
+                                    "id": "73207568",
+                                    "settings": {
+                                        "ending_number": 85,
+                                        "title": "Clients",
+                                        "__globals__": {
+                                            "typography_number_typography": "globals\/typography?id=primary",
+                                            "typography_title_typography": "globals\/typography?id=accent",
+                                            "title_color": "globals\/colors?id=accent"
+                                        },
+                                        "prefix": ">",
+                                        "_animation": "fadeInUp",
+                                        "_animation_delay": 200
+                                    },
+                                    "elements": [],
+                                    "isInner": false,
+                                    "widgetType": "counter",
+                                    "elType": "widget"
+                                }
+                            ],
+                            "isInner": true,
+                            "elType": "container"
+                        },
+                        {
+                            "id": "4686ba75",
+                            "settings": [],
+                            "elements": [
+                                {
+                                    "id": "33b898ce",
+                                    "settings": {
+                                        "ending_number": 14,
+                                        "suffix": "k",
+                                        "title": "Subscribers",
+                                        "__globals__": {
+                                            "typography_number_typography": "globals\/typography?id=primary",
+                                            "typography_title_typography": "globals\/typography?id=accent",
+                                            "title_color": "globals\/colors?id=accent"
+                                        },
+                                        "_animation": "fadeInUp",
+                                        "_animation_delay": 400
+                                    },
+                                    "elements": [],
+                                    "isInner": false,
+                                    "widgetType": "counter",
+                                    "elType": "widget"
+                                }
+                            ],
+                            "isInner": true,
+                            "elType": "container"
+                        }
+                    ],
+                    "isInner": true,
+                    "elType": "container"
+                }
+            ],
+            "isInner": false,
+            "elType": "container"
+        },
+        {
+            "id": "3850aa9b",
+            "settings": {
+                "flex_direction": "row",
+                "flex_gap": {
+                    "unit": "px",
+                    "size": 30,
+                    "column": "30",
+                    "row": "30",
+                    "isLinked": true
+                },
+                "padding": {
+                    "unit": "px",
+                    "top": "60",
+                    "right": "0",
+                    "bottom": "120",
+                    "left": "0",
+                    "isLinked": false
+                },
+                "flex_gap_tablet": {
+                    "column": "20",
+                    "row": "20",
+                    "isLinked": true,
+                    "unit": "px",
+                    "size": 20
+                },
+                "padding_tablet": {
+                    "unit": "px",
+                    "top": "30",
+                    "right": "20",
+                    "bottom": "60",
+                    "left": "20",
+                    "isLinked": false
+                }
+            },
+            "elements": [
+                {
+                    "id": "5f0be820",
+                    "settings": {
+                        "flex_direction": "column",
+                        "content_width": "full",
+                        "width": {
+                            "unit": "%",
+                            "size": "50"
+                        },
+                        "flex_justify_content": "center"
+                    },
+                    "elements": [
+                        {
+                            "id": "2a5abd71",
+                            "settings": {
+                                "title": "Fueling Growth Through Digital Excellence",
+                                "__globals__": {
+                                    "typography_typography": ""
+                                },
+                                "typography_font_family": "Figtree",
+                                "typography_font_size": {
+                                    "unit": "px",
+                                    "size": 94,
+                                    "sizes": []
+                                },
+                                "typography_font_size_tablet": {
+                                    "unit": "px",
+                                    "size": 52,
+                                    "sizes": []
+                                },
+                                "typography_font_size_mobile": {
+                                    "unit": "px",
+                                    "size": 41,
+                                    "sizes": []
+                                },
+                                "typography_font_weight": "600",
+                                "typography_line_height": {
+                                    "unit": "em",
+                                    "size": 1.1,
+                                    "sizes": []
+                                },
+                                "typography_letter_spacing": {
+                                    "unit": "px",
+                                    "size": -2.5,
+                                    "sizes": []
+                                },
+                                "typography_letter_spacing_tablet": {
+                                    "unit": "px",
+                                    "size": -1,
+                                    "sizes": []
+                                },
+                                "_animation": "fadeInUp"
+                            },
+                            "elements": [],
+                            "isInner": false,
+                            "widgetType": "heading",
+                            "elType": "widget"
+                        },
+                        {
+                            "id": "171b82b1",
+                            "settings": {
+                                "_animation": "fadeInUp"
+                            },
+                            "elements": [],
+                            "isInner": false,
+                            "widgetType": "text-editor",
+                            "elType": "widget"
+                        },
+                        {
+                            "id": "5e6927f0",
+                            "settings": {
+                                "icon_list": [
+                                    {
+                                        "text": "Results-Driven Approach",
+                                        "selected_icon": {
+                                            "value": "fas fa-check-circle",
+                                            "library": "fa-solid"
+                                        },
+                                        "_id": "c62bfe9"
+                                    },
+                                    {
+                                        "text": "Creative Content Creation",
+                                        "selected_icon": {
+                                            "value": "fas fa-check-circle",
+                                            "library": "fa-solid"
+                                        },
+                                        "_id": "415fe09"
+                                    },
+                                    {
+                                        "text": "Comprehensive Strategy Development",
+                                        "selected_icon": {
+                                            "value": "fas fa-check-circle",
+                                            "library": "fa-solid"
+                                        },
+                                        "_id": "f5250be"
+                                    },
+                                    {
+                                        "text": "Multi-Channel Expertise",
+                                        "selected_icon": {
+                                            "value": "fas fa-check-circle",
+                                            "library": "fa-solid"
+                                        },
+                                        "_id": "6c030c3"
+                                    },
+                                    {
+                                        "text": "Conversion Optimization Skills",
+                                        "selected_icon": {
+                                            "value": "fas fa-check-circle",
+                                            "library": "fa-solid"
+                                        },
+                                        "_id": "0473736"
+                                    },
+                                    {
+                                        "text": "Transparency and Accountability",
+                                        "selected_icon": {
+                                            "value": "fas fa-check-circle",
+                                            "library": "fa-solid"
+                                        },
+                                        "_id": "e594dee"
+                                    }
+                                ],
+                                "space_between": {
+                                    "unit": "px",
+                                    "size": 4,
+                                    "sizes": []
+                                },
+                                "icon_size": {
+                                    "unit": "px",
+                                    "size": 16,
+                                    "sizes": []
+                                },
+                                "text_indent": {
+                                    "unit": "px",
+                                    "size": 6,
+                                    "sizes": []
+                                },
+                                "__globals__": {
+                                    "icon_color": "globals\/colors?id=accent"
+                                },
+                                "_animation": "fadeInUp",
+                                "icon_self_vertical_align_tablet": "flex-start",
+                                "icon_vertical_offset_tablet": {
+                                    "unit": "px",
+                                    "size": 8,
+                                    "sizes": []
+                                }
+                            },
+                            "elements": [],
+                            "isInner": false,
+                            "widgetType": "icon-list",
+                            "elType": "widget"
+                        }
+                    ],
+                    "isInner": true,
+                    "elType": "container"
+                },
+                {
+                    "id": "61c1c508",
+                    "settings": {
+                        "flex_direction": "column",
+                        "content_width": "full",
+                        "width": {
+                            "unit": "%",
+                            "size": "50"
+                        },
+                        "_flex_order_mobile": "start"
+                    },
+                    "elements": [
+                        {
+                            "id": "4f7dce6e",
+                            "settings": {
+                                "image": {
+                                    "url": "https:\/\/site.sociolib.com\/creato\/wp-content\/uploads\/sites\/24\/2024\/04\/9.jpg",
+                                    "id": 356,
+                                    "size": "",
+                                    "alt": "",
+                                    "source": "library"
+                                },
+                                "image_size": "full",
+                                "_animation": "fadeInUp"
+                            },
+                            "elements": [],
+                            "isInner": false,
+                            "widgetType": "image",
+                            "elType": "widget"
+                        }
+                    ],
+                    "isInner": true,
+                    "elType": "container"
+                }
+            ],
+            "isInner": false,
+            "elType": "container"
+        },
+        {
+            "id": "788af929",
+            "settings": {
+                "flex_direction": "row",
+                "flex_gap": {
+                    "column": "",
+                    "row": "",
+                    "isLinked": true,
+                    "unit": "px",
+                    "size": null
+                },
+                "padding": {
+                    "unit": "px",
+                    "top": "120",
+                    "right": "0",
+                    "bottom": "120",
+                    "left": "0",
+                    "isLinked": false
+                },
+                "padding_tablet": {
+                    "unit": "px",
+                    "top": "60",
+                    "right": "20",
+                    "bottom": "60",
+                    "left": "20",
+                    "isLinked": false
+                },
+                "background_background": "classic",
+                "background_image": {
+                    "url": "https:\/\/site.sociolib.com\/creato\/wp-content\/uploads\/sites\/24\/2024\/04\/04.jpg",
+                    "id": 187,
+                    "size": "",
+                    "alt": "",
+                    "source": "library"
+                },
+                "background_position": "center center",
+                "background_repeat": "no-repeat",
+                "background_size": "cover",
+                "background_overlay_background": "classic",
+                "background_overlay_gradient_angle": {
+                    "unit": "deg",
+                    "size": 135,
+                    "sizes": []
+                },
+                "background_overlay_opacity": {
+                    "unit": "px",
+                    "size": 0.8,
+                    "sizes": []
+                },
+                "__globals__": {
+                    "background_overlay_color": "globals\/colors?id=text",
+                    "background_overlay_color_b": "globals\/colors?id=979996f"
+                }
+            },
+            "elements": [
+                {
+                    "id": "2ac6da51",
+                    "settings": {
+                        "flex_direction": "column",
+                        "content_width": "full",
+                        "width": {
+                            "unit": "%",
+                            "size": "50"
+                        },
+                        "width_tablet": {
+                            "unit": "%",
+                            "size": "",
+                            "sizes": []
+                        },
+                        "width_mobile": {
+                            "unit": "%",
+                            "size": "",
+                            "sizes": []
+                        }
+                    },
+                    "elements": [
+                        {
+                            "id": "21e9b847",
+                            "settings": {
+                                "image": {
+                                    "url": "https:\/\/site.sociolib.com\/creato\/wp-content\/uploads\/sites\/24\/2024\/04\/8.jpg",
+                                    "id": 236,
+                                    "size": "",
+                                    "alt": "",
+                                    "source": "library"
+                                },
+                                "image_size": "full",
+                                "_animation": "fadeInUp"
+                            },
+                            "elements": [],
+                            "isInner": false,
+                            "widgetType": "image",
+                            "elType": "widget"
+                        }
+                    ],
+                    "isInner": true,
+                    "elType": "container"
+                },
+                {
+                    "id": "6c1b1d43",
+                    "settings": {
+                        "flex_direction": "column",
+                        "content_width": "full",
+                        "width": {
+                            "unit": "%",
+                            "size": "50"
+                        },
+                        "flex_justify_content": "center"
+                    },
+                    "elements": [
+                        {
+                            "id": "1c92a656",
+                            "settings": {
+                                "title": "Navigating the Digital Landscape Together",
+                                "__globals__": {
+                                    "typography_typography": ""
+                                },
+                                "typography_font_family": "Figtree",
+                                "typography_font_size": {
+                                    "unit": "px",
+                                    "size": 94,
+                                    "sizes": []
+                                },
+                                "typography_font_size_tablet": {
+                                    "unit": "px",
+                                    "size": 52,
+                                    "sizes": []
+                                },
+                                "typography_font_size_mobile": {
+                                    "unit": "px",
+                                    "size": 41,
+                                    "sizes": []
+                                },
+                                "typography_font_weight": "600",
+                                "typography_line_height": {
+                                    "unit": "em",
+                                    "size": 1.1,
+                                    "sizes": []
+                                },
+                                "typography_letter_spacing": {
+                                    "unit": "px",
+                                    "size": -2.5,
+                                    "sizes": []
+                                },
+                                "typography_letter_spacing_tablet": {
+                                    "unit": "px",
+                                    "size": -1,
+                                    "sizes": []
+                                },
+                                "_animation": "fadeInUp"
+                            },
+                            "elements": [],
+                            "isInner": false,
+                            "widgetType": "heading",
+                            "elType": "widget"
+                        },
+                        {
+                            "id": "30056d0d",
+                            "settings": {
+                                "_animation": "fadeInUp"
+                            },
+                            "elements": [],
+                            "isInner": false,
+                            "widgetType": "text-editor",
+                            "elType": "widget"
+                        },
+                        {
+                            "id": "21f856c",
+                            "settings": {
+                                "ekit_progressbar_title": "Digital Marketing",
+                                "ekit_progressbar_background_background": "classic",
+                                "ekit_progressbar_bar_height": {
+                                    "unit": "px",
+                                    "size": 14,
+                                    "sizes": []
+                                },
+                                "ekit_progressbar_bar_radius": {
+                                    "unit": "px",
+                                    "top": "12",
+                                    "right": "12",
+                                    "bottom": "12",
+                                    "left": "12",
+                                    "isLinked": true
+                                },
+                                "ekit_progressbar_track_color_background": "gradient",
+                                "ekit_progressbar_track_color_gradient_angle": {
+                                    "unit": "deg",
+                                    "size": 90,
+                                    "sizes": []
+                                },
+                                "ekit_progressbar_track_radius": {
+                                    "unit": "px",
+                                    "top": "12",
+                                    "right": "12",
+                                    "bottom": "12",
+                                    "left": "12",
+                                    "isLinked": true
+                                },
+                                "__globals__": {
+                                    "ekit_progressbar_background_color": "globals\/colors?id=accent",
+                                    "ekit_progressbar_title_color": "globals\/colors?id=e777cd9",
+                                    "ekit_progressbar_title_typography_typography": "globals\/typography?id=accent",
+                                    "ekit_progressbar_percent_color": "globals\/colors?id=e777cd9",
+                                    "ekit_progressbar_percent_typography_typography": "globals\/typography?id=accent",
+                                    "ekit_progressbar_track_color_color": "globals\/colors?id=primary",
+                                    "ekit_progressbar_track_color_color_b": "globals\/colors?id=secondary"
+                                },
+                                "_animation": "fadeInUp"
+                            },
+                            "elements": [],
+                            "isInner": false,
+                            "widgetType": "elementskit-progressbar",
+                            "elType": "widget"
+                        },
+                        {
+                            "id": "6953c338",
+                            "settings": {
+                                "ekit_progressbar_title": "Branding",
+                                "ekit_progressbar_percentage": 75,
+                                "ekit_progressbar_background_background": "classic",
+                                "ekit_progressbar_bar_height": {
+                                    "unit": "px",
+                                    "size": 14,
+                                    "sizes": []
+                                },
+                                "ekit_progressbar_bar_radius": {
+                                    "unit": "px",
+                                    "top": "12",
+                                    "right": "12",
+                                    "bottom": "12",
+                                    "left": "12",
+                                    "isLinked": true
+                                },
+                                "ekit_progressbar_track_color_background": "gradient",
+                                "ekit_progressbar_track_color_gradient_angle": {
+                                    "unit": "deg",
+                                    "size": 90,
+                                    "sizes": []
+                                },
+                                "ekit_progressbar_track_radius": {
+                                    "unit": "px",
+                                    "top": "12",
+                                    "right": "12",
+                                    "bottom": "12",
+                                    "left": "12",
+                                    "isLinked": true
+                                },
+                                "__globals__": {
+                                    "ekit_progressbar_background_color": "globals\/colors?id=accent",
+                                    "ekit_progressbar_title_color": "globals\/colors?id=e777cd9",
+                                    "ekit_progressbar_title_typography_typography": "globals\/typography?id=accent",
+                                    "ekit_progressbar_percent_color": "globals\/colors?id=e777cd9",
+                                    "ekit_progressbar_percent_typography_typography": "globals\/typography?id=accent",
+                                    "ekit_progressbar_track_color_color": "globals\/colors?id=primary",
+                                    "ekit_progressbar_track_color_color_b": "globals\/colors?id=secondary"
+                                },
+                                "_animation": "fadeInUp"
+                            },
+                            "elements": [],
+                            "isInner": false,
+                            "widgetType": "elementskit-progressbar",
+                            "elType": "widget"
+                        },
+                        {
+                            "id": "1d416eb9",
+                            "settings": {
+                                "ekit_progressbar_title": "Web Design",
+                                "ekit_progressbar_percentage": 85,
+                                "ekit_progressbar_background_background": "classic",
+                                "ekit_progressbar_bar_height": {
+                                    "unit": "px",
+                                    "size": 14,
+                                    "sizes": []
+                                },
+                                "ekit_progressbar_bar_radius": {
+                                    "unit": "px",
+                                    "top": "12",
+                                    "right": "12",
+                                    "bottom": "12",
+                                    "left": "12",
+                                    "isLinked": true
+                                },
+                                "ekit_progressbar_track_color_background": "gradient",
+                                "ekit_progressbar_track_color_gradient_angle": {
+                                    "unit": "deg",
+                                    "size": 90,
+                                    "sizes": []
+                                },
+                                "ekit_progressbar_track_radius": {
+                                    "unit": "px",
+                                    "top": "12",
+                                    "right": "12",
+                                    "bottom": "12",
+                                    "left": "12",
+                                    "isLinked": true
+                                },
+                                "__globals__": {
+                                    "ekit_progressbar_background_color": "globals\/colors?id=accent",
+                                    "ekit_progressbar_title_color": "globals\/colors?id=e777cd9",
+                                    "ekit_progressbar_title_typography_typography": "globals\/typography?id=accent",
+                                    "ekit_progressbar_percent_color": "globals\/colors?id=e777cd9",
+                                    "ekit_progressbar_percent_typography_typography": "globals\/typography?id=accent",
+                                    "ekit_progressbar_track_color_color": "globals\/colors?id=primary",
+                                    "ekit_progressbar_track_color_color_b": "globals\/colors?id=secondary"
+                                },
+                                "_animation": "fadeInUp"
+                            },
+                            "elements": [],
+                            "isInner": false,
+                            "widgetType": "elementskit-progressbar",
+                            "elType": "widget"
+                        },
+                        {
+                            "id": "4ded98af",
+                            "settings": {
+                                "ekit_progressbar_title": "Mobile Apps",
+                                "ekit_progressbar_percentage": 65,
+                                "ekit_progressbar_background_background": "classic",
+                                "ekit_progressbar_bar_height": {
+                                    "unit": "px",
+                                    "size": 14,
+                                    "sizes": []
+                                },
+                                "ekit_progressbar_bar_radius": {
+                                    "unit": "px",
+                                    "top": "12",
+                                    "right": "12",
+                                    "bottom": "12",
+                                    "left": "12",
+                                    "isLinked": true
+                                },
+                                "ekit_progressbar_track_color_background": "gradient",
+                                "ekit_progressbar_track_color_gradient_angle": {
+                                    "unit": "deg",
+                                    "size": 90,
+                                    "sizes": []
+                                },
+                                "ekit_progressbar_track_radius": {
+                                    "unit": "px",
+                                    "top": "12",
+                                    "right": "12",
+                                    "bottom": "12",
+                                    "left": "12",
+                                    "isLinked": true
+                                },
+                                "__globals__": {
+                                    "ekit_progressbar_background_color": "globals\/colors?id=accent",
+                                    "ekit_progressbar_title_color": "globals\/colors?id=e777cd9",
+                                    "ekit_progressbar_title_typography_typography": "globals\/typography?id=accent",
+                                    "ekit_progressbar_percent_color": "globals\/colors?id=e777cd9",
+                                    "ekit_progressbar_percent_typography_typography": "globals\/typography?id=accent",
+                                    "ekit_progressbar_track_color_color": "globals\/colors?id=primary",
+                                    "ekit_progressbar_track_color_color_b": "globals\/colors?id=secondary"
+                                },
+                                "_animation": "fadeInUp"
+                            },
+                            "elements": [],
+                            "isInner": false,
+                            "widgetType": "elementskit-progressbar",
+                            "elType": "widget"
+                        }
+                    ],
+                    "isInner": true,
+                    "elType": "container"
+                }
+            ],
+            "isInner": false,
+            "elType": "container"
+        }
+    ]
+}
