@@ -49,6 +49,8 @@ const HANDLED_WIDGET_TYPES = [
   'star-rating',
   'rating',
   'testimonial',
+  'elementskit-testimonial',
+  'elementskit-progressbar',
   'testimonial-carousel',
   'media-carousel',
   'toggle',

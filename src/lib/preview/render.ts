@@ -525,6 +525,8 @@ function renderWidgetContent(node: ElementorNode, resolvedStyles: ResolvedStyles
     case 'rating': return renderRating(settings, resolvedStyles);
     case 'star-rating': return renderStarRating(settings, resolvedStyles);
     case 'testimonial': return renderTestimonial(settings, resolvedStyles);
+    case 'elementskit-testimonial': return renderElementsKitTestimonial(settings, resolvedStyles);
+    case 'elementskit-progressbar': return renderElementsKitProgressbar(settings, resolvedStyles);
     case 'toggle': return renderToggle(settings);
     case 'alert': return renderAlert(settings, resolvedStyles);
     default: {
@@ -830,6 +832,34 @@ function renderProgress(settings: Record<string, unknown>, resolvedStyles: Resol
   </div>`;
 }
 
+function renderElementsKitProgressbar(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
+  const title = (settings.ekit_progressbar_title as string) || '';
+  const percent = (settings.ekit_progressbar_percentage as number) ?? 0;
+  const barHeight = ((settings.ekit_progressbar_bar_height as { size?: number })?.size) ?? 14;
+  const radius = dimStr(settings.ekit_progressbar_bar_radius) || `${barHeight / 2}px`;
+  // Fill uses the gradient "track color" (primary → secondary); bg is the track container
+  const fillA = resolveSetting(settings, 'ekit_progressbar_track_color_color', resolvedStyles)
+    || resolveColor(settings.ekit_progressbar_track_color_color, resolvedStyles, '#3B82F6');
+  const fillB = resolveSetting(settings, 'ekit_progressbar_track_color_color_b', resolvedStyles)
+    || (settings.ekit_progressbar_track_color_color_b as string) || '';
+  const trackColor = resolveSetting(settings, 'ekit_progressbar_background_color', resolvedStyles)
+    || resolveColor(settings.ekit_progressbar_background_color, resolvedStyles, '#e2e8f0');
+  const titleColor = resolveSetting(settings, 'ekit_progressbar_title_color', resolvedStyles)
+    || '#1a1a1a';
+  const percentColor = resolveSetting(settings, 'ekit_progressbar_percent_color', resolvedStyles)
+    || '#1a1a1a';
+  const fill = fillB && settings.ekit_progressbar_track_color_background === 'gradient'
+    ? `linear-gradient(${((settings.ekit_progressbar_track_color_gradient_angle as { size?: number })?.size) ?? 90}deg, ${fillA}, ${fillB})`
+    : fillA;
+  return `<div class="ekit-progressbar" style="margin-bottom:18px;">
+    ${title ? `<div class="ekit-progressbar-title" style="color:${titleColor};font-weight:600;margin-bottom:8px;">${esc(title)}</div>` : ''}
+    <div class="ekit-progressbar-track" style="background-color:${trackColor};border-radius:${radius};overflow:hidden;">
+      <div class="ekit-progressbar-fill" style="width:${percent}%;background:${fill};height:${barHeight}px;border-radius:${radius};"></div>
+    </div>
+    <div class="ekit-progressbar-percent" style="color:${percentColor};font-weight:600;margin-top:6px;">${percent}%</div>
+  </div>`;
+}
+
 function renderAccordion(settings: Record<string, unknown>): string {
   const items = (settings.tabs as Array<{ tab_title?: string; tab_content?: string; _id?: string }>) || [];
   if (items.length === 0) return '';
@@ -979,6 +1009,38 @@ function renderMetForm(settings: Record<string, unknown>): string {
       <button type="submit" class="elementor-button elementor-size-md">Send Message</button>
     </form>
     ${formId ? `<p style="margin:8px 0 0;font-size:0.8rem;color:#999;text-align:center;">Form ID: ${esc(formId)}</p>` : ''}
+  </div>`;
+}
+
+function renderElementsKitTestimonial(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
+  const items = (settings.ekit_testimonial_data as Array<{
+    client_name?: string; designation?: string; review?: string;
+    client_photo?: { url?: string };
+  }>) || [];
+  if (items.length === 0) return '';
+  const imageSize = ((settings.ekit_testimonial_client_image_size as { size?: number })?.size) ?? 60;
+  const radius = dimStr(settings.ekit_testimonial_layout_border_radius) || '24px';
+  const padding = dimStr(settings.ekit_testimonial_layout_padding) || '40px';
+  const layoutBg = resolveSetting(settings, 'ekit_testimonial_layout_background_color', resolvedStyles) || 'transparent';
+  const borderColor = resolveSetting(settings, 'ekit_testimonial_layout_border_color', resolvedStyles) || '';
+  const nameColor = resolveSetting(settings, 'ekit_testimonial_client_name_normal_color', resolvedStyles) || '#1a1a1a';
+  const descColor = resolveSetting(settings, 'ekit_testimonial_description_color', resolvedStyles) || '#666';
+  const designColor = resolveSetting(settings, 'ekit_testimonial_designation_normal_color', resolvedStyles) || '#999';
+  const cards = items.map(item => {
+    const photo = item.client_photo?.url || '';
+    const name = item.client_name || '';
+    const designation = item.designation || '';
+    const review = item.review || '';
+    return `<div class="ekit-testimonial-card" style="background-color:${layoutBg};border-radius:${radius};padding:${padding};${borderColor ? `border:1px solid ${borderColor};` : ''}box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+      ${photo ? `<div class="ekit-testimonial-photo"><img src="${esc(photo)}" alt="${esc(name)}" loading="lazy" style="width:${imageSize}px;height:${imageSize}px;border-radius:50%;object-fit:cover;margin:0 auto 16px;"${imgFallbackAttr()} /></div>` : ''}
+      <blockquote class="ekit-testimonial-review" style="color:${descColor};font-style:italic;margin:0 0 16px;font-size:1.05rem;">${esc(review)}</blockquote>
+      ${name ? `<div class="ekit-testimonial-name" style="font-weight:700;color:${nameColor};">${esc(name)}</div>` : ''}
+      ${designation ? `<div class="ekit-testimonial-designation" style="font-size:0.9rem;color:${designColor};">${esc(designation)}</div>` : ''}
+    </div>`;
+  }).join('');
+  const cols = (settings.ekit_testimonial_slidetoshow as number) || 3;
+  return `<div class="ekit-testimonial-grid" style="display:grid;grid-template-columns:repeat(${Math.min(cols, items.length)},1fr);gap:24px;align-items:stretch;">
+    ${cards}
   </div>`;
 }
 
