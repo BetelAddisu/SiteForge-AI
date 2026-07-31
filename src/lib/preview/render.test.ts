@@ -51,6 +51,7 @@ const HANDLED_WIDGET_TYPES = [
   'testimonial',
   'elementskit-testimonial',
   'elementskit-progressbar',
+  'ekit-nav-menu',
   'testimonial-carousel',
   'media-carousel',
   'toggle',

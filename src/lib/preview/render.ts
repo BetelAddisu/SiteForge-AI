@@ -527,6 +527,7 @@ function renderWidgetContent(node: ElementorNode, resolvedStyles: ResolvedStyles
     case 'testimonial': return renderTestimonial(settings, resolvedStyles);
     case 'elementskit-testimonial': return renderElementsKitTestimonial(settings, resolvedStyles);
     case 'elementskit-progressbar': return renderElementsKitProgressbar(settings, resolvedStyles);
+    case 'ekit-nav-menu': return renderEKitNavMenu(settings);
     case 'toggle': return renderToggle(settings);
     case 'alert': return renderAlert(settings, resolvedStyles);
     default: {
@@ -857,6 +858,27 @@ function renderElementsKitProgressbar(settings: Record<string, unknown>, resolve
       <div class="ekit-progressbar-fill" style="width:${percent}%;background:${fill};height:${barHeight}px;border-radius:${radius};"></div>
     </div>
     <div class="ekit-progressbar-percent" style="color:${percentColor};font-weight:600;margin-top:6px;">${percent}%</div>
+  </div>`;
+}
+
+function renderEKitNavMenu(settings: Record<string, unknown>): string {
+  const logo = settings.elementskit_nav_menu_logo as { url?: string; alt?: string } | undefined;
+  const logoUrl = logo?.url || '';
+  const textColor = (settings.elementskit_menu_text_color as string) || '#1a1a1a';
+  const hoverColor = (settings.elementskit_item_text_color_hover as string) || textColor;
+  const barHeight = ((settings.elementskit_menubar_height as { size?: number })?.size) ?? 70;
+  // The template stores a WP menu reference by name; render the kit's page
+  // structure as a sensible placeholder nav.
+  const menuItems = ['Home', 'Services', 'Portfolios', 'About', 'Pricing', 'Contact'];
+  const links = menuItems.map((label, i) =>
+    `<a href="#" class="ekit-nav-menu-item" style="color:${textColor};text-decoration:none;font-weight:500;font-size:15px;padding:0 16px;transition:color 0.2s;" onmouseover="this.style.color='${hoverColor}'" onmouseout="this.style.color='${textColor}'">${esc(label)}</a>`
+  ).join('');
+  const logoHtml = logoUrl
+    ? `<img src="${esc(logoUrl)}" alt="${esc(logo?.alt || 'logo')}" style="height:36px;width:auto;${imgFallbackAttr()}" />`
+    : '<span style="font-weight:700;font-size:22px;color:' + textColor + ';">Creato</span>';
+  return `<div class="ekit-nav-menu" style="display:flex;align-items:center;justify-content:space-between;min-height:${barHeight}px;padding:0 24px;">
+    <div class="ekit-nav-menu-logo">${logoHtml}</div>
+    <nav class="ekit-nav-menu-links" style="display:flex;align-items:center;gap:4px;">${links}</nav>
   </div>`;
 }
 
