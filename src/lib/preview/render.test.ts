@@ -51,6 +51,7 @@ const HANDLED_WIDGET_TYPES = [
   'testimonial',
   'elementskit-testimonial',
   'elementskit-progressbar',
+  'elementskit-lottie',
   'ekit-nav-menu',
   'testimonial-carousel',
   'media-carousel',
@@ -304,6 +305,32 @@ describe('renderWidget coverage', () => {
 
     expect(html).toContain('onerror=');
     expect(html).toContain('Image unavailable');
+  });
+
+  it('renders elementskit-lottie with the lottie-web library and data-path', () => {
+    const tree = [{
+      id: 'lottie-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'lottie-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'lottie-widget',
+          elType: 'widget' as const,
+          widgetType: 'elementskit-lottie',
+          settings: {
+            ekit_lottie_type: 'url',
+            ekit_lottie_url: 'https://example.com/animation.json',
+            ekit_lottie_autoplay: 'true',
+            ekit_lottie_loop: 'true',
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('lottie-web');
+    expect(html).toContain('data-path="https://example.com/animation.json"');
   });
 
   it('loads Font Awesome in the document head', () => {

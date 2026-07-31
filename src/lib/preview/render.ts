@@ -528,6 +528,7 @@ function renderWidgetContent(node: ElementorNode, resolvedStyles: ResolvedStyles
     case 'elementskit-testimonial': return renderElementsKitTestimonial(settings, resolvedStyles);
     case 'elementskit-progressbar': return renderElementsKitProgressbar(settings, resolvedStyles);
     case 'ekit-nav-menu': return renderEKitNavMenu(settings);
+    case 'elementskit-lottie': return renderElementsKitLottie(settings);
     case 'toggle': return renderToggle(settings);
     case 'alert': return renderAlert(settings, resolvedStyles);
     default: {
@@ -859,6 +860,29 @@ function renderElementsKitProgressbar(settings: Record<string, unknown>, resolve
     </div>
     <div class="ekit-progressbar-percent" style="color:${percentColor};font-weight:600;margin-top:6px;">${percent}%</div>
   </div>`;
+}
+
+function renderElementsKitLottie(settings: Record<string, unknown>): string {
+  // Source-verified field names from elementskit-lite/widgets/lottie/lottie.php
+  const type = (settings.ekit_lottie_type as string) || 'file';
+  const jsonFile = settings.ekit_lottie_json as { url?: string } | undefined;
+  const jsonUrl = (settings.ekit_lottie_url as string) || '';
+  const path = type === 'url' ? jsonUrl : (jsonFile?.url || '');
+  if (!path) return `<div class="ekit_lottie" style="padding:24px;text-align:center;color:#999;">[Lottie animation]</div>`;
+
+  const autoplay = settings.ekit_lottie_autoplay === 'true' ? 'true' : 'false';
+  const loop = settings.ekit_lottie_loop === 'true' ? 'true' : 'false';
+  const reverse = settings.ekit_lottie_reverse ? 'true' : 'false';
+  const speed = ((settings.ekit_lottie_speed as { size?: number })?.size) ?? 1;
+  const action = (settings.ekit_lottie_action as string) || '';
+  const opacity = ((settings.ekit_lottie_opacity as { size?: number })?.size) ?? 1;
+  const link = settings.ekit_lottie_link as { url?: string } | undefined;
+  const linked = settings.ekit_lottie_link_check === 'yes' && !!link?.url;
+
+  const inner = `<div class="ekit_lottie" data-path="${esc(path)}" data-autoplay="${autoplay}" data-loop="${loop}" data-reverse="${reverse}" data-speed="${speed}" data-action="${esc(action)}" style="opacity:${opacity};" aria-label="Lottie animation"></div>`;
+  return linked
+    ? `<a href="${esc(link!.url)}" style="display:block;">${inner}</a>`
+    : inner;
 }
 
 function renderEKitNavMenu(settings: Record<string, unknown>): string {
@@ -1416,6 +1440,7 @@ export function renderElementorToHtml(
 <title>${esc(options?.title || 'Website Preview')}</title>
 ${googleFontsLink}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js" defer></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body { margin: 0; padding: 0; font-family: ${bodyFont}, 'Roboto', sans-serif; line-height: 1.5; color: #333; background: #fff; }
@@ -1598,6 +1623,7 @@ ${googleFontsLink}
   .elementor-metform input, .elementor-metform textarea { padding: 12px; border: 1px solid #d3d3d3; border-radius: 3px; }
 
   .sf-unsupported { padding: 12px 16px; margin: 4px 0; border: 1px dashed #cbd5e1; color: #94a3b8; font-size: 13px; font-family: monospace; background: #f8fafc; border-radius: 3px; }
+  .ekit_lottie { width: 100%; min-height: 80px; }
 
   .elementor-testimonial { padding: 20px; }
   .elementor-testimonial__image img { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; margin: 0 auto 12px; }
@@ -1818,6 +1844,41 @@ ${body}
       if (alertEl) alertEl.style.display = 'none';
     });
   });
+
+  // Lottie animations (elementskit-lottie) — wait for the deferred library
+  var lottieEls = document.querySelectorAll('.ekit_lottie[data-path]');
+  function initLottie() {
+    if (!window.lottie) { setTimeout(initLottie, 200); return; }
+    lottieEls.forEach(function(el) {
+      try {
+        var opts = {
+          container: el,
+          renderer: 'svg',
+          loop: el.getAttribute('data-loop') !== 'false',
+          autoplay: el.getAttribute('data-autoplay') !== 'false',
+          path: el.getAttribute('data-path'),
+          speed: parseFloat(el.getAttribute('data-speed')) || 1,
+        };
+        var anim = window.lottie.loadAnimation(opts);
+        if (el.getAttribute('data-reverse') === 'true') {
+          anim.setDirection(-1);
+          if (anim.autoplay !== false) anim.play();
+        }
+        var action = el.getAttribute('data-action');
+        if (action === 'play') {
+          anim.pause();
+          el.addEventListener('mouseenter', function() { anim.play(); });
+          el.addEventListener('mouseleave', function() { anim.pause(); });
+        } else if (action === 'reverse') {
+          el.addEventListener('mouseenter', function() { anim.setDirection(-1); anim.play(); });
+          el.addEventListener('mouseleave', function() { anim.stop(); anim.setDirection(1); });
+        }
+      } catch (e) {
+        el.textContent = 'Lottie';
+      }
+    });
+  }
+  if (lottieEls.length) initLottie();
 })();
 </script>
 </body>
