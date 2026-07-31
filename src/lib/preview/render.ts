@@ -1114,13 +1114,31 @@ function renderBackgroundOverlay(settings: Record<string, unknown>, resolvedStyl
         : `<video class="elementor-background-video" src="${esc(videoUrl)}" autoplay muted loop playsinline${poster}></video>`}</div>${overlay}`;
     }
   }
-  if (settings.background_overlay_background === 'classic') {
+  const overlayType = settings.background_overlay_background as string;
+  if (overlayType === 'classic') {
     const overlayColor = resolvedStyles
       ? resolveSetting(settings, 'background_overlay_color', resolvedStyles)
       : (settings.background_overlay_color as string) || '';
     if (overlayColor) {
       const opacity = (settings.background_overlay_opacity as { size?: number })?.size ?? 0.5;
       overlay += `<div class="elementor-background-overlay" style="background-color:${overlayColor};opacity:${opacity};"></div>`;
+    }
+  } else if (overlayType === 'gradient') {
+    const overlayColor = resolvedStyles
+      ? resolveSetting(settings, 'background_overlay_color', resolvedStyles)
+      : (settings.background_overlay_color as string) || '';
+    const overlayColor2 = resolvedStyles
+      ? resolveSetting(settings, 'background_overlay_color_b', resolvedStyles)
+      : (settings.background_overlay_color_b as string) || '';
+    if (overlayColor && overlayColor2) {
+      const gradType = (settings.background_overlay_gradient_type as string) || 'linear';
+      const angle = ((settings.background_overlay_gradient_angle as { size?: number })?.size) ?? 180;
+      const pos = (settings.background_overlay_gradient_position as string) || 'center center';
+      const grad = gradType === 'radial'
+        ? `radial-gradient(at ${pos}, ${overlayColor}, ${overlayColor2})`
+        : `linear-gradient(${angle}deg, ${overlayColor}, ${overlayColor2})`;
+      const opacity = (settings.background_overlay_opacity as { size?: number })?.size ?? 0.5;
+      overlay += `<div class="elementor-background-overlay" style="background-image:${grad};opacity:${opacity};"></div>`;
     }
   }
   return overlay;

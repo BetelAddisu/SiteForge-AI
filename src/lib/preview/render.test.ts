@@ -222,6 +222,41 @@ describe('renderWidget coverage', () => {
     expect(html).toContain('background:#160C1C');
   });
 
+  it('renders gradient background overlays with resolved __globals__ colors', () => {
+    const tree = [{
+      id: 'gradient-overlay-test',
+      elType: 'section' as const,
+      settings: {
+        background_background: 'classic',
+        background_color: '',
+        background_overlay_background: 'gradient',
+        background_overlay_color: '',
+        background_overlay_color_b: '',
+        background_overlay_opacity: { unit: 'px', size: 0.92 },
+        __globals__: {
+          background_color: 'globals/colors?id=text',
+          background_overlay_color: 'globals/colors?id=979996f',
+          background_overlay_color_b: 'globals/colors?id=text',
+        },
+      },
+      elements: [],
+    }] as any;
+    const html = renderElementorToHtml(tree, {
+      globalKitPageSettings: {
+        system_colors: [
+          { _id: 'primary', title: 'Primary', color: '#9D5EC5' },
+          { _id: 'text', title: 'Black', color: '#160C1C' },
+        ],
+        custom_colors: [
+          { _id: '979996f', title: 'Black 2', color: '#321743' },
+        ],
+      },
+    });
+
+    expect(html).toContain('background-image:linear-gradient(180deg, #321743, #160C1C)');
+    expect(html).toContain('opacity:0.92');
+  });
+
   it('applies border-radius to buttons (pill shape)', () => {
     const tree = [{
       id: 'btn-radius-test',
