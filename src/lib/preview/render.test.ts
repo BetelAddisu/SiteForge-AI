@@ -280,6 +280,29 @@ describe('renderWidget coverage', () => {
     expect(html).toContain('border-radius:50px 50px 50px 50px');
   });
 
+  it('adds onerror fallback to image widgets for dead hotlinks', () => {
+    const tree = [{
+      id: 'img-fallback-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'img-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'img-widget',
+          elType: 'widget' as const,
+          widgetType: 'image',
+          settings: {
+            image: { url: 'https://site.sociolib.com/dead.jpg', alt: 'Broken' },
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('onerror=');
+    expect(html).toContain('Image unavailable');
+  });
+
   it('loads Font Awesome in the document head', () => {
     const tree = makeMinimalWidget('heading') as any;
     const html = renderElementorToHtml(tree);

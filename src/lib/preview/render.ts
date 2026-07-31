@@ -300,6 +300,18 @@ function esc(value: unknown): string {
     .replace(/>/g, '&gt;');
 }
 
+/**
+ * SVG placeholder used when an external image hotlink fails to load.
+ * Keeps layout intact so dead template images degrade gracefully.
+ */
+const IMG_FALLBACK = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="100%" height="100%" fill="#e5e7eb"/><text x="50%" y="50%" font-family="Arial" font-size="24" fill="#9ca3af" text-anchor="middle">Image unavailable</text></svg>'
+);
+
+function imgFallbackAttr(): string {
+  return ` onerror="this.onerror=null;this.src='${IMG_FALLBACK}';"`;
+}
+
 function getSetting<T>(settings: Record<string, unknown>, key: string, defaultValue: T): T {
   const value = settings[key];
   return (value !== undefined ? value : defaultValue) as T;
@@ -566,7 +578,7 @@ function renderImage(settings: Record<string, unknown>): string {
   if (settings.hover_animation) imgStyle += `transition:transform 0.3s;`;
   if (settings.object_fit) imgStyle += `object-fit:${settings.object_fit};`;
   const imgAttr = imgStyle ? ` style="${imgStyle}"` : '';
-  const imgHtml = `<img decoding="async" src="${esc(url)}" class="attachment-large size-large" alt="${esc(alt)}" loading="lazy"${imgAttr} />`;
+  const imgHtml = `<img decoding="async" src="${esc(url)}" class="attachment-large size-large" alt="${esc(alt)}" loading="lazy"${imgAttr}${imgFallbackAttr()} />`;
   if (link) return `<a href="${esc(link)}">${imgHtml}</a>`;
   return `<div class="elementor-image">${imgHtml}</div>`;
 }
@@ -661,7 +673,7 @@ function renderImageBox(settings: Record<string, unknown>, resolvedStyles: Resol
   const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
   const descColor = resolveColor(settings.description_color, resolvedStyles, '#666');
   const titleTypo = buildTypoStyle(settings);
-  const imageHtml = url ? `<figure class="elementor-image-box-img"><img src="${esc(url)}" alt="${esc(imageAlt)}" loading="lazy" /></figure>` : '';
+  const imageHtml = url ? `<figure class="elementor-image-box-img"><img src="${esc(url)}" alt="${esc(imageAlt)}" loading="lazy"${imgFallbackAttr()} /></figure>` : '';
   const contentHtml = `<div class="elementor-image-box-content">
     <h3 class="elementor-image-box-title" style="color:${titleColor};${titleTypo}">${esc(title)}</h3>
     <p class="elementor-image-box-description" style="color:${descColor}">${esc(description)}</p>
@@ -764,7 +776,7 @@ function renderElementsKitVideo(settings: Record<string, unknown>): string {
     </div>`;
   }
   return `<div class="elementor-wrapper">
-    ${thumbUrl ? `<img src="${esc(thumbUrl)}" alt="Video thumbnail" style="width:100%;display:block;" />` : ''}
+    ${thumbUrl ? `<img src="${esc(thumbUrl)}" alt="Video thumbnail" style="width:100%;display:block;"${imgFallbackAttr()} />` : ''}
     <div class="elementor-video" style="display:flex;align-items:center;justify-content:center;background:#1a1a1a;color:#fff;min-height:200px;">
       <span style="font-size:48px;">▶</span>
     </div>
@@ -777,7 +789,7 @@ function renderImageCarousel(settings: Record<string, unknown>): string {
   let carouselImages = images.length > 0 ? images : slides.map(s => s.image || { url: '', alt: '' });
   if (carouselImages.length === 0) return `<div class="elementor-image-carousel-wrapper"><div class="elementor-image-carousel" style="padding:40px;text-align:center;color:#999;">[Image Carousel]</div></div>`;
   const items = carouselImages.map((img, i) =>
-    `<div class="swiper-slide" data-slide="${i}"><img src="${esc(img.url || '')}" alt="${esc(img.alt || '')}" loading="lazy" style="width:100%;display:block;" /></div>`
+    `<div class="swiper-slide" data-slide="${i}"><img src="${esc(img.url || '')}" alt="${esc(img.alt || '')}" loading="lazy" style="width:100%;display:block;"${imgFallbackAttr()} /></div>`
   ).join('');
   const dots = carouselImages.map((_, i) =>
     `<span class="sf-img-dot${i === 0 ? ' sf-active' : ''}" data-slide="${i}"></span>`
@@ -981,7 +993,7 @@ function renderTestimonial(settings: Record<string, unknown>, resolvedStyles: Re
   const alignment = (settings.testimonial_alignment as string) || 'center';
   let html = `<div class="elementor-testimonial" style="text-align:${alignment}">`;
   if (imageUrl) {
-    html += `<div class="elementor-testimonial__image"><img src="${esc(imageUrl)}" alt="${esc(image?.alt || name)}" loading="lazy" style="width:60px;height:60px;border-radius:50%;object-fit:cover;margin:0 auto 12px;" /></div>`;
+    html += `<div class="elementor-testimonial__image"><img src="${esc(imageUrl)}" alt="${esc(image?.alt || name)}" loading="lazy" style="width:60px;height:60px;border-radius:50%;object-fit:cover;margin:0 auto 12px;"${imgFallbackAttr()} /></div>`;
   }
   html += `<blockquote class="elementor-testimonial__content" style="color:${contentColor};font-style:italic;margin:0 0 12px;font-size:1.05rem;">${esc(content)}</blockquote>`;
   if (name) html += `<cite class="elementor-testimonial__name" style="font-style:normal;font-weight:600;color:${nameColor}">${esc(name)}</cite>`;
