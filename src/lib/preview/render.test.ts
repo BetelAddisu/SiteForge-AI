@@ -192,6 +192,36 @@ describe('renderWidget coverage', () => {
     expect(html).toContain('poster="https://example.com/poster.jpg"');
   });
 
+  it('resolves Theme Styles __globals__ page_settings (body_color → white via custom color)', () => {
+    const tree = [{
+      id: 'theme-style-test',
+      elType: 'section' as const,
+      settings: {
+        background_background: 'classic',
+        background_color: '',
+        __globals__: { background_color: 'globals/colors?id=text' },
+      },
+      elements: [],
+    }] as any;
+    const html = renderElementorToHtml(tree, {
+      globalKitPageSettings: {
+        system_colors: [
+          { _id: 'primary', title: 'Primary', color: '#9D5EC5' },
+          { _id: 'secondary', title: 'Secondary', color: '#6D31A3' },
+          { _id: 'text', title: 'Black', color: '#160C1C' },
+          { _id: 'accent', title: 'Accent', color: '#E2C5F1' },
+        ],
+        custom_colors: [
+          { _id: 'e777cd9', title: 'White', color: '#FFFFFF' },
+        ],
+        __globals__: { body_color: 'globals/colors?id=e777cd9' },
+        body_color: '#222831',
+      },
+    });
+
+    expect(html).toContain('background:#160C1C');
+  });
+
   it('applies border-radius to buttons (pill shape)', () => {
     const tree = [{
       id: 'btn-radius-test',

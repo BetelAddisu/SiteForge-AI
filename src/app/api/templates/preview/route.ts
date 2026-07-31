@@ -51,6 +51,35 @@ function slugify(text: string): string {
 }
 
 /**
+ * Extract the Global Kit Styles page_settings (system_colors, system_typography,
+ * theme-style fields) from the kit's global-styles template so widgets that
+ * reference __globals__ resolve to the kit's real colors/fonts.
+ */
+async function extractGlobalPageSettings(
+  zip: typeof JSZip.prototype,
+  manifest: Manifest
+): Promise<Record<string, unknown> | undefined> {
+  const globalTemplate = manifest.templates.find((t) => {
+    const tt = t.metadata?.template_type as string | undefined;
+    return tt === 'global-styles' || t.name.toLowerCase().includes('global kit');
+  });
+  if (!globalTemplate) return undefined;
+
+  const entry = zip.file(globalTemplate.source);
+  if (!entry) return undefined;
+
+  try {
+    const raw = await entry.async('string');
+    const json = JSON.parse(raw);
+    const pageSettings = json?.page_settings as Record<string, unknown> | undefined;
+    return pageSettings || undefined;
+  } catch (error) {
+    console.error('[Template Preview] Error loading global kit styles:', error);
+    return undefined;
+  }
+}
+
+/**
  * Extract Elementor content from a ZIP file for a specific template
  */
 async function extractTemplateContent(
@@ -167,9 +196,13 @@ export async function GET(request: Request) {
               );
             }
             
+            // Load the kit's Global Kit Styles so __globals__ refs resolve correctly
+            const globalPageSettings = await extractGlobalPageSettings(zip, manifest);
+
             // Render the Elementor content to HTML
             const html = renderElementorToHtml(result.elements, {
               title: result.name || template.name,
+              globalKitPageSettings: globalPageSettings,
               brandTokens: {
                 colors: {
                   primary: '#2563eb',

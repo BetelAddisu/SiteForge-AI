@@ -103,6 +103,18 @@ export function extractKitStyles(
     defaultGenericFonts: 'Sans-serif',
   };
 
+  // Helper: resolve a value that may be a globals/colors?id= ref against parsed colors
+  function resolvePsColor(value: unknown): string | undefined {
+    if (typeof value !== 'string') return undefined;
+    const refMatch = value.match(/^globals\/colors\?id=(.+)$/);
+    if (refMatch) {
+      const id = refMatch[1];
+      const found = [...kitStyles.systemColors, ...kitStyles.customColors].find(c => c._id === id);
+      return found?.color;
+    }
+    return value;
+  }
+
   // Helper: apply theme-style page_settings onto kitStyles
   function applyPageSettings(ps: Record<string, unknown>): void {
     // System colors array (Digicy format)
@@ -111,7 +123,7 @@ export function extractKitStyles(
         const color = c as { _id?: string; title?: string; color?: string };
         if (color._id && color.color) {
           const existing = kitStyles.systemColors.find(sc => sc._id === color._id);
-          if (existing) existing.color = color.color;
+          if (existing) existing.color = resolvePsColor(color.color) || color.color;
         }
       });
     }
@@ -146,8 +158,11 @@ export function extractKitStyles(
       body_color: 'text',
       link_normal_color: 'accent',
     };
+    const psGlobals = ps.__globals__ as Record<string, unknown> | undefined;
     for (const [key, sysId] of Object.entries(headingColorMap)) {
-      const val = ps[key] as string | undefined;
+      // __globals__ map takes priority over the direct (cached) value
+      const rawVal = (psGlobals && psGlobals[key] as string) || (ps[key] as string | undefined);
+      const val = resolvePsColor(rawVal);
       if (val) {
         const existing = kitStyles.systemColors.find(sc => sc._id === sysId);
         if (existing) existing.color = val;
@@ -168,10 +183,11 @@ export function extractKitStyles(
     }
 
     // Button theme styles
-    const btnBg = ps.button_background_color as string;
-    const btnColor = ps.button_text_color as string;
-    const btnHoverBg = ps.button_hover_background_color as string;
-    const btnHoverColor = ps.button_hover_text_color as string;
+    const btnKey = (k: string) => (psGlobals && psGlobals[k] as string) || (ps[k] as string);
+    const btnBg = resolvePsColor(btnKey('button_background_color'));
+    const btnColor = resolvePsColor(btnKey('button_text_color'));
+    const btnHoverBg = resolvePsColor(btnKey('button_hover_background_color'));
+    const btnHoverColor = resolvePsColor(btnKey('button_hover_text_color'));
     if (btnBg) kitStyles.customColors.push({ _id: 'button-bg', title: 'Button Background', color: btnBg });
     if (btnColor) kitStyles.customColors.push({ _id: 'button-text', title: 'Button Text', color: btnColor });
     if (btnHoverBg) kitStyles.customColors.push({ _id: 'button-hover-bg', title: 'Button Hover Background', color: btnHoverBg });
@@ -1254,11 +1270,23 @@ export function renderElementorToHtml(
   const kitStyles = extractKitStyles(elements, options?.globalKitPageSettings);
   const resolvedStyles = resolveKitStyles(kitStyles);
 
-  const primary = brandTokens?.colors?.primary || resolvedStyles.colors.primary || '#3B82F6';
-  const secondary = brandTokens?.colors?.secondary || resolvedStyles.colors.secondary || '#1e40af';
-  const accent = brandTokens?.colors?.accent || resolvedStyles.colors.accent || '#06b6d4';
-  const headingFont = brandTokens?.typography?.headingFont || resolvedStyles.defaultFonts.heading || 'system-ui, sans-serif';
-  const bodyFont = brandTokens?.typography?.bodyFont || resolvedStyles.defaultFonts.body || 'system-ui, sans-serif';
+  const primary = resolvedStyles.colors.primary || brandTokens?.colors?.primary || '#3B82F6';
+  const secondary = resolvedStyles.colors.secondary || brandTokens?.colors?.secondary || '#1e40af';
+  const accent = resolvedStyles.colors.accent || brandTokens?.colors?.accent || '#06b6d4';
+  const headingFont = resolvedStyles.defaultFonts.heading || brandTokens?.typography?.headingFont || 'system-ui, sans-serif';
+  const bodyFont = resolvedStyles.defaultFonts.body || brandTokens?.typography?.bodyFont || 'system-ui, sans-serif';
+
+  // Build a Google Fonts link from the kit's actual font families
+  const kitFonts = new Set<string>();
+  Object.values(resolvedStyles.typography).forEach(t => {
+    if (t.fontFamily && !t.fontFamily.includes(',') && !t.fontFamily.includes(' ')) {
+      kitFonts.add(t.fontFamily);
+    }
+  });
+  if (headingFont && !headingFont.includes(',') && !headingFont.includes(' ')) kitFonts.add(headingFont);
+  if (bodyFont && !bodyFont.includes(',') && !bodyFont.includes(' ')) kitFonts.add(bodyFont);
+  kitFonts.add('Roboto');
+  const googleFontsLink = `<link href="https://fonts.googleapis.com/css2?family=${Array.from(kitFonts).map(f => `${encodeURIComponent(f)}:wght@400;500;600;700`).join('&family=')}&display=swap" rel="stylesheet" />`;
 
   const body = elements.length > 0 ? `<div class="elementor elementor-page">
   <div class="elementor-section-wrap">
@@ -1272,7 +1300,7 @@ export function renderElementorToHtml(
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>${esc(options?.title || 'Website Preview')}</title>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Roboto+Slab:wght@400;500&display=swap" rel="stylesheet" />
+${googleFontsLink}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 <style>
   *, *::before, *::after { box-sizing: border-box; }
