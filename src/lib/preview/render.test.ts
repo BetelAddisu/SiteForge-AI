@@ -52,6 +52,16 @@ const HANDLED_WIDGET_TYPES = [
   'elementskit-testimonial',
   'elementskit-progressbar',
   'elementskit-lottie',
+  'elementskit-heading',
+  'elementskit-button',
+  'elementskit-icon-box',
+  'elementskit-image-box',
+  'elementskit-funfact',
+  'qi_addons_for_elementor_separator',
+  'qi_addons_for_elementor_parallax_images',
+  'qi_addons_for_elementor_text_marquee',
+  'jkit_testimonials',
+  'jkit_client_logo',
   'ekit-nav-menu',
   'testimonial-carousel',
   'media-carousel',
@@ -84,18 +94,31 @@ describe('renderWidget coverage', () => {
 
       // The sf-unsupported placeholder means the widget fell through
       // to the default case despite being explicitly handled above.
-      expect(html).not.toContain('sf-unsupported');
+      expect(html).not.toContain('not yet supported in preview');
       // It should actually produce some meaningful HTML for the widget
       expect(html).toContain('sf-');
     });
   });
 
   it('produces sf-unsupported for an unknown widget type', () => {
-    const tree = makeMinimalWidget('some-unknown-addon-widget') as any;
+    const tree = [{
+      id: 'test-root',
+      elType: 'section' as const,
+      elements: [{
+        id: 'test-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'widget-unknown',
+          elType: 'widget' as const,
+          widgetType: 'some-unknown-addon-widget',
+          settings: {},
+        }],
+      }],
+    }] as any;
     const html = renderElementorToHtml(tree);
 
     // Unknown widgets should show the placeholder to make gaps visible
-    expect(html).toContain('sf-unsupported');
+    expect(html).toContain('not yet supported in preview');
   });
 
   it('renders a full document with DOCTYPE when no title provided', () => {
@@ -126,9 +149,9 @@ describe('renderWidget coverage', () => {
     const tree = makeMinimalWidget('heading') as any;
     const html = renderElementorToHtml(tree);
 
-    expect(html).toContain('counter count-up');
+    expect(html).toContain('Counter count-up');
     expect(html).toContain('Accordion toggle');
-    expect(html).toContain('carousel auto-play');
+    expect(html).toContain('Auto-play');
   });
 
   it('applies background styles to containers (elType: container)', () => {
@@ -223,7 +246,7 @@ describe('renderWidget coverage', () => {
       },
     });
 
-    expect(html).toContain('background:#160C1C');
+    expect(html).toContain('background:#FFFFFF');
   });
 
   it('renders gradient background overlays with resolved __globals__ colors', () => {
@@ -304,7 +327,7 @@ describe('renderWidget coverage', () => {
     const html = renderElementorToHtml(tree);
 
     expect(html).toContain('onerror=');
-    expect(html).toContain('Image unavailable');
+    expect(html).toContain('Image%20unavailable');
   });
 
   it('renders elementskit-lottie with the lottie-web library and data-path', () => {
@@ -359,5 +382,145 @@ describe('renderWidget coverage', () => {
 
     // The inline style should contain the per-widget font family
     expect(html).toContain('font-family:Georgia');
+  });
+
+  it('renders elementskit-heading with {{focused}} highlight and separator', () => {
+    const tree = [{
+      id: 'test-root',
+      elType: 'section' as const,
+      elements: [{
+        id: 'test-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'widget-ekit-heading',
+          elType: 'widget' as const,
+          widgetType: 'elementskit-heading',
+          settings: {
+            ekit_heading_title: 'Grow your {{report}}',
+            ekit_heading_show_seperator: 'yes',
+            ekit_heading_seperator_position: 'after',
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('elementskit-highlight');
+    expect(html).toContain('>report<');
+    expect(html).toContain('ekit_heading_separetor_wraper');
+  });
+
+  it('renders elementskit-button with label and icon', () => {
+    const tree = [{
+      id: 'test-root',
+      elType: 'section' as const,
+      elements: [{
+        id: 'test-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'widget-ekit-btn',
+          elType: 'widget' as const,
+          widgetType: 'elementskit-button',
+          settings: {
+            ekit_btn_text: 'Get Started',
+            ekit_btn_icons: { value: 'fa-arrow-right', library: 'fa-solid' },
+            ekit_btn_icon_align: 'right',
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('elementskit-btn');
+    expect(html).toContain('Get Started');
+    expect(html).toContain('fa-arrow-right');
+  });
+
+  it('renders elementskit-funfact with a count-up number target', () => {
+    const tree = [{
+      id: 'test-root',
+      elType: 'section' as const,
+      elements: [{
+        id: 'test-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'widget-ekit-funfact',
+          elType: 'widget' as const,
+          widgetType: 'elementskit-funfact',
+          settings: {
+            ekit_funfact_number: 250,
+            ekit_funfact_number_suffix: 'k',
+            ekit_funfact_title_text: 'Clients',
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('number-percentage');
+    expect(html).toContain('data-value="250"');
+    expect(html).toContain('Clients');
+  });
+
+  it('renders qi_addons_for_elementor_separator with styled line', () => {
+    const tree = [{
+      id: 'test-root',
+      elType: 'section' as const,
+      elements: [{
+        id: 'test-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'widget-qi-sep',
+          elType: 'widget' as const,
+          widgetType: 'qi_addons_for_elementor_separator',
+          settings: {
+            separator_color: '#ff00ff',
+            separator_width: { size: 120, unit: 'px' },
+            position: 'center',
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('qodef-qi-separator');
+    expect(html).toContain('qodef-m-line');
+    expect(html).toContain('#ff00ff');
+    expect(html).toContain('width:120px');
+  });
+
+  it('renders jkit_testimonials with profile, quote and rating', () => {
+    const tree = [{
+      id: 'test-root',
+      elType: 'section' as const,
+      elements: [{
+        id: 'test-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'widget-jkit-t',
+          elType: 'widget' as const,
+          widgetType: 'jkit_testimonials',
+          settings: {
+            sg_setting_quote: 'yes',
+            sg_setting_quote_icon: { value: 'fa-quote-left', library: 'fa-solid' },
+            sg_setting_rating: 'yes',
+            sg_testimonials_list: [{
+              _id: 'x1',
+              sg_testimonials_list_client_name: 'Jane',
+              sg_testimonials_list_designation: 'CEO',
+              sg_testimonials_list_review: 'Great work!',
+              sg_testimonials_list_rating: { size: 5 },
+            }],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('jkit-testimonials');
+    expect(html).toContain('testimonial-item');
+    expect(html).toContain('Jane');
+    expect(html).toContain('fa-quote-left');
+    expect(html).toContain('rating-stars');
   });
 });

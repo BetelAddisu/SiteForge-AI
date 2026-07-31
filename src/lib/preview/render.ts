@@ -529,6 +529,16 @@ function renderWidgetContent(node: ElementorNode, resolvedStyles: ResolvedStyles
     case 'elementskit-progressbar': return renderElementsKitProgressbar(settings, resolvedStyles);
     case 'ekit-nav-menu': return renderEKitNavMenu(settings);
     case 'elementskit-lottie': return renderElementsKitLottie(settings);
+    case 'elementskit-heading': return renderElementsKitHeading(settings, resolvedStyles);
+    case 'elementskit-button': return renderElementsKitButton(settings, resolvedStyles);
+    case 'elementskit-icon-box': return renderElementsKitIconBox(settings, resolvedStyles);
+    case 'elementskit-image-box': return renderElementsKitImageBox(settings, resolvedStyles);
+    case 'elementskit-funfact': return renderElementsKitFunfact(settings, resolvedStyles);
+    case 'qi_addons_for_elementor_separator': return renderQiSeparator(settings);
+    case 'qi_addons_for_elementor_parallax_images': return renderQiParallaxImages(settings);
+    case 'qi_addons_for_elementor_text_marquee': return renderQiTextMarquee(settings);
+    case 'jkit_testimonials': return renderJkitTestimonials(settings, resolvedStyles);
+    case 'jkit_client_logo': return renderJkitClientLogo(settings);
     case 'toggle': return renderToggle(settings);
     case 'alert': return renderAlert(settings, resolvedStyles);
     default: {
@@ -903,6 +913,536 @@ function renderEKitNavMenu(settings: Record<string, unknown>): string {
   return `<div class="ekit-nav-menu" style="display:flex;align-items:center;justify-content:space-between;min-height:${barHeight}px;padding:0 24px;">
     <div class="ekit-nav-menu-logo">${logoHtml}</div>
     <nav class="ekit-nav-menu-links" style="display:flex;align-items:center;gap:4px;">${links}</nav>
+  </div>`;
+}
+
+/**
+ * Render an Elementor Icons_Manager icon object ({ value, library }) to an <i>.
+ * Returns '' when the icon is empty so callers can skip optional icons.
+ */
+function renderIconEl(icon: unknown, extraClass = ''): string {
+  const obj = icon as { value?: string; library?: string } | undefined;
+  const value = obj?.value || '';
+  const library = obj?.library || 'fa';
+  if (!value) return '';
+  const cls = extraClass ? ` ${extraClass}` : '';
+  return `<i class="${esc(library)} ${esc(value)}${cls}" aria-hidden="true"></i>`;
+}
+
+/**
+ * ElementsKit heading (`elementskit-heading`).
+ * Matches elementskit-lite/widgets/heading/heading.php render_raw(): the
+ * {{focused}} segments become highlighted spans, and the optional separator,
+ * subtitle and extra description are positioned around the title.
+ */
+function renderElementsKitHeading(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
+  const title = (settings.ekit_heading_title as string) || '';
+  const titleTag = (settings.ekit_heading_title_tag as string) || 'h2';
+  const align = (settings.ekit_heading_title_align as string) || 'text_left';
+  const textAlign = align.replace('text_', '');
+  const titleColor = resolveSetting(settings, 'ekit_heading_title_color', resolvedStyles) || '#1a1a1a';
+  const focusedColor = resolveSetting(settings, 'ekit_heading_focused_title_color', resolvedStyles) || titleColor;
+  const linkUrl = ((settings.ekit_heading_link as { url?: string })?.url) || '';
+
+  const highlightTitle = String(title).replace(/\{\{([^}]+)\}\}/g, (_, m) =>
+    `<span class="elementskit-highlight" style="color:${focusedColor};">${esc(m)}</span>`);
+
+  const subtitle = (settings.ekit_heading_sub_title as string) || '';
+  const subtitleShow = (settings.ekit_heading_sub_title_show as string) !== 'no';
+  const subtitleTag = (settings.ekit_heading_sub_title_tag as string) || 'p';
+  const subtitlePosition = (settings.ekit_heading_sub_title_position as string) || 'after_title';
+  const subtitleColor = resolveSetting(settings, 'ekit_heading_sub_title_color', resolvedStyles) || '#666';
+
+  const extraTitle = (settings.ekit_heading_extra_title as string) || '';
+  const extraTitleShow = (settings.ekit_heading_section_extra_title_show as string) !== 'no';
+
+  const showShadow = (settings.show_shadow_text as string) === 'yes';
+  const shadowText = (settings.shadow_text_content as string) || '';
+
+  const showSeparator = (settings.ekit_heading_show_seperator as string) === 'yes';
+  const sepStyle = (settings.ekit_heading_seperator_style as string) || 'elementskit-border-divider ekit-dotted';
+  const sepPosition = (settings.ekit_heading_seperator_position as string) || 'after';
+  const sepColor = resolveSetting(settings, 'ekit_heading_seperator_color', resolvedStyles) || titleColor;
+  const sepWidth = dimVal(settings.ekit_heading_seperator_width);
+  const sepHeight = dimVal(settings.ekit_heading_seperator_height);
+  const sepImage = settings.ekit_heading_seperator_image as { url?: string } | undefined;
+
+  let separator = '';
+  if (showSeparator) {
+    const inner = sepImage?.url
+      ? `<img src="${esc(sepImage.url)}" alt="" loading="lazy"${imgFallbackAttr()} />`
+      : `<div class="${esc(sepStyle)}" style="${sepColor ? `border-top-color:${sepColor};` : ''}${sepWidth ? `width:${sepWidth};` : ''}${sepHeight ? `border-top-width:${sepHeight};` : ''}"></div>`;
+    separator = `<div class="ekit_heading_separetor_wraper ekit_heading_${esc(sepStyle)}"><div class="${esc(sepStyle)}">${inner}</div></div>`;
+  }
+
+  const titleHtml = title ? `<${titleTag} class="ekit-heading--title elementskit-section-title" style="color:${titleColor};${buildTypoStyle(settings)}">${highlightTitle}</${titleTag}>` : '';
+  const titleWithLink = linkUrl ? `<a href="${esc(linkUrl)}" style="text-decoration:none;color:inherit;">${titleHtml}</a>` : titleHtml;
+  const subtitleHtml = subtitle && subtitleShow
+    ? `<${subtitleTag} class="elementskit-section-subtitle" style="color:${subtitleColor};">${esc(subtitle)}</${subtitleTag}>`
+    : '';
+  const extraHtml = extraTitle && extraTitleShow ? `<div class="ekit-heading__description">${extraTitle}</div>` : '';
+  const shadowHtml = showShadow && shadowText ? `<span class="ekit-heading__shadow-text">${esc(shadowText)}</span>` : '';
+
+  const sepTop = sepPosition === 'top' ? separator : '';
+  const sepBefore = sepPosition === 'before' ? separator : '';
+  const sepAfter = sepPosition === 'after' ? separator : '';
+  const sepBottom = sepPosition === 'bottom' ? separator : '';
+  const subtitleBefore = subtitlePosition === 'before_title' ? subtitleHtml : '';
+  const subtitleAfter = subtitlePosition === 'after_title' ? subtitleHtml : '';
+
+  return `<div class="ekit-wid-con">
+  <div class="ekit-heading elementskit-section-title-wraper ${esc(align)}" style="text-align:${textAlign};">
+    ${shadowHtml}
+    ${sepTop}
+    ${subtitleBefore}
+    ${sepBefore}
+    ${titleWithLink}
+    ${sepAfter}
+    ${subtitleAfter}
+    ${extraHtml}
+    ${sepBottom}
+  </div>
+</div>`;
+}
+
+/**
+ * ElementsKit button (`elementskit-button`).
+ * Matches elementskit-lite/widgets/button/button.php render_raw(): an
+ * elementskit-btn link with optional icon before/after the label.
+ */
+function renderElementsKitButton(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
+  const text = (settings.ekit_btn_text as string) || 'Learn more';
+  const url = ((settings.ekit_btn_url as { url?: string })?.url) || '';
+  const align = (settings.ekit_btn_align as string) || 'center';
+  const btnClass = (settings.ekit_btn_class as string) || '';
+  const btnId = (settings.ekit_btn_id as string) || '';
+  const iconAlign = (settings.ekit_btn_icon_align as string) || 'left';
+  const color = resolveSetting(settings, 'ekit_btn_text_color', resolvedStyles) || '#fff';
+  const bgColor = resolveSetting(settings, 'ekit_btn_bg_color', resolvedStyles)
+    || resolveSetting(settings, 'ekit_btn_bg_color_color', resolvedStyles)
+    || 'var(--e-global-color-primary)';
+  const hoverColor = settings.ekit_btn_hover_color as string || '';
+  const hoverBg = (settings.ekit_btn_bg_hover_color as string) || (settings.ekit_btn_bg_hover_color_color as string) || '';
+  const radius = dimStr(settings.ekit_btn_border_radius);
+  const borderStyle = (settings.ekit_btn_border_style as string) || 'none';
+  const borderWidth = dimStr(settings.ekit_btn_border_dimensions) || '0px';
+  const borderColor = (settings.ekit_btn_border_color as string) || color;
+
+  const iconHtml = renderIconEl(settings.ekit_btn_icons, 'elementskit-btn-icon');
+  const inner = iconAlign === 'right' ? `${esc(text)}${iconHtml}` : `${iconHtml}${esc(text)}`;
+
+  let style = `background-color:${bgColor};color:${color};`;
+  if (radius) style += `border-radius:${radius};`;
+  if (borderStyle && borderStyle !== 'none') style += `border:${borderWidth} ${borderStyle} ${borderColor};`;
+  const hoverAttr = hoverBg || hoverColor
+    ? ` data-sf-normal-bg="${bgColor}" data-sf-hover-bg="${hoverBg || bgColor}" data-sf-normal-color="${color}" data-sf-hover-color="${hoverColor || color}" onmouseover="var el=this;if(el.dataset.sfHoverBg)el.style.background=el.dataset.sfHoverBg;if(el.dataset.sfHoverColor)el.style.color=el.dataset.sfHoverColor;" onmouseout="var el=this;if(el.dataset.sfNormalBg)el.style.background=el.dataset.sfNormalBg;if(el.dataset.sfNormalColor)el.style.color=el.dataset.sfNormalColor;"`
+    : '';
+
+  return `<div class="ekit-wid-con">
+  <div class="ekit-btn-wraper" style="text-align:${align};">
+    <a${url ? ` href="${esc(url)}"` : ''} class="elementskit-btn whitespace--normal${btnClass ? ` ${esc(btnClass)}` : ''}"${btnId ? ` id="${esc(btnId)}"` : ''} style="${style}"${hoverAttr}>
+      ${inner}
+    </a>
+  </div>
+</div>`;
+}
+
+/**
+ * ElementsKit icon box (`elementskit-icon-box`).
+ * Matches elementskit-lite/widgets/icon-box/icon-box.php render_raw(): an
+ * elementskit-infobox with icon/image header, box-body title + description,
+ * optional button, watermark icon, image overlay and badge.
+ */
+function renderElementsKitIconBox(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
+  const iconPosition = (settings.ekit_icon_box_icon_position as string) || 'top';
+  const textAlign = (settings.ekit_icon_box_text_align_responsive as string) || 'center';
+  const titleText = (settings.ekit_icon_box_title_text as string) || '';
+  const titleTag = (settings.ekit_icon_box_title_size as string) || 'h3';
+  const description = (settings.ekit_icon_box_description_text as string) || '';
+  const titleColor = resolveSetting(settings, 'ekit_icon_title_color', resolvedStyles) || '#1a1a1a';
+  const descColor = resolveSetting(settings, 'ekit_icon_description_color', resolvedStyles) || '#666';
+
+  const headerIcon = settings.ekit_icon_box_header_icons
+    || settings.ekit_icon_box_header_icon;
+  const enableHeaderIcon = (settings.ekit_icon_box_enable_header_icon as string) || 'icon';
+  const headerImage = settings.ekit_icon_box_header_image as { url?: string } | undefined;
+
+  let header = '';
+  if (enableHeaderIcon === 'image' && headerImage?.url) {
+    header = `<div class="elementskit-box-header">
+      <div class="elementskit-info-box-icon${iconPosition !== 'top' ? ' text-center' : ''}">
+        <img src="${esc(headerImage.url)}" alt="" loading="lazy"${imgFallbackAttr()} />
+      </div>
+    </div>`;
+  } else if (enableHeaderIcon === 'icon' && headerIcon) {
+    header = `<div class="elementskit-box-header">
+      <div class="elementskit-info-box-icon${iconPosition !== 'top' ? ' text-center' : ''}">
+        ${renderIconEl(headerIcon, 'elementkit-infobox-icon')}
+      </div>
+    </div>`;
+  }
+
+  const enableBtn = (settings.ekit_icon_box_enable_btn as string) === 'yes';
+  const btnText = (settings.ekit_icon_box_btn_text as string) || 'Learn more';
+  const btnUrl = ((settings.ekit_icon_box_btn_url as { url?: string })?.url) || '';
+  const btnIconAlign = (settings.ekit_icon_box_icon_align as string) || '';
+  const btnIcon = renderIconEl(settings.ekit_icon_box_icons);
+  const button = enableBtn ? `<div class="box-footer ${(settings.ekit_icon_box_enable_hover_btn as string) === 'yes' ? 'enable_hover_btn' : 'disable_hover_button'}">
+    <div class="btn-wraper">
+      <a${btnUrl ? ` href="${esc(btnUrl)}"` : ''} class="elementskit-btn whitespace--normal">
+        ${btnIconAlign === 'right' ? `${esc(btnText)}${btnIcon}` : `${btnIcon}${esc(btnText)}`}
+      </a>
+    </div>
+  </div>` : '';
+
+  const showGlobalLink = (settings.ekit_icon_box_show_global_link as string) === 'yes'
+    && (settings.ekit_icon_box_enable_btn as string) !== 'yes';
+  const globalLink = ((settings.ekit_icon_box_global_link as { url?: string })?.url) || '';
+  const watermark = (settings.ekit_icon_box_enable_water_mark as string) === 'yes' ? settings.ekit_icon_box_water_mark_icons : '';
+  const imageOverlay = (settings.ekit_icon_box_show_image_overlay as string) === 'yes' ? settings.ekit_icon_box_show_image as { url?: string } : undefined;
+  const badgeOn = (settings.ekit_icon_box_badge_control as string) === 'yes' && (settings.ekit_icon_box_badge_title as string) !== '';
+  const badgeTitle = (settings.ekit_icon_box_badge_title as string) || '';
+  const badgePosition = (settings.ekit_icon_box_badge_position as string) || 'top_left';
+
+  const content = `<div class="elementskit-infobox text-${esc(textAlign)} text-${esc(iconPosition === 'top' ? textAlign + ' icon-top-align' : iconPosition + ' icon-lef-right-aligin')}${iconPosition === 'left' ? ' media' : ''}${iconPosition === 'right' ? ' elementskit-icon-right' : ''}">
+    ${header}
+    <div class="box-body">
+      ${titleText ? `<${titleTag} class="elementskit-info-box-title" style="color:${titleColor};">${esc(titleText)}</${titleTag}>` : ''}
+      ${description ? `<p style="color:${descColor};">${description}</p>` : ''}
+      ${button}
+    </div>
+    ${watermark ? `<div class="icon-hover">${renderIconEl(watermark)}</div>` : ''}
+    ${imageOverlay?.url ? `<figure class="image-hover"><img src="${esc(imageOverlay.url)}" alt="" loading="lazy"${imgFallbackAttr()} /></figure>` : ''}
+    ${badgeOn ? `<div class="ekit-icon-box-badge ekit_position_${esc(badgePosition)}"><span class="ekit-badge">${esc(badgeTitle)}</span></div>` : ''}
+  </div>`;
+
+  if (showGlobalLink && globalLink) {
+    return `<div class="ekit-wid-con"><a href="${esc(globalLink)}" class="ekit_global_links" style="display:block;">${content}</a></div>`;
+  }
+  return `<div class="ekit-wid-con">${content}</div>`;
+}
+
+/**
+ * ElementsKit image box (`elementskit-image-box`).
+ * Matches elementskit-lite/widgets/image-box/image-box.php render_raw(): an
+ * elementskit-info-image-box with header image, title/description body and
+ * optional button.
+ */
+function renderElementsKitImageBox(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
+  const image = settings.ekit_image_box_image as { url?: string; alt?: string } | undefined;
+  const imageUrl = image?.url || '';
+  const title = (settings.ekit_image_box_title_text as string) || '';
+  const titleTag = (settings.ekit_image_box_title_size as string) || 'h3';
+  const description = (settings.ekit_image_box_description_text as string) || '';
+  const textAlign = (settings.ekit_image_box_content_text_align as string) || 'center';
+  const styleSimple = (settings.ekit_image_box_style_simple as string) || '';
+  const titleColor = resolveSetting(settings, 'ekit_image_box_heading_color', resolvedStyles) || '#1a1a1a';
+  const descColor = resolveSetting(settings, 'ekit_image_box_heading_color_description', resolvedStyles) || '#666';
+
+  const enableLink = (settings.ekit_image_box_enable_link as string) === 'yes';
+  const linkUrl = ((settings.ekit_image_box_website_link as { url?: string })?.url) || '';
+
+  const enableBtn = (settings.ekit_image_box_enable_btn as string) === 'yes';
+  const btnText = (settings.ekit_image_box_btn_text as string) || 'Learn more';
+  const btnUrl = ((settings.ekit_image_box_btn_url as { url?: string })?.url) || '';
+  const btnIconAlign = (settings.ekit_image_box_icon_align as string) || '';
+  const btnIcon = renderIconEl(settings.ekit_image_box_icons);
+
+  const titleIconLeft = (settings.ekit_image_box_style_simple as string) === 'floating-style'
+    && (settings.ekit_image_box_front_title_icon_position as string) === 'left'
+    ? renderIconEl(settings.ekit_image_box_front_title_icons) : '';
+  const titleIconRight = (settings.ekit_image_box_style_simple as string) === 'floating-style'
+    && (settings.ekit_image_box_front_title_icon_position as string) === 'right'
+    ? renderIconEl(settings.ekit_image_box_front_title_icons) : '';
+
+  const headerImage = imageUrl ? `<div class="elementskit-box-header image-box-img-${esc(textAlign)}">
+    <img src="${esc(imageUrl)}" alt="${esc(image?.alt || title)}" loading="lazy"${imgFallbackAttr()} />
+  </div>` : '';
+  const headerWithLink = enableLink && linkUrl ? `<a href="${esc(linkUrl)}">${headerImage}</a>` : headerImage;
+
+  const button = enableBtn ? `<div class="elementskit-box-footer">
+    <div class="box-footer"><div class="btn-wraper">
+      <a${btnUrl ? ` href="${esc(btnUrl)}"` : ''} class="elementskit-btn whitespace--normal">
+        ${btnIconAlign === 'right' ? `${esc(btnText)}${btnIcon}` : `${btnIcon}${esc(btnText)}`}
+      </a>
+    </div></div>
+  </div>` : '';
+
+  return `<div class="ekit-wid-con">
+  <div class="elementskit-info-image-box ekit-image-box text-${esc(textAlign)}${styleSimple ? ` ${esc(styleSimple)}` : ''}">
+    ${headerWithLink}
+    <div class="elementskit-box-body ekit-image-box-body">
+      <div class="elementskit-box-content ekit-image-box-body-inner">
+        ${title ? `<${titleTag} class="elementskit-info-box-title" style="color:${titleColor};">${titleIconLeft}${esc(title)}${titleIconRight}</${titleTag}>` : ''}
+        ${description ? `<div class="elementskit-box-style-content" style="color:${descColor};">${description}</div>` : ''}
+      </div>
+      ${button}
+    </div>
+  </div>
+</div>`;
+}
+
+/**
+ * ElementsKit funfact / counter (`elementskit-funfact`).
+ * Matches elementskit-lite/widgets/funfact/funfact.php render_raw(): an
+ * elementskit-funfact with icon, animated number-percentage and title.
+ */
+function renderElementsKitFunfact(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
+  const textAlign = (settings.ekit_funfact_text_align as string) || 'center';
+  const number = (settings.ekit_funfact_number as number) || 0;
+  const prefix = (settings.ekit_funfact_number_prefix as string) || '';
+  const suffix = (settings.ekit_funfact_number_suffix as string) || '';
+  const animationDuration = (settings.ekit_funfact_animation_duration as number) ?? 3500;
+  const style = (settings.ekit_funfact_style as string) || '';
+  const titleText = (settings.ekit_funfact_title_text as string) || '';
+  const titleTag = (settings.ekit_funfact_title_size as string) || 'h3';
+  const iconType = (settings.ekit_funfact_icon_type as string) || 'icon';
+  const iconPosition = (settings.ekit_funfact_icon_position as string) || '';
+  const icon = settings.ekit_funfact_icons;
+  const iconImage = settings.ekit_funfact_icon_image as { url?: string } | undefined;
+  const superOn = (settings.ekit_funfact_super as string) === 'yes';
+  const superText = (settings.ekit_funfact_super_text as string) || '';
+  const titleColor = resolveSetting(settings, 'ekit_funfact_title_color', resolvedStyles) || '#1a1a1a';
+  const numberColor = resolveSetting(settings, 'ekit_funfact_heading_number', resolvedStyles)
+    || (settings.ekit_funfact_heading_number as string)
+    || 'var(--e-global-color-primary)';
+  const descColor = resolveSetting(settings, 'ekit_funfact_description_color', resolvedStyles) || '#666';
+
+  let iconHtml = '';
+  if (iconType === 'image_icon' && iconImage?.url) {
+    iconHtml = `<div class="funfact-icon"><img src="${esc(iconImage.url)}" alt="" loading="lazy"${imgFallbackAttr()} /></div>`;
+  } else if (iconType === 'icon' && icon) {
+    iconHtml = `<div class="funfact-icon">${renderIconEl(icon, 'elementskit-funfact-icon')}</div>`;
+  }
+
+  return `<div class="ekit-wid-con">
+  <div class="elementskit-funfact text-${esc(textAlign)}" style="text-align:${textAlign};">
+    <div class="elementskit-funfact-inner${iconPosition ? ` ${esc(iconPosition)}` : ''}">
+      ${iconHtml}
+      <div class="funfact-content">
+        <div class="number-percentage-wraper">
+          ${prefix ? `<span style="color:${numberColor};">${esc(prefix)}</span>` : ''}
+          <span class="number-percentage" data-value="${number}" data-animation-duration="${animationDuration}" data-style="${esc(style)}" style="color:${numberColor};font-size:48px;font-weight:700;line-height:1;">0</span>
+          ${suffix ? `<span style="color:${numberColor};">${esc(suffix)}</span>` : ''}
+          ${superOn ? `<span class="super" style="color:${numberColor};">${esc(superText)}</span>` : ''}
+        </div>
+        ${titleText ? `<${titleTag} class="funfact-title" style="color:${titleColor};">${esc(titleText)}</${titleTag}>` : ''}
+        <span style="display:block;color:${descColor};font-size:0.95rem;"></span>
+      </div>
+    </div>
+  </div>
+</div>`;
+}
+
+/**
+ * QI Addons separator (`qi_addons_for_elementor_separator`).
+ * Matches qi-addons-for-elementor separator shortcode + standard template:
+ * a single .qodef-m-line inside a qodef-qi-separator holder.
+ */
+function renderQiSeparator(settings: Record<string, unknown>): string {
+  const layout = (settings.separator_layout as string) || 'standard';
+  const position = (settings.position as string) || '';
+  const color = (settings.separator_color as string) || '#e2e8f0';
+  const borderStyle = (settings.separator_border_style as string) || 'solid';
+  const width = dimVal(settings.separator_width);
+  const thickness = dimVal(settings.separator_thickness) || '1px';
+  const marginTop = dimVal(settings.separator_margin_top);
+  const marginBottom = dimVal(settings.separator_margin_bottom);
+
+  let lineStyle = `border-top-style:${borderStyle};border-top-width:${thickness};border-top-color:${color};width:${width || '100%'};`;
+  if (marginTop) lineStyle += `margin-top:${marginTop};`;
+  if (marginBottom) lineStyle += `margin-bottom:${marginBottom};`;
+  if (position === 'center') lineStyle += 'margin-left:auto;margin-right:auto;';
+  if (position === 'right') lineStyle += 'margin-left:auto;margin-right:0;';
+  if (position === 'left') lineStyle += 'margin-left:0;margin-right:auto;';
+
+  return `<div class="qodef-qi-separator qodef-qi-clear qodef-separator--${esc(layout)}${position ? ` qodef-position--${esc(position)}` : ''}">
+    <div class="qodef-m-line" style="${lineStyle}"></div>
+  </div>`;
+}
+
+/**
+ * QI Addons parallax image showcase (`qi_addons_for_elementor_parallax_images`).
+ * Matches qi-addons-for-elementor parallax-images default template: a main
+ * image plus a repeater of absolutely-positioned parallax images.
+ */
+function renderQiParallaxImages(settings: Record<string, unknown>): string {
+  const layout = (settings.layout as string) || 'default';
+  const mainImage = settings.main_image as { url?: string } | undefined;
+  const mainImageUrl = mainImage?.url || '';
+  const items = (settings.children as Array<Record<string, unknown>>) || [];
+
+  const mainHtml = mainImageUrl
+    ? `<div class="qodef-e-main-image-holder"><div class="qodef-e-main-image-zoom-holder">
+        <div class="qodef-e-main-image"><img src="${esc(mainImageUrl)}" alt="" loading="lazy"${imgFallbackAttr()} /></div>
+      </div></div>`
+    : '';
+
+  const itemHtml = items.map((item) => {
+    const img = item.parallax_image as { url?: string } | undefined;
+    const imgUrl = img?.url || '';
+    if (!imgUrl) return '';
+    const posClass = item.parallax_image_position ? ` qodef-position--${esc(String(item.parallax_image_position))}` : '';
+    const repeaterId = item._id ? ` elementor-repeater-item-${esc(String(item._id))}` : '';
+    const maxWidth = ((item.parallax_image_max_width as { size?: number })?.size) || '';
+    const vertical = ((item.parallax_image_vertical_offset as { size?: number })?.size) || '';
+    const horizontal = ((item.parallax_image_horizontal_offset as { size?: number })?.size) || '';
+    const zIndex = (item.parallax_image_index as number) || '';
+    let style = '';
+    if (maxWidth) style += `max-width:${maxWidth}%;`;
+    if (vertical) style += `top:${vertical}%;`;
+    if (horizontal) style += `left:${horizontal}%;`;
+    if (zIndex) style += `z-index:${zIndex};`;
+    return `<div class="qodef-e-parallax-image${posClass}${repeaterId}"${style ? ` style="${style}"` : ''}>
+      <img src="${esc(imgUrl)}" alt="" loading="lazy"${imgFallbackAttr()} />
+    </div>`;
+  }).join('');
+
+  return `<div class="qodef-qi-parallax-images qodef-layout--${esc(layout)}">
+    <div class="qodef-m-images">
+      ${mainHtml}
+      ${itemHtml}
+    </div>
+  </div>`;
+}
+
+/**
+ * QI Addons text marquee (`qi_addons_for_elementor_text_marquee`).
+ * Matches qi-addons-for-elementor text-marquee default template: two copies
+ * of the repeater items (original + copy) animated in CSS.
+ */
+function renderQiTextMarquee(settings: Record<string, unknown>): string {
+  const layout = (settings.layout as string) || 'default';
+  const items = (settings.children as Array<{ item_text?: string; _id?: string }>) || [];
+  const separatorIcon = settings.separator_icon;
+  const duration = ((settings.duration as number)) ?? 12;
+  const reverse = (settings.reverse_direction as string) === 'yes';
+  const color = (settings.color as string) || 'inherit';
+  const iconColor = (settings.icon_color as string) || color;
+  const spaceBetween = ((settings.space_between_items as { size?: number })?.size) || '';
+
+  if (items.length === 0) return `<div class="qodef-qi-text-marquee qodef-layout--${esc(layout)}"><div class="qodef-m-content"></div></div>`;
+
+  const separator = separatorIcon ? `<span class="qodef-e-icon-holder" style="color:${iconColor};font-size:${dimVal(settings.icon_size) || '18px'};">${renderIconEl(separatorIcon)}</span>` : '';
+
+  const buildText = () => items.map(item => {
+    const repeaterId = item._id ? ` elementor-repeater-item-${esc(item._id)}` : '';
+    const space = spaceBetween ? ` style="margin-right:${spaceBetween}px;"` : '';
+    return `<span class="qodef-m-text-item${repeaterId}"${space}>${item.item_text || ''}</span>${separator}`;
+  }).join('');
+
+  const marqueeStyle = `animation-duration:${duration}s;${reverse ? 'animation-direction:reverse;' : ''}color:${color};`;
+
+  return `<div class="qodef-qi-text-marquee qodef-layout--${esc(layout)}" style="overflow:hidden;white-space:nowrap;">
+    <div class="qodef-m-content" style="${marqueeStyle}">
+      <div class="qodef-m-text qodef-text--original">${buildText()}</div>
+      <div class="qodef-m-text qodef-text--copy" aria-hidden="true">${buildText()}</div>
+    </div>
+  </div>`;
+}
+
+/**
+ * Jeg Elementor Kit testimonials (`jkit_testimonials`).
+ * Matches jeg-elementor-kit class/elements/views/class-testimonials-view.php
+ * build_content(): a testimonials-list / testimonials-track of testimonial-item
+ * cards with profile image, rating stars and review.
+ */
+function renderJkitTestimonials(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
+  const list = (settings.sg_testimonials_list as Array<Record<string, unknown>>) || [];
+  if (list.length === 0) return `<div class="jeg-elementor-kit jkit-testimonials"><div class="testimonials-list"></div></div>`;
+
+  const layout = (settings.sg_layout_testimonial_choose as string) || 'style-1';
+  const arrowPosition = (settings.sg_setting_arrow_position as string) || 'bottom-right';
+  const quotePosition = (settings.st_quote_override_position as string) === 'yes' ? 'quote-override' : '';
+  const fixHeight = (settings.st_wrapper_fix_height as string) === 'yes' ? 'fix-height' : '';
+  const hoverDirection = (settings.st_layout_hover_direction as string) || 'top';
+  const showQuote = (settings.sg_setting_quote as string) === 'yes';
+  const quoteIcon = renderIconEl(settings.sg_setting_quote_icon);
+  const showRating = (settings.sg_setting_rating as string) === 'yes';
+  const imageSize = ((settings.sg_testimonials_image_size_imagesize_size as { size?: number })?.size) || 60;
+  const layoutBg = resolveSetting(settings, 'st_content_wrapper_background_background_color', resolvedStyles) || '#f9fafb';
+
+  const cards = list.map((item) => {
+    const name = (item.sg_testimonials_list_client_name as string) || '';
+    const designation = (item.sg_testimonials_list_designation as string) || '';
+    const review = (item.sg_testimonials_list_review as string) || '';
+    const avatar = item.sg_testimonials_list_client_avatar as { url?: string } | undefined;
+    const id = item._id ? ` elementor-repeater-item-${esc(String(item._id))}` : '';
+    const rating = ((item.sg_testimonials_list_rating as { size?: number })?.size) ?? 0;
+
+    let stars = '';
+    if (showRating) {
+      stars = '<ul class="rating-stars" style="list-style:none;display:flex;gap:2px;padding:0;margin:8px 0;">';
+      for (let i = 0; i < 5; i++) {
+        const filled = i < Math.round(rating);
+        stars += `<li style="color:${filled ? '#f0ad4e' : '#d1d5db'};">&#9733;</li>`;
+      }
+      stars += '</ul>';
+    }
+
+    const iconContent = showQuote && quoteIcon ? `<div class="icon-content">${quoteIcon}</div>` : '';
+    const bio = `<div class="comment-bio">
+      ${avatar?.url ? `<div class="profile-image"><img src="${esc(avatar.url)}" alt="${esc(name)}" loading="lazy" style="width:${imageSize}px;height:${imageSize}px;border-radius:50%;object-fit:cover;"${imgFallbackAttr()} /></div>` : ''}
+      ${stars}
+      <span class="profile-info">
+        <strong class="profile-name">${esc(name)}</strong>
+        <p class="profile-des">${esc(designation)}</p>
+      </span>
+    </div>`;
+    const comment = `<div class="comment-content"><p>${esc(review)}</p></div>`;
+    const content = quotePosition ? iconContent + bio + comment : bio + `<div class="comment-content">${iconContent}${esc(review) ? comment : ''}</div>`;
+
+    return `<div class="testimonial-item${fixHeight ? ' ' + fixHeight : ''}${id}">
+      <div class="testimonial-box" style="background-color:${layoutBg};">
+        <div class="testimonial-slider hover-from-${esc(hoverDirection)}">
+          ${content}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div class="jeg-elementor-kit jkit-testimonials arrow-${esc(arrowPosition)} ${esc(layout)}${quotePosition ? ' ' + quotePosition : ''}">
+    <div class="testimonials-list">
+      <div class="testimonials-track">${cards}</div>
+    </div>
+  </div>`;
+}
+
+/**
+ * Jeg Elementor Kit client logo carousel (`jkit_client_logo`).
+ * Matches jeg-elementor-kit class/elements/views/class-client-logo-view.php
+ * build_content(): a client-list / client-track of logo items with optional
+ * hover image and link.
+ */
+function renderJkitClientLogo(settings: Record<string, unknown>): string {
+  const list = (settings.sg_logo_list as Array<Record<string, unknown>>) || [];
+  if (list.length === 0) return `<div class="jeg-elementor-kit jkit-client-logo"><div class="client-list"></div></div>`;
+
+  const arrowPosition = (settings.sg_setting_arrow_position as string) || 'bottom-right';
+
+  const items = list.map((item) => {
+    const title = (item.sg_logo_list_title as string) || '';
+    const image = item.sg_logo_list_image as { url?: string } | undefined;
+    const hoverEnable = (item.sg_logo_list_hover_enable as string) === 'yes';
+    const hoverImage = item.sg_logo_list_hover_logo as { url?: string } | undefined;
+    const linkEnable = (item.sg_logo_list_link_enable as string) === 'yes';
+    const link = ((item.sg_logo_list_link as { url?: string })?.url) || '';
+    if (!image?.url && !hoverImage?.url) return '';
+
+    const mainImg = image?.url ? `<img class="main-image" src="${esc(image.url)}" alt="${esc(title)}" loading="lazy"${imgFallbackAttr()} />` : '';
+    const hoverImg = hoverEnable && hoverImage?.url ? `<img class="hover-image" src="${esc(hoverImage.url)}" alt="${esc(title)}" loading="lazy"${imgFallbackAttr()} />` : '';
+    const contentImage = `<div class="content-image">${mainImg}${hoverImg}</div>`;
+    const content = linkEnable && link
+      ? `<a href="${esc(link)}" class="client-logo-link" style="display:block;">${contentImage}</a>`
+      : contentImage;
+
+    return `<div class="client-slider item${hoverImg ? ' hover-enable' : ''}">
+      <div class="image-list">${content}</div>
+    </div>`;
+  }).join('');
+
+  return `<div class="jeg-elementor-kit jkit-client-logo arrow-${esc(arrowPosition)}">
+    <div class="client-list"><div class="client-track">${items}</div></div>
   </div>`;
 }
 
@@ -1625,6 +2165,100 @@ ${googleFontsLink}
   .sf-unsupported { padding: 12px 16px; margin: 4px 0; border: 1px dashed #cbd5e1; color: #94a3b8; font-size: 13px; font-family: monospace; background: #f8fafc; border-radius: 3px; }
   .ekit_lottie { width: 100%; min-height: 80px; }
 
+  /* --- ElementsKit widgets --- */
+  .elementskit-btn { display: inline-flex; align-items: center; gap: 10px; padding: 15px 35px; border-radius: 5px; font-family: ${bodyFont}, 'Roboto', sans-serif; font-size: 15px; font-weight: 600; line-height: 1.2; text-decoration: none; transition: all 0.3s; }
+  .elementskit-btn:hover { color: #fff; }
+  .ekit-btn-wraper { margin: 10px 0; }
+
+  .ekit-heading { position: relative; }
+  .ekit-heading--title { margin: 0; line-height: 1.3; }
+  .ekit-heading--subtitle { margin: 0 0 8px; font-size: 1rem; font-weight: 500; }
+  .ekit-heading .elementskit-section-subtitle { margin: 0 0 8px; }
+  .ekit-heading__description { margin-top: 12px; }
+  .ekit-heading__shadow-text { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); font-size: 5rem; font-weight: 800; color: rgba(0,0,0,0.06); white-space: nowrap; pointer-events: none; z-index: 0; }
+  .elementskit-highlight { font-style: inherit; }
+  .ekit_heading_separetor_wraper { margin: 10px 0; }
+  .ekit_heading_separetor_wraper .elementskit-border-divider { border-top-width: 3px; border-top-style: solid; }
+  .elementskit-border-divider { width: 80px; }
+  .elementskit-border-star, .elementskit-border-star.elementskit-bullet { width: 80px; height: 10px; border-top-width: 3px; border-top-style: solid; }
+  .elementskit-border-divider.ekit-dotted { border-top-style: dotted; }
+
+  .elementskit-infobox { padding: 30px; border-radius: 8px; transition: all 0.3s; }
+  .elementskit-infobox.text-center { text-align: center; }
+  .elementskit-infobox.text-left { text-align: left; }
+  .elementskit-infobox.text-right { text-align: right; }
+  .elementskit-infobox .elementskit-box-header { margin-bottom: 20px; }
+  .elementskit-infobox .elementskit-info-box-icon { display: inline-flex; font-size: 50px; color: var(--e-global-color-primary, ${primary}); }
+  .elementskit-infobox .elementskit-info-box-icon img { max-width: 80px; border-radius: 8px; }
+  .elementskit-infobox .elementkit-infobox-icon { font-size: 50px; }
+  .elementskit-infobox .box-body .elementskit-info-box-title { margin: 0 0 10px; font-size: 1.4rem; font-weight: 600; }
+  .elementskit-infobox .box-body p { margin: 0; font-size: 1rem; line-height: 1.6; }
+  .elementskit-infobox .box-footer { margin-top: 20px; }
+  .elementskit-infobox .elementskit-btn { padding: 12px 30px; }
+  .elementskit-infobox .icon-hover { margin-top: 16px; font-size: 40px; color: var(--e-global-color-primary, ${primary}); }
+  .elementskit-infobox .image-hover img { border-radius: 8px; margin-top: 16px; }
+  .ekit-icon-box-badge { position: absolute; z-index: 2; }
+  .ekit-icon-box-badge .ekit-badge { display: inline-block; padding: 6px 14px; background-color: var(--e-global-color-primary, ${primary}); color: #fff; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+  .ekit_position_top_left { top: 12px; left: 12px; }
+  .ekit_position_top_right { top: 12px; right: 12px; }
+  .ekit_position_bottom_left { bottom: 12px; left: 12px; }
+  .ekit_position_bottom_right { bottom: 12px; right: 12px; }
+
+  .elementskit-info-image-box { border-radius: 10px; overflow: hidden; transition: all 0.3s; }
+  .elementskit-info-image-box .elementskit-box-header img { width: 100%; height: 220px; object-fit: cover; display: block; }
+  .elementskit-info-image-box .elementskit-box-body { padding: 24px; }
+  .elementskit-info-image-box .elementskit-info-box-title { margin: 0 0 10px; font-size: 1.3rem; font-weight: 600; }
+  .elementskit-info-image-box .elementskit-box-style-content { font-size: 1rem; line-height: 1.6; color: #666; }
+  .elementskit-info-image-box .elementskit-box-footer { padding: 0 24px 24px; }
+  .elementskit-info-image-box .elementskit-btn { padding: 12px 30px; }
+  .elementskit-info-image-box.text-center { text-align: center; }
+  .elementskit-info-image-box.text-left { text-align: left; }
+  .elementskit-info-image-box.text-right { text-align: right; }
+
+  .elementskit-funfact { padding: 30px; border-radius: 8px; }
+  .elementskit-funfact .elementskit-funfact-inner { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .elementskit-funfact .funfact-icon { font-size: 50px; color: var(--e-global-color-primary, ${primary}); }
+  .elementskit-funfact .funfact-icon img { max-width: 80px; }
+  .elementskit-funfact .funfact-content { text-align: center; }
+  .elementskit-funfact .number-percentage-wraper { display: flex; align-items: baseline; justify-content: center; gap: 4px; }
+  .elementskit-funfact .funfact-title { margin: 8px 0 0; font-size: 1.05rem; font-weight: 500; }
+
+  /* --- QI Addons widgets --- */
+  .qodef-qi-separator { clear: both; }
+  .qodef-qi-separator .qodef-m-line { border-top-style: solid; }
+  .qodef-qi-parallax-images .qodef-m-images { position: relative; }
+  .qodef-qi-parallax-images .qodef-e-main-image { position: relative; z-index: 1; }
+  .qodef-qi-parallax-images .qodef-e-main-image img { width: 100%; display: block; }
+  .qodef-qi-parallax-images .qodef-e-parallax-image { position: absolute; z-index: 2; }
+  .qodef-qi-parallax-images .qodef-e-parallax-image img { display: block; }
+  .qodef-qi-text-marquee .qodef-m-content { display: flex; }
+  .qodef-qi-text-marquee .qodef-m-text { display: flex; align-items: center; animation: qodef-marquee linear infinite; white-space: nowrap; }
+  .qodef-qi-text-marquee .qodef-m-text-item { padding: 0 20px; font-size: 2.2rem; font-weight: 700; }
+  .qodef-qi-text-marquee .qodef-e-icon-holder { display: inline-flex; align-items: center; }
+  .qodef-qi-text-marquee .qodef-e-icon-holder i { display: block; line-height: 1; }
+  @keyframes qodef-marquee { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+  .qodef-text--copy { position: absolute; left: 100%; top: 0; }
+
+  /* --- Jeg Elementor Kit widgets --- */
+  .jeg-elementor-kit.jkit-testimonials .testimonials-list { overflow: hidden; }
+  .jeg-elementor-kit.jkit-testimonials .testimonials-track { display: flex; gap: 24px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .jeg-elementor-kit.jkit-testimonials .testimonials-track::-webkit-scrollbar { display: none; }
+  .jeg-elementor-kit.jkit-testimonials .testimonial-item { flex: 0 0 33.333%; max-width: 33.333%; scroll-snap-align: start; }
+  .jeg-elementor-kit.jkit-testimonials .testimonial-box { border-radius: 12px; padding: 30px; height: 100%; }
+  .jeg-elementor-kit.jkit-testimonials .comment-bio { text-align: center; margin-bottom: 16px; }
+  .jeg-elementor-kit.jkit-testimonials .profile-image { margin-bottom: 8px; }
+  .jeg-elementor-kit.jkit-testimonials .profile-name { display: block; font-size: 1.05rem; }
+  .jeg-elementor-kit.jkit-testimonials .profile-des { margin: 2px 0 0; font-size: 0.9rem; color: #999; }
+  .jeg-elementor-kit.jkit-testimonials .icon-content { text-align: center; margin-bottom: 10px; font-size: 34px; color: var(--e-global-color-primary, ${primary}); }
+  .jeg-elementor-kit.jkit-testimonials .comment-content { text-align: center; font-style: italic; line-height: 1.6; }
+  .jeg-elementor-kit.jkit-client-logo .client-list { overflow: hidden; }
+  .jeg-elementor-kit.jkit-client-logo .client-track { display: flex; gap: 24px; overflow-x: auto; scrollbar-width: none; }
+  .jeg-elementor-kit.jkit-client-logo .client-track::-webkit-scrollbar { display: none; }
+  .jeg-elementor-kit.jkit-client-logo .client-slider { flex: 0 0 220px; scroll-snap-align: start; }
+  .jeg-elementor-kit.jkit-client-logo .client-slider img { max-height: 80px; width: auto; display: block; margin: 0 auto; filter: grayscale(1); opacity: 0.6; transition: all 0.3s; }
+  .jeg-elementor-kit.jkit-client-logo .client-slider:hover img { filter: none; opacity: 1; }
+  .jeg-elementor-kit.jkit-client-logo .content-image { text-align: center; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px; }
+
   .elementor-testimonial { padding: 20px; }
   .elementor-testimonial__image img { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; margin: 0 auto 12px; }
   .elementor-testimonial__content { font-style: italic; margin: 0 0 12px; font-size: 1.05rem; line-height: 1.6; }
@@ -1732,6 +2366,24 @@ ${body}
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
+  });
+
+  // ElementsKit funfact number count-up
+  var funfactNums = document.querySelectorAll('.number-percentage[data-value]');
+  funfactNums.forEach(function(el) {
+    var target = parseFloat(el.getAttribute('data-value')) || 0;
+    if (target === 0) return;
+    var duration = parseInt(el.getAttribute('data-animation-duration')) || 3500;
+    var start = null;
+    function step(ts) {
+      if (!start) start = ts;
+      var progress = Math.min((ts - start) / duration, 1);
+      var val = Math.floor(progress * target);
+      el.textContent = val;
+      if (progress < 1) requestAnimationFrame(step);
+      else el.textContent = target;
+    }
+    requestAnimationFrame(step);
   });
 
   // Accordion toggle
