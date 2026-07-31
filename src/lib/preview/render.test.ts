@@ -127,6 +127,101 @@ describe('renderWidget coverage', () => {
     expect(html).toContain('carousel auto-play');
   });
 
+  it('applies background styles to containers (elType: container)', () => {
+    const tree = [{
+      id: 'container-bg-test',
+      elType: 'container' as const,
+      settings: {
+        background_background: 'classic',
+        background_color: '#2E1922',
+        padding: { unit: 'px', top: 40, right: 40, bottom: 40, left: 40 },
+      },
+      elements: [{
+        id: 'container-child',
+        elType: 'widget' as const,
+        widgetType: 'heading',
+        settings: { heading: 'Test' },
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('background:#2E1922');
+    expect(html).toContain('padding:40px');
+  });
+
+  it('resolves __globals__ color references in backgrounds', () => {
+    const tree = [{
+      id: 'container-globals-test',
+      elType: 'section' as const,
+      settings: {
+        background_background: 'classic',
+        background_color: '',
+        __globals__: { background_color: 'globals/colors?id=primary' },
+      },
+      elements: [],
+    }] as any;
+    const html = renderElementorToHtml(tree, {
+      globalKitPageSettings: {
+        system_colors: [
+          { _id: 'primary', title: 'Primary', color: '#7000FF' },
+          { _id: 'secondary', title: 'Secondary', color: '#311073' },
+          { _id: 'text', title: 'Text', color: '#FFFFFF' },
+          { _id: 'accent', title: 'Accent', color: '#288FFF' },
+        ],
+      },
+    });
+
+    expect(html).toContain('background:#7000FF');
+  });
+
+  it('renders video backgrounds with a poster fallback', () => {
+    const tree = [{
+      id: 'container-video-test',
+      elType: 'section' as const,
+      settings: {
+        background_background: 'video',
+        background_video_link: 'https://www.youtube.com/watch?v=abc123',
+        background_video_fallback: { url: 'https://example.com/poster.jpg' },
+      },
+      elements: [],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('elementor-background-video-container');
+    expect(html).toContain('youtube.com/embed/abc123');
+    expect(html).toContain('poster="https://example.com/poster.jpg"');
+  });
+
+  it('applies border-radius to buttons (pill shape)', () => {
+    const tree = [{
+      id: 'btn-radius-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'btn-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'btn-widget',
+          elType: 'widget' as const,
+          widgetType: 'button',
+          settings: {
+            text: 'Learn More',
+            border_radius: { unit: 'px', top: 50, right: 50, bottom: 50, left: 50, isLinked: '1' },
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('border-radius:50px 50px 50px 50px');
+  });
+
+  it('loads Font Awesome in the document head', () => {
+    const tree = makeMinimalWidget('heading') as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('font-awesome');
+  });
+
   it('reads per-widget typography_font_family from heading settings', () => {
     const tree = [{
       id: 'test-root',

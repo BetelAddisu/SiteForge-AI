@@ -300,6 +300,33 @@ function resolveColor(value: unknown, resolvedStyles: ResolvedStyles, fallback: 
   return (value as string) || fallback;
 }
 
+/**
+ * Resolve a setting that may be overridden by a global reference in __globals__.
+ * Elementor stores global refs in settings.__globals__ as a map of
+ * { settingKey: 'globals/colors?id=primary' | 'globals/typography?id=primary' }.
+ * When present, the plain setting value is usually empty — so we must check
+ * the __globals__ map first and resolve the ref to its actual color/font.
+ */
+function resolveSetting(
+  settings: Record<string, unknown>,
+  key: string,
+  resolvedStyles: ResolvedStyles
+): string {
+  const globals = settings.__globals__ as Record<string, string> | undefined;
+  const globalRef = globals?.[key];
+  if (typeof globalRef === 'string') {
+    if (globalRef.startsWith('globals/colors')) {
+      return resolveGlobalColor(globalRef, resolvedStyles) || '';
+    }
+    if (globalRef.startsWith('globals/typography')) {
+      const typo = resolveGlobalTypography(globalRef, resolvedStyles);
+      return typo?.fontFamily || '';
+    }
+    return '';
+  }
+  return (settings[key] as string) || '';
+}
+
 // ============================================================
 // Elementor Dimension Helpers
 // ============================================================
@@ -334,23 +361,29 @@ function dimStr(v: unknown, fallback = ''): string {
   return String(v);
 }
 
-function buildContainerStyle(settings: Record<string, unknown>): string {
+function buildContainerStyle(settings: Record<string, unknown>, resolvedStyles?: ResolvedStyles): string {
   const parts: string[] = [];
 
-  // Background
+  // Background — resolve global color refs via __globals__ when available
   const bg = settings.background_background as string;
+  const bgColor = resolvedStyles
+    ? resolveSetting(settings, 'background_color', resolvedStyles)
+    : (settings.background_color as string) || '';
+  const bgColor2 = resolvedStyles
+    ? resolveSetting(settings, 'background_gradient_second_color', resolvedStyles)
+    : (settings.background_gradient_second_color as string) || '';
   if (bg === 'gradient') {
     const type = (settings.background_gradient_type as string) || 'linear';
     const angle = ((settings.background_gradient_angle as { size?: number })?.size) ?? 180;
-    const color1 = settings.background_color as string;
-    const color2 = settings.background_gradient_second_color as string;
     const pos = (settings.background_gradient_position as string) || 'center center';
-    if (color1 && color2) {
-      const grad = type === 'radial' ? `radial-gradient(at ${pos}, ${color1}, ${color2})` : `linear-gradient(${angle}deg, ${color1}, ${color2})`;
+    if (bgColor && bgColor2) {
+      const grad = type === 'radial' ? `radial-gradient(at ${pos}, ${bgColor}, ${bgColor2})` : `linear-gradient(${angle}deg, ${bgColor}, ${bgColor2})`;
       parts.push(`background:${grad}`);
-    } else if (color1) {
-      parts.push(`background:${color1}`);
+    } else if (bgColor) {
+      parts.push(`background:${bgColor}`);
     }
+  } else if (bg === 'classic' && bgColor) {
+    parts.push(`background:${bgColor}`);
   }
 
   // Padding
@@ -527,15 +560,33 @@ function renderButton(settings: Record<string, unknown>, resolvedStyles: Resolve
   const link = ((settings.link as { url?: string })?.url) || '#';
   const align = (settings.align as string) || 'left';
   const size = (settings.size as string) || 'md';
-  const bgColor = resolveColor(settings.background_color, resolvedStyles, '#3B82F6');
+  const bgColor = resolveSetting(settings, 'background_color', resolvedStyles)
+    || resolveColor(settings.background_color, resolvedStyles, '#3B82F6');
   const hoverBg = settings.background_hover_color as string || '';
   const hoverColor = settings.hover_color as string || '';
   const btnClasses = ['elementor-button', `elementor-size-${size}`];
   if (settings.button_type) btnClasses.push(`elementor-button-${settings.button_type}`);
   const typoStyle = buildTypoStyle(settings);
+  const radius = dimStr(settings.border_radius) || (settings.button_border_radius ? dimStr(settings.button_border_radius) : '');
+  let btnStyle = '';
+  if (radius) btnStyle += `border-radius:${radius};`;
+  const bs = settings.border_border as string;
+  if (bs && bs !== 'none') {
+    const bw = dimStr(settings.border_width) || '1px';
+    const bc = (settings.border_color as string) || '#e5e7eb';
+    btnStyle += `border:${bw} ${bs} ${bc};`;
+  }
+  if (settings.box_shadow_box_shadow === 'yes') {
+    const h = dimVal(settings.box_shadow_horizontal) || '0';
+    const v = dimVal(settings.box_shadow_vertical) || '2px';
+    const bl = dimVal(settings.box_shadow_blur) || '4px';
+    const sp = dimVal(settings.box_shadow_spread) || '0';
+    const cl = (settings.box_shadow_color as string) || 'rgba(0,0,0,0.1)';
+    btnStyle += `box-shadow:${h} ${v} ${bl} ${sp} ${cl};`;
+  }
   const hoverAttr = hoverBg || hoverColor ? ` data-sf-normal-bg="${bgColor}" data-sf-hover-bg="${hoverBg}" data-sf-normal-color="inherit" data-sf-hover-color="${hoverColor}" onmouseover="var el=this;if(el.dataset.sfHoverBg)el.style.background=el.dataset.sfHoverBg;if(el.dataset.sfHoverColor)el.style.color=el.dataset.sfHoverColor;" onmouseout="var el=this;if(el.dataset.sfHoverBg)el.style.background=el.dataset.sfNormalBg;if(el.dataset.sfHoverColor)el.style.color=el.dataset.sfNormalColor;"` : '';
   return `<div class="elementor-button-wrapper" style="text-align:${align}">
-    <a href="${esc(link)}" class="${btnClasses.join(' ')}" style="background-color:${bgColor};${typoStyle}"${hoverAttr}>
+    <a href="${esc(link)}" class="${btnClasses.join(' ')}" style="background-color:${bgColor};${typoStyle}${btnStyle}"${hoverAttr}>
       <span class="elementor-button-content-wrapper">
         ${settings.icon ? `<span class="elementor-button-icon elementor-align-icon-left"><i class="${settings.icon}"></i></span>` : ''}
         <span class="elementor-button-text">${esc(text)}</span>
@@ -613,9 +664,20 @@ function renderIconBox(settings: Record<string, unknown>, resolvedStyles: Resolv
   const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
   const descColor = resolveColor(settings.description_color, resolvedStyles, '#666');
   const titleTypo = buildTypoStyle(settings);
+  // Resolve the per-widget primary color (may be a __globals__ ref) for the icon badge
+  const primaryColor = resolveSetting(settings, 'primary_color', resolvedStyles)
+    || (settings.primary_color as string)
+    || '';
+  const view = (settings.view as string) || 'default';
+  const shape = (settings.shape as string) || '';
+  const viewClass = view !== 'default' ? ` elementor-view-${view}` : '';
+  const shapeClass = shape ? ` elementor-shape-${shape}` : '';
+  const iconStyle = primaryColor
+    ? ` style="--e-global-color-primary:${primaryColor};"`
+    : '';
   return `<div class="elementor-icon-box-wrapper elementor-icon-box-${position}">
     <div class="elementor-icon-box-icon">
-      <span class="elementor-icon elementor-animation-">
+      <span class="elementor-icon${viewClass}${shapeClass}"${iconStyle}>
         <i class="${iconLibrary} ${iconValue}" aria-hidden="true"></i>
       </span>
     </div>
@@ -1002,12 +1064,14 @@ function renderAlert(settings: Record<string, unknown>, resolvedStyles: Resolved
   </div>`;
 }
 
-function renderBackgroundOverlay(settings: Record<string, unknown>): string {
+function renderBackgroundOverlay(settings: Record<string, unknown>, resolvedStyles?: ResolvedStyles): string {
   const bg = settings.background_background;
   if (!bg || bg === 'none' || bg === '') return '';
   let overlay = '';
-  const bgColor = settings.background_color as string | undefined;
-  if (bgColor) {
+  const bgColor = resolvedStyles
+    ? resolveSetting(settings, 'background_color', resolvedStyles)
+    : (settings.background_color as string) || '';
+  if (bgColor && bg !== 'video') {
     overlay += `<div class="elementor-background-overlay" style="background-color:${bgColor};"></div>`;
   }
   const bgImage = settings.background_image as { url?: string; id?: number } | undefined;
@@ -1017,9 +1081,31 @@ function renderBackgroundOverlay(settings: Record<string, unknown>): string {
     const size = (settings.background_size as string) || 'cover';
     overlay = `<div class="elementor-background-overlay" style="background-image:url(${esc(bgImage.url)});background-position:${position};background-repeat:${repeat};background-size:${size};"></div>${overlay}`;
   }
-  if (settings.background_overlay_background === 'classic' && settings.background_overlay_color) {
-    const opacity = (settings.background_overlay_opacity as { size?: number })?.size ?? 0.5;
-    overlay += `<div class="elementor-background-overlay" style="background-color:${settings.background_overlay_color};opacity:${opacity};"></div>`;
+  // Video background with optional poster-image fallback
+  if (bg === 'video') {
+    const videoLink = (settings.background_video_link as string) || '';
+    const videoStart = (settings.background_video_start as { size?: number })?.size ?? 0;
+    const overlayImage = settings.background_video_fallback as { url?: string } | undefined;
+    if (videoLink) {
+      let videoUrl = videoLink;
+      const ytMatch = videoLink.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+      if (ytMatch) {
+        videoUrl = `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1&loop=1&playlist=${ytMatch[1]}&controls=0&start=${videoStart}`;
+      }
+      const poster = overlayImage?.url ? ` poster="${esc(overlayImage.url)}"` : '';
+      overlay = `<div class="elementor-background-video-container">${ytMatch
+        ? `<iframe src="${esc(videoUrl)}" class="elementor-background-video" frameborder="0" allow="autoplay;encrypted-media" allowfullscreen${poster}></iframe>`
+        : `<video class="elementor-background-video" src="${esc(videoUrl)}" autoplay muted loop playsinline${poster}></video>`}</div>${overlay}`;
+    }
+  }
+  if (settings.background_overlay_background === 'classic') {
+    const overlayColor = resolvedStyles
+      ? resolveSetting(settings, 'background_overlay_color', resolvedStyles)
+      : (settings.background_overlay_color as string) || '';
+    if (overlayColor) {
+      const opacity = (settings.background_overlay_opacity as { size?: number })?.size ?? 0.5;
+      overlay += `<div class="elementor-background-overlay" style="background-color:${overlayColor};opacity:${opacity};"></div>`;
+    }
   }
   return overlay;
 }
@@ -1066,12 +1152,12 @@ function renderSection(node: ElementorNode, resolvedStyles: ResolvedStyles): str
   if (settings.css_classes) classes.push(String(settings.css_classes));
   const customId = settings._element_id ? ` id="${esc(String(settings._element_id))}"` : '';
   const htmlTag = (settings.html_tag as string) || 'section';
-  const bgOverlay = renderBackgroundOverlay(settings);
+  const bgOverlay = renderBackgroundOverlay(settings, resolvedStyles);
   const shapeTop = renderShapeDivider(settings, 'top');
   const shapeBottom = renderShapeDivider(settings, 'bottom');
   const children = node.elements || [];
 
-  let sectionStyle = buildContainerStyle(settings);
+  let sectionStyle = buildContainerStyle(settings, resolvedStyles);
 
   return `<${htmlTag} class="${classes.join(' ')}" data-id="${id}" data-element_type="section"${customId}${sectionStyle ? ` style="${sectionStyle}"` : ''}>
 ${bgOverlay}
@@ -1094,7 +1180,7 @@ function renderColumn(node: ElementorNode, resolvedStyles: ResolvedStyles): stri
   const customId = settings._element_id ? ` id="${esc(String(settings._element_id))}"` : '';
   const children = node.elements || [];
   const hasChildren = children.length > 0;
-  const colStyle = buildContainerStyle(settings);
+  const colStyle = buildContainerStyle(settings, resolvedStyles);
   return `<div class="${classes.join(' ')}" data-id="${id}" data-element_type="column"${customId}${colStyle ? ` style="${colStyle}"` : ''}>
   <div class="elementor-widget-wrap${hasChildren ? ' elementor-element-populated' : ''}">
     ${children.map(c => renderNode(c, resolvedStyles)).join('\n')}
@@ -1111,9 +1197,15 @@ function renderContainer(node: ElementorNode, resolvedStyles: ResolvedStyles): s
   const flexDir = (settings.flex_direction as string) || 'row';
   classes.push(`e-con-${flexDir}`);
   if (settings.css_classes) classes.push(String(settings.css_classes));
+  if (settings._css_classes) classes.push(String(settings._css_classes));
+  if (settings.content_position) classes.push(`e-con-${settings.content_position}`);
   const customId = settings._element_id ? ` id="${esc(String(settings._element_id))}"` : '';
   const children = node.elements || [];
-  return `<div class="${classes.join(' ')}" data-id="${id}" data-element_type="container"${customId}>
+  // Core fix: containers previously rendered with NO background/sizing styles.
+  const conStyle = buildContainerStyle(settings, resolvedStyles);
+  const bgOverlay = renderBackgroundOverlay(settings, resolvedStyles);
+  return `<div class="${classes.join(' ')}" data-id="${id}" data-element_type="container"${customId}${conStyle ? ` style="${conStyle}"` : ''}>
+  ${bgOverlay}
   ${children.map(c => renderNode(c, resolvedStyles)).join('\n')}
 </div>`;
 }
@@ -1132,7 +1224,7 @@ function renderWidget(node: ElementorNode, resolvedStyles: ResolvedStyles): stri
   if (Array.isArray(hideOn)) {
     hideOn.forEach(h => classes.push(`elementor-hidden-${h}`));
   }
-  const widgetStyle = buildContainerStyle(settings);
+  const widgetStyle = buildContainerStyle(settings, resolvedStyles);
   const hoverStyle = buildHoverContainerStyle(settings);
   const hoverAttr = hoverStyle ? ` onmouseover="this.style.cssText=this.dataset.sfNormal+';'+'${hoverStyle}'" onmouseout="this.style.cssText=this.dataset.sfNormal"` : '';
   const content = renderWidgetContent(node, resolvedStyles);
@@ -1181,6 +1273,7 @@ export function renderElementorToHtml(
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>${esc(options?.title || 'Website Preview')}</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Roboto+Slab:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body { margin: 0; padding: 0; font-family: ${bodyFont}, 'Roboto', sans-serif; line-height: 1.5; color: #333; background: #fff; }
@@ -1350,6 +1443,8 @@ export function renderElementorToHtml(
 
   .elementor-background-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
   .elementor-section > .elementor-container { position: relative; z-index: 2; }
+  .elementor-background-video-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; overflow: hidden; }
+  .elementor-background-video-container iframe, .elementor-background-video-container video { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
   .elementor-shape { overflow: hidden; position: absolute; left: 0; width: 100%; line-height: 0; direction: ltr; z-index: 3; }
   .elementor-shape-top { top: -1px; }
   .elementor-shape-bottom { bottom: -1px; }
