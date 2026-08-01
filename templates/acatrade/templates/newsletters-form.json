@@ -1,0 +1,12 @@
+{
+    "version": "0.4",
+    "title": "Newsletters Form",
+    "type": "section",
+    "metadata": {
+        "template_type": "section-other",
+        "include_in_zip": "1",
+        "elementor_pro_required": null,
+        "wp_page_template": "elementor_canvas"
+    },
+    "content": []
+}
