@@ -352,7 +352,99 @@ function resolveSetting(
     }
     return '';
   }
-  return (settings[key] as string) || '';
+  // Some templates store the global ref directly in the setting value
+  // (e.g. "title_color": "globals/colors?id=primary") rather than in __globals__.
+  const direct = settings[key] as string | undefined;
+  if (typeof direct === 'string' && direct.startsWith('globals/colors')) {
+    return resolveGlobalColor(direct, resolvedStyles) || '';
+  }
+  if (typeof direct === 'string' && direct.startsWith('globals/typography')) {
+    const typo = resolveGlobalTypography(direct, resolvedStyles);
+    return typo?.fontFamily || '';
+  }
+  return direct || '';
+}
+
+/**
+ * Parse a CSS color into RGB. Returns null for unparseable values
+ * (named colors, var() references, etc.) so callers can skip them.
+ */
+function parseColor(color: string): { r: number; g: number; b: number } | null {
+  const c = (color || '').trim();
+  let m = c.match(/^#([0-9a-f]{3})$/i);
+  if (m) {
+    return {
+      r: parseInt(m[1][0] + m[1][0], 16),
+      g: parseInt(m[1][1] + m[1][1], 16),
+      b: parseInt(m[1][2] + m[1][2], 16),
+    };
+  }
+  m = c.match(/^#([0-9a-f]{6})$/i);
+  if (m) {
+    return {
+      r: parseInt(m[1].slice(0, 2), 16),
+      g: parseInt(m[1].slice(2, 4), 16),
+      b: parseInt(m[1].slice(4, 6), 16),
+    };
+  }
+  m = c.match(/rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+  if (m) {
+    return { r: +m[1], g: +m[2], b: +m[3] };
+  }
+  return null;
+}
+
+/**
+ * Determine whether a CSS color is visually dark (low luminance).
+ * Unparseable colors are treated as light so we never assume white text
+ * on an unknown (possibly light) background.
+ */
+function isDarkColor(color: string): boolean {
+  const rgb = parseColor(color);
+  if (!rgb) return false;
+  const lum = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+  return lum < 0.5;
+}
+
+/**
+ * Pick a readable text color for the given background: white for dark
+ * backgrounds, dark gray for light backgrounds. Returns '' when the
+ * background is unknown (e.g. a plain image with no color), so the
+ * browser's natural inheritance is preserved.
+ */
+function contrastTextColor(bgColor: string): string {
+  if (!bgColor) return '';
+  return isDarkColor(bgColor) ? '#ffffff' : '#333333';
+}
+
+/**
+ * Compute the effective background color of an element, considering a solid
+ * background, a gradient (uses the darker end for contrast), and any
+ * background overlay that sits on top of them. Returns '' when no usable
+ * color exists.
+ */
+function getEffectiveBackgroundColor(settings: Record<string, unknown>, resolvedStyles?: ResolvedStyles): string {
+  const bg = settings.background_background as string;
+  if (!bg || bg === 'none' || bg === '' || bg === 'video') return '';
+  const c1 = resolvedStyles
+    ? resolveSetting(settings, 'background_color', resolvedStyles)
+    : (settings.background_color as string) || '';
+  const c2 = resolvedStyles
+    ? resolveSetting(settings, 'background_gradient_second_color', resolvedStyles)
+    : (settings.background_gradient_second_color as string) || '';
+  let color = c1;
+  if (bg === 'gradient' && c2) {
+    // Text must stay readable across the whole gradient; assume the darker end.
+    color = isDarkColor(c2) && !isDarkColor(c1) ? c2 : c1;
+  }
+  const overlayType = settings.background_overlay_background as string;
+  if (overlayType === 'classic' || overlayType === 'gradient') {
+    const overlayColor = resolvedStyles
+      ? resolveSetting(settings, 'background_overlay_color', resolvedStyles)
+      : (settings.background_overlay_color as string) || '';
+    if (overlayColor) color = overlayColor;
+  }
+  return color;
 }
 
 // ============================================================
@@ -413,6 +505,12 @@ function buildContainerStyle(settings: Record<string, unknown>, resolvedStyles?:
   } else if (bg === 'classic' && bgColor) {
     parts.push(`background:${bgColor}`);
   }
+
+  // Readable text color on this element: only emit when there is an actual
+  // background, so descendants that don't set their own color inherit it.
+  const effBg = getEffectiveBackgroundColor(settings, resolvedStyles);
+  const textColor = contrastTextColor(effBg);
+  if (textColor) parts.push(`color:${textColor}`);
 
   // Padding
   const pad = dimStr(settings.padding);
@@ -527,7 +625,7 @@ function renderWidgetContent(node: ElementorNode, resolvedStyles: ResolvedStyles
     case 'testimonial': return renderTestimonial(settings, resolvedStyles);
     case 'elementskit-testimonial': return renderElementsKitTestimonial(settings, resolvedStyles);
     case 'elementskit-progressbar': return renderElementsKitProgressbar(settings, resolvedStyles);
-    case 'ekit-nav-menu': return renderEKitNavMenu(settings);
+    case 'ekit-nav-menu': return renderEKitNavMenu(settings, resolvedStyles);
     case 'elementskit-lottie': return renderElementsKitLottie(settings);
     case 'elementskit-heading': return renderElementsKitHeading(settings, resolvedStyles);
     case 'elementskit-button': return renderElementsKitButton(settings, resolvedStyles);
@@ -559,7 +657,9 @@ function renderHeading(settings: Record<string, unknown>, resolvedStyles: Resolv
   const text = (settings.heading as string) || (settings.title as string) || '';
   const tag = (settings.header_size as string) || 'h2';
   const align = (settings.align as string) || 'left';
-  const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
+  // Only emit an explicit color when the user actually set one. Otherwise let
+  // the element inherit from its section/container so dark backgrounds stay readable.
+  const titleColor = resolveSetting(settings, 'title_color', resolvedStyles);
   const typoStyle = buildTypoStyle(settings);
   const colorStyle = titleColor ? `color:${titleColor}` : '';
   const sizeClass = settings.size ? ` elementor-size-${settings.size}` : ' elementor-size-default';
@@ -664,16 +764,17 @@ function renderCounter(settings: Record<string, unknown>, resolvedStyles: Resolv
   const prefix = (settings.prefix as string) || '';
   const suffix = (settings.suffix as string) || '';
   const title = (settings.title as string) || '';
-  const numberColor = resolveColor(settings.number_color, resolvedStyles, '#3B82F6');
-  const titleColor = resolveColor(settings.title_color, resolvedStyles, '#666');
+  // Only emit explicit colors; otherwise inherit so dark sections stay readable.
+  const numberColor = resolveSetting(settings, 'number_color', resolvedStyles);
+  const titleColor = resolveSetting(settings, 'title_color', resolvedStyles);
   const numTypo = buildTypoStyle(settings);
   return `<div class="elementor-counter">
     <div class="elementor-counter-number-wrapper">
       <span class="elementor-counter-number-prefix">${esc(prefix)}</span>
-      <span class="elementor-counter-number" data-target="${endingNumber}" style="color:${numberColor};${numTypo}">${endingNumber}</span>
+      <span class="elementor-counter-number" data-target="${endingNumber}" style="${numberColor ? `color:${numberColor};` : ''}${numTypo}">${endingNumber}</span>
       <span class="elementor-counter-number-suffix">${esc(suffix)}</span>
     </div>
-    ${title ? `<div class="elementor-counter-title" style="color:${titleColor}">${esc(title)}</div>` : ''}
+    ${title ? `<div class="elementor-counter-title" style="${titleColor ? `color:${titleColor};` : ''}">${esc(title)}</div>` : ''}
   </div>`;
 }
 
@@ -684,13 +785,13 @@ function renderImageBox(settings: Record<string, unknown>, resolvedStyles: Resol
   const title = (settings.title_text as string) || '';
   const description = (settings.description_text as string) || '';
   const position = (settings.image_position as string) || 'top';
-  const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
-  const descColor = resolveColor(settings.description_color, resolvedStyles, '#666');
+  const titleColor = resolveSetting(settings, 'title_color', resolvedStyles);
+  const descColor = resolveSetting(settings, 'description_color', resolvedStyles);
   const titleTypo = buildTypoStyle(settings);
   const imageHtml = url ? `<figure class="elementor-image-box-img"><img src="${esc(url)}" alt="${esc(imageAlt)}" loading="lazy"${imgFallbackAttr()} /></figure>` : '';
   const contentHtml = `<div class="elementor-image-box-content">
-    <h3 class="elementor-image-box-title" style="color:${titleColor};${titleTypo}">${esc(title)}</h3>
-    <p class="elementor-image-box-description" style="color:${descColor}">${esc(description)}</p>
+    <h3 class="elementor-image-box-title" style="${titleColor ? `color:${titleColor};` : ''}${titleTypo}">${esc(title)}</h3>
+    <p class="elementor-image-box-description" style="${descColor ? `color:${descColor};` : ''}">${esc(description)}</p>
   </div>`;
   const cls = position === 'left' ? ` elementor-image-box-${position}` : '';
   return `<div class="elementor-image-box-wrapper${cls}">${imageHtml}${contentHtml}</div>`;
@@ -703,8 +804,8 @@ function renderIconBox(settings: Record<string, unknown>, resolvedStyles: Resolv
   const title = (settings.title_text as string) || '';
   const description = (settings.description_text as string) || '';
   const position = (settings.icon_position as string) || 'top';
-  const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
-  const descColor = resolveColor(settings.description_color, resolvedStyles, '#666');
+  const titleColor = resolveSetting(settings, 'title_color', resolvedStyles);
+  const descColor = resolveSetting(settings, 'description_color', resolvedStyles);
   const titleTypo = buildTypoStyle(settings);
   // Resolve the per-widget primary color (may be a __globals__ ref) for the icon badge
   const primaryColor = resolveSetting(settings, 'primary_color', resolvedStyles)
@@ -724,8 +825,8 @@ function renderIconBox(settings: Record<string, unknown>, resolvedStyles: Resolv
       </span>
     </div>
     <div class="elementor-icon-box-content">
-      <h3 class="elementor-icon-box-title" style="color:${titleColor};${titleTypo}">${esc(title)}</h3>
-      <p class="elementor-icon-box-description" style="color:${descColor}">${esc(description)}</p>
+      <h3 class="elementor-icon-box-title" style="${titleColor ? `color:${titleColor};` : ''}${titleTypo}">${esc(title)}</h3>
+      <p class="elementor-icon-box-description" style="${descColor ? `color:${descColor};` : ''}">${esc(description)}</p>
     </div>
   </div>`;
 }
@@ -856,19 +957,17 @@ function renderElementsKitProgressbar(settings: Record<string, unknown>, resolve
     || (settings.ekit_progressbar_track_color_color_b as string) || '';
   const trackColor = resolveSetting(settings, 'ekit_progressbar_background_color', resolvedStyles)
     || resolveColor(settings.ekit_progressbar_background_color, resolvedStyles, '#e2e8f0');
-  const titleColor = resolveSetting(settings, 'ekit_progressbar_title_color', resolvedStyles)
-    || '#1a1a1a';
-  const percentColor = resolveSetting(settings, 'ekit_progressbar_percent_color', resolvedStyles)
-    || '#1a1a1a';
+  const titleColor = resolveSetting(settings, 'ekit_progressbar_title_color', resolvedStyles);
+  const percentColor = resolveSetting(settings, 'ekit_progressbar_percent_color', resolvedStyles);
   const fill = fillB && settings.ekit_progressbar_track_color_background === 'gradient'
     ? `linear-gradient(${((settings.ekit_progressbar_track_color_gradient_angle as { size?: number })?.size) ?? 90}deg, ${fillA}, ${fillB})`
     : fillA;
   return `<div class="ekit-progressbar" style="margin-bottom:18px;">
-    ${title ? `<div class="ekit-progressbar-title" style="color:${titleColor};font-weight:600;margin-bottom:8px;">${esc(title)}</div>` : ''}
+    ${title ? `<div class="ekit-progressbar-title" style="${titleColor ? `color:${titleColor};` : ''}font-weight:600;margin-bottom:8px;">${esc(title)}</div>` : ''}
     <div class="ekit-progressbar-track" style="background-color:${trackColor};border-radius:${radius};overflow:hidden;">
       <div class="ekit-progressbar-fill" style="width:${percent}%;background:${fill};height:${barHeight}px;border-radius:${radius};"></div>
     </div>
-    <div class="ekit-progressbar-percent" style="color:${percentColor};font-weight:600;margin-top:6px;">${percent}%</div>
+    <div class="ekit-progressbar-percent" style="${percentColor ? `color:${percentColor};` : ''}font-weight:600;margin-top:6px;">${percent}%</div>
   </div>`;
 }
 
@@ -895,10 +994,10 @@ function renderElementsKitLottie(settings: Record<string, unknown>): string {
     : inner;
 }
 
-function renderEKitNavMenu(settings: Record<string, unknown>): string {
+function renderEKitNavMenu(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
   const logo = settings.elementskit_nav_menu_logo as { url?: string; alt?: string } | undefined;
   const logoUrl = logo?.url || '';
-  const textColor = (settings.elementskit_menu_text_color as string) || '#1a1a1a';
+  const textColor = resolveSetting(settings, 'elementskit_menu_text_color', resolvedStyles) || 'inherit';
   const hoverColor = (settings.elementskit_item_text_color_hover as string) || textColor;
   const barHeight = ((settings.elementskit_menubar_height as { size?: number })?.size) ?? 70;
   // The template stores a WP menu reference by name; render the kit's page
@@ -940,7 +1039,7 @@ function renderElementsKitHeading(settings: Record<string, unknown>, resolvedSty
   const titleTag = (settings.ekit_heading_title_tag as string) || 'h2';
   const align = (settings.ekit_heading_title_align as string) || 'text_left';
   const textAlign = align.replace('text_', '');
-  const titleColor = resolveSetting(settings, 'ekit_heading_title_color', resolvedStyles) || '#1a1a1a';
+  const titleColor = resolveSetting(settings, 'ekit_heading_title_color', resolvedStyles) || 'inherit';
   const focusedColor = resolveSetting(settings, 'ekit_heading_focused_title_color', resolvedStyles) || titleColor;
   const linkUrl = ((settings.ekit_heading_link as { url?: string })?.url) || '';
 
@@ -951,7 +1050,7 @@ function renderElementsKitHeading(settings: Record<string, unknown>, resolvedSty
   const subtitleShow = (settings.ekit_heading_sub_title_show as string) !== 'no';
   const subtitleTag = (settings.ekit_heading_sub_title_tag as string) || 'p';
   const subtitlePosition = (settings.ekit_heading_sub_title_position as string) || 'after_title';
-  const subtitleColor = resolveSetting(settings, 'ekit_heading_sub_title_color', resolvedStyles) || '#666';
+  const subtitleColor = resolveSetting(settings, 'ekit_heading_sub_title_color', resolvedStyles) || 'inherit';
 
   const extraTitle = (settings.ekit_heading_extra_title as string) || '';
   const extraTitleShow = (settings.ekit_heading_section_extra_title_show as string) !== 'no';
@@ -1059,8 +1158,8 @@ function renderElementsKitIconBox(settings: Record<string, unknown>, resolvedSty
   const titleText = (settings.ekit_icon_box_title_text as string) || '';
   const titleTag = (settings.ekit_icon_box_title_size as string) || 'h3';
   const description = (settings.ekit_icon_box_description_text as string) || '';
-  const titleColor = resolveSetting(settings, 'ekit_icon_title_color', resolvedStyles) || '#1a1a1a';
-  const descColor = resolveSetting(settings, 'ekit_icon_description_color', resolvedStyles) || '#666';
+  const titleColor = resolveSetting(settings, 'ekit_icon_title_color', resolvedStyles) || 'inherit';
+  const descColor = resolveSetting(settings, 'ekit_icon_description_color', resolvedStyles) || 'inherit';
 
   const headerIcon = settings.ekit_icon_box_header_icons
     || settings.ekit_icon_box_header_icon;
@@ -1136,8 +1235,8 @@ function renderElementsKitImageBox(settings: Record<string, unknown>, resolvedSt
   const description = (settings.ekit_image_box_description_text as string) || '';
   const textAlign = (settings.ekit_image_box_content_text_align as string) || 'center';
   const styleSimple = (settings.ekit_image_box_style_simple as string) || '';
-  const titleColor = resolveSetting(settings, 'ekit_image_box_heading_color', resolvedStyles) || '#1a1a1a';
-  const descColor = resolveSetting(settings, 'ekit_image_box_heading_color_description', resolvedStyles) || '#666';
+  const titleColor = resolveSetting(settings, 'ekit_image_box_heading_color', resolvedStyles) || 'inherit';
+  const descColor = resolveSetting(settings, 'ekit_image_box_heading_color_description', resolvedStyles) || 'inherit';
 
   const enableLink = (settings.ekit_image_box_enable_link as string) === 'yes';
   const linkUrl = ((settings.ekit_image_box_website_link as { url?: string })?.url) || '';
@@ -1202,11 +1301,11 @@ function renderElementsKitFunfact(settings: Record<string, unknown>, resolvedSty
   const iconImage = settings.ekit_funfact_icon_image as { url?: string } | undefined;
   const superOn = (settings.ekit_funfact_super as string) === 'yes';
   const superText = (settings.ekit_funfact_super_text as string) || '';
-  const titleColor = resolveSetting(settings, 'ekit_funfact_title_color', resolvedStyles) || '#1a1a1a';
+  const titleColor = resolveSetting(settings, 'ekit_funfact_title_color', resolvedStyles) || 'inherit';
   const numberColor = resolveSetting(settings, 'ekit_funfact_heading_number', resolvedStyles)
     || (settings.ekit_funfact_heading_number as string)
     || 'var(--e-global-color-primary)';
-  const descColor = resolveSetting(settings, 'ekit_funfact_description_color', resolvedStyles) || '#666';
+  const descColor = resolveSetting(settings, 'ekit_funfact_description_color', resolvedStyles) || 'inherit';
 
   let iconHtml = '';
   if (iconType === 'image_icon' && iconImage?.url) {
@@ -1488,8 +1587,8 @@ function renderPosts(settings: Record<string, unknown>): string {
     `<div class="elementor-post" style="border:1px solid #eee;border-radius:8px;overflow:hidden;">
       <div style="height:150px;background:#e2e8f0;"></div>
       <div style="padding:16px;">
-        <h3 style="margin:0 0 8px;font-size:1.1rem;">${esc(post.title)}</h3>
-        <p style="margin:0;color:#666;font-size:0.9rem;">${esc(post.excerpt)}</p>
+        <h3 style="margin:0 0 8px;font-size:1.1rem;color:inherit;">${esc(post.title)}</h3>
+        <p style="margin:0;color:inherit;font-size:0.9rem;opacity:0.75;">${esc(post.excerpt)}</p>
       </div>
     </div>`
   ).join('');
@@ -1609,8 +1708,8 @@ function renderElementsKitTestimonial(settings: Record<string, unknown>, resolve
   const padding = dimStr(settings.ekit_testimonial_layout_padding) || '40px';
   const layoutBg = resolveSetting(settings, 'ekit_testimonial_layout_background_color', resolvedStyles) || 'transparent';
   const borderColor = resolveSetting(settings, 'ekit_testimonial_layout_border_color', resolvedStyles) || '';
-  const nameColor = resolveSetting(settings, 'ekit_testimonial_client_name_normal_color', resolvedStyles) || '#1a1a1a';
-  const descColor = resolveSetting(settings, 'ekit_testimonial_description_color', resolvedStyles) || '#666';
+  const nameColor = resolveSetting(settings, 'ekit_testimonial_client_name_normal_color', resolvedStyles) || 'inherit';
+  const descColor = resolveSetting(settings, 'ekit_testimonial_description_color', resolvedStyles) || 'inherit';
   const designColor = resolveSetting(settings, 'ekit_testimonial_designation_normal_color', resolvedStyles) || '#999';
   const cards = items.map(item => {
     const photo = item.client_photo?.url || '';
@@ -1636,8 +1735,8 @@ function renderTestimonial(settings: Record<string, unknown>, resolvedStyles: Re
   const job = (settings.testimonial_job as string) || '';
   const image = settings.testimonial_image as { url?: string; alt?: string } | undefined;
   const imageUrl = image?.url || '';
-  const nameColor = resolveColor(settings.testimonial_name_color, resolvedStyles, '#1a1a1a');
-  const contentColor = resolveColor(settings.testimonial_content_color, resolvedStyles, '#666');
+  const nameColor = resolveSetting(settings, 'testimonial_name_color', resolvedStyles) || 'inherit';
+  const contentColor = resolveSetting(settings, 'testimonial_content_color', resolvedStyles) || 'inherit';
   const alignment = (settings.testimonial_alignment as string) || 'center';
   let html = `<div class="elementor-testimonial" style="text-align:${alignment}">`;
   if (imageUrl) {
@@ -1657,7 +1756,7 @@ function renderStarRating(settings: Record<string, unknown>, resolvedStyles: Res
   const align = (settings.align as string) || 'left';
   const starColor = resolveColor(settings.stars_color, resolvedStyles, '#f0ad4e');
   const unmarkedColor = resolveColor(settings.stars_unmarked_color, resolvedStyles, '#e2e8f0');
-  const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
+  const titleColor = resolveSetting(settings, 'title_color', resolvedStyles) || 'inherit';
   let stars = '';
   for (let i = 0; i < scale; i++) {
     const filled = i < Math.round(rating);
@@ -1686,7 +1785,7 @@ function renderTabs(settings: Record<string, unknown>, resolvedStyles: ResolvedS
   const items = (settings.tabs as Array<{ tab_title?: string; tab_content?: string; _id?: string }>) || [];
   if (items.length === 0) return '';
   const type = (settings.type as string) || 'horizontal';
-  const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
+  const titleColor = resolveSetting(settings, 'title_color', resolvedStyles) || 'inherit';
   const titles = items.map((item, i) =>
     `<div class="elementor-tab-title elementor-tab-desktop-title${i === 0 ? ' elementor-active' : ''}" data-tab="${i}" style="color:${titleColor}">
       <a style="color:inherit;text-decoration:none;">${esc(item.tab_title || `Tab ${i + 1}`)}</a>
@@ -1727,8 +1826,8 @@ function renderAlert(settings: Record<string, unknown>, resolvedStyles: Resolved
   const title = (settings.alert_title as string) || '';
   const description = (settings.alert_description as string) || '';
   const showDismiss = (settings.show_dismiss as string) !== 'no';
-  const titleColor = resolveColor(settings.title_color, resolvedStyles, '#1a1a1a');
-  const descColor = resolveColor(settings.description_color, resolvedStyles, '#555');
+  const titleColor = resolveSetting(settings, 'title_color', resolvedStyles) || 'inherit';
+  const descColor = resolveSetting(settings, 'description_color', resolvedStyles) || 'inherit';
   const typeColors: Record<string, string> = { info: '#31708f', success: '#3c763d', warning: '#8a6d3b', danger: '#a94442' };
   const typeBgs: Record<string, string> = { info: '#d9edf7', success: '#dff0d8', warning: '#fcf8e3', danger: '#f2dede' };
   const borderColor = typeColors[type] || '#31708f';
@@ -2100,7 +2199,7 @@ ${googleFontsLink}
   .elementor-progress-bar-wrapper { margin: 10px 0; }
   .elementor-progress-title { display: block; margin-bottom: 6px; font-weight: 600; }
   .elementor-progress-fill { transition: width 1s ease; border-radius: 2px; }
-  .elementor-progress-percentage { display: block; text-align: right; font-size: 0.9rem; color: #666; margin-top: 4px; }
+  .elementor-progress-percentage { display: block; text-align: right; font-size: 0.9rem; color: inherit; opacity: 0.75; margin-top: 4px; }
 
   .elementor-accordion { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
   .elementor-accordion-item { border-bottom: 1px solid #e5e7eb; }
@@ -2112,12 +2211,12 @@ ${googleFontsLink}
   .elementor-countdown-wrapper { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
   .elementor-countdown-item { text-align: center; min-width: 80px; }
   .elementor-countdown-number { display: block; font-size: 48px; font-weight: 700; line-height: 1; color: var(--e-global-color-primary, ${primary}); }
-  .elementor-countdown-label { display: block; font-size: 14px; color: #666; margin-top: 8px; }
+  .elementor-countdown-label { display: block; font-size: 14px; color: inherit; opacity: 0.75; margin-top: 8px; }
 
   .elementor-posts-container { display: grid; gap: 20px; }
   .elementor-posts-container .elementor-post { border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
   .elementor-post h3 { margin: 0 0 8px; font-size: 1.1rem; }
-  .elementor-post p { margin: 0; color: #666; font-size: 0.9rem; }
+  .elementor-post p { margin: 0; color: inherit; font-size: 0.9rem; }
 
   .elementor-cta { border-radius: 8px; padding: 40px; text-align: center; color: #fff; }
   .elementor-cta__title { margin: 0 0 12px; }
@@ -2208,7 +2307,7 @@ ${googleFontsLink}
   .elementskit-info-image-box .elementskit-box-header img { width: 100%; height: 220px; object-fit: cover; display: block; }
   .elementskit-info-image-box .elementskit-box-body { padding: 24px; }
   .elementskit-info-image-box .elementskit-info-box-title { margin: 0 0 10px; font-size: 1.3rem; font-weight: 600; }
-  .elementskit-info-image-box .elementskit-box-style-content { font-size: 1rem; line-height: 1.6; color: #666; }
+  .elementskit-info-image-box .elementskit-box-style-content { font-size: 1rem; line-height: 1.6; color: inherit; }
   .elementskit-info-image-box .elementskit-box-footer { padding: 0 24px 24px; }
   .elementskit-info-image-box .elementskit-btn { padding: 12px 30px; }
   .elementskit-info-image-box.text-center { text-align: center; }

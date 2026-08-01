@@ -523,4 +523,115 @@ describe('renderWidget coverage', () => {
     expect(html).toContain('fa-quote-left');
     expect(html).toContain('rating-stars');
   });
+
+  it('does not force a dark text color on headings without an explicit color', () => {
+    const tree = [{
+      id: 'test-root',
+      elType: 'section' as const,
+      elements: [{
+        id: 'test-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'widget-heading',
+          elType: 'widget' as const,
+          widgetType: 'heading',
+          settings: { heading: 'Hello' },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    // Heading with no explicit color must NOT carry a hardcoded dark color,
+    // so it can inherit white text from a dark section background.
+    expect(html).toContain('elementor-heading-title');
+    expect(html).not.toContain('color:#1a1a1a');
+    expect(html).not.toMatch(/elementor-heading-title[^>]*color:#666/);
+  });
+
+  it('adds white text color on a dark section so children inherit contrast', () => {
+    const tree = [{
+      id: 'test-root',
+      elType: 'section' as const,
+      settings: {
+        background_background: 'classic',
+        background_color: '#1a1a2e',
+      },
+      elements: [{
+        id: 'test-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'widget-heading',
+          elType: 'widget' as const,
+          widgetType: 'heading',
+          settings: { heading: 'Hello' },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('background:#1a1a2e');
+    expect(html).toContain('color:#ffffff');
+  });
+
+  it('adds dark text color on a light section background', () => {
+    const tree = [{
+      id: 'test-root',
+      elType: 'section' as const,
+      settings: {
+        background_background: 'classic',
+        background_color: '#f4f4f4',
+      },
+      elements: [],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('background:#f4f4f4');
+    expect(html).toContain('color:#333333');
+  });
+
+  it('keeps an explicit heading color when the user sets one', () => {
+    const tree = [{
+      id: 'test-root',
+      elType: 'section' as const,
+      elements: [{
+        id: 'test-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'widget-heading',
+          elType: 'widget' as const,
+          widgetType: 'heading',
+          settings: { heading: 'Hello', title_color: '#ff5500' },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('color:#ff5500');
+  });
+
+  it('resolves a direct globals/colors ref stored in title_color', () => {
+    const tree = [{
+      id: 'test-root',
+      elType: 'section' as const,
+      elements: [{
+        id: 'test-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'widget-heading',
+          elType: 'widget' as const,
+          widgetType: 'heading',
+          settings: { heading: 'Hello', title_color: 'globals/colors?id=primary' },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree, {
+      globalKitPageSettings: {
+        system_colors: [
+          { _id: 'primary', title: 'Primary', color: '#0EA5E9' },
+        ],
+      },
+    });
+
+    expect(html).toContain('color:#0EA5E9');
+  });
 });
