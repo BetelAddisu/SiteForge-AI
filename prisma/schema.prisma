@@ -190,6 +190,14 @@ model Template {
   compatibilityScore  Int?         // 0-100
   compatibilityNotes  Json?        // { greenWidgets: [...], yellowWidgets: [...], redWidgets: [...] }
   
+  // Visual QA (renderer accuracy vs. the template's real reference screenshot)
+  // Run once per template via scripts/qa/visual-qa-batch.ts, NOT per
+  // generation - comparing against a live vision model on every website
+  // generation would be slow and repeat the exact "expensive operation on
+  // every request" pattern that caused the earlier Supabase egress issue.
+  visualQaReport      Json?        // { similarityScore, hasBackgroundIssue, hasContrastIssue, missingElements: [...], layoutIssues: [...], notes }
+  visualQaCheckedAt   DateTime?    // when the QA pass last ran for this template
+  
   // Timestamps
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
