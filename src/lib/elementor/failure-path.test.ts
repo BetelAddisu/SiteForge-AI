@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AIContentEngine, HomepageContentSchema } from './schemas';
+import { GoogleGenAI } from '@google/genai';
+import { AIContentEngine } from './schemas';
 
 /**
  * These tests verify that AI generation failures are surfaced as errors
@@ -23,6 +24,17 @@ vi.mock('@google/genai', () => {
     GoogleGenAI,
     HarmCategory: { HARM_CATEGORY_HARASSMENT: 'HARM_CATEGORY_HARASSMENT' },
     HarmBlockThreshold: { BLOCK_MEDIUM_AND_ABOVE: 'BLOCK_MEDIUM_AND_ABOVE' },
+    // zod-to-gemini.ts also imports Type from this module to build the
+    // Gemini responseSchema - since the whole module is mocked here, that
+    // import needs a real value too, or it resolves to undefined and
+    // schemas.ts throws before ever reaching the code path under test.
+    Type: {
+      OBJECT: 'OBJECT',
+      ARRAY: 'ARRAY',
+      STRING: 'STRING',
+      NUMBER: 'NUMBER',
+      BOOLEAN: 'BOOLEAN',
+    },
   };
 });
 
@@ -34,15 +46,19 @@ describe('AI failure-path handling', () => {
     vi.clearAllMocks();
     engine = new AIContentEngine({ apiKey: 'test-key' });
 
-    // Get a reference to the mock so we can control it per-test
-    const { GoogleGenAI } = require('@google/genai');
-    const instance = GoogleGenAI.mock.results[0]?.value;
+    // Using a static top-level import + vi.mocked() ensures we reference the
+    // SAME mocked module instance that schemas.ts's `import { GoogleGenAI }`
+    // resolved to. A mid-test require('@google/genai') can resolve to a
+    // different module registration under Vitest's ESM/CJS interop, leaving
+    // `.mock.results` empty even though the mock factory above ran correctly.
+    const mocked = vi.mocked(GoogleGenAI);
+    const instance = mocked.mock.results[0]?.value;
     mockGenAI = instance || { models: { generateContent: vi.fn() } };
   });
 
   it('returns success: false when the AI response is empty', async () => {
     // Simulate Gemini returning empty text
-    mockGenAI.models.generateContent.mockResolvedValueOnce({ text: null });
+    mockGenAI.models.generateContent.mockResolvedValue({ text: null });
 
     const result = await engine.generateHomepageContent('Test Business', 'Technology');
 
@@ -52,7 +68,7 @@ describe('AI failure-path handling', () => {
 
   it('returns success: false when the AI API call throws', async () => {
     // Simulate a network/API error
-    mockGenAI.models.generateContent.mockRejectedValueOnce(new Error('API rate limit exceeded'));
+    mockGenAI.models.generateContent.mockRejectedValue(new Error('API rate limit exceeded'));
 
     const result = await engine.generateHomepageContent('Test Business', 'Technology');
 
@@ -62,7 +78,7 @@ describe('AI failure-path handling', () => {
 
   it('returns success: false when AI returns invalid JSON', async () => {
     // Simulate bad JSON from the AI
-    mockGenAI.models.generateContent.mockResolvedValueOnce({ text: 'not valid json at all' });
+    mockGenAI.models.generateContent.mockResolvedValue({ text: 'not valid json at all' });
 
     const result = await engine.generateHomepageContent('Test Business', 'Technology');
 
@@ -72,7 +88,7 @@ describe('AI failure-path handling', () => {
 
   it('returns success: false when AI returns JSON that fails Zod validation', async () => {
     // Simulate valid JSON that doesn't match schema (missing required hero.heading)
-    mockGenAI.models.generateContent.mockResolvedValueOnce({
+    mockGenAI.models.generateContent.mockResolvedValue({
       text: JSON.stringify({
         hero: { subheading: 'Missing heading field' },
         about: { heading: 'About', paragraphs: ['para'] },
