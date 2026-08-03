@@ -1922,18 +1922,29 @@ function generateId(prefix: string): string {
 }
 
 function getColumnSize(settings: Record<string, unknown>): number {
+  // Elementor stores the desktop column width either in _column_size (10-100)
+  // or _inline_size (custom width, can be a number or a percentage string).
+  const inlineSize = settings._inline_size ?? settings._inline_size_desktop;
+  if (inlineSize != null && inlineSize !== '') {
+    const n = typeof inlineSize === 'number' ? inlineSize : parseFloat(String(inlineSize));
+    if (!Number.isNaN(n) && n > 0) {
+      const sizes = [10, 11, 12, 14, 16, 20, 25, 30, 33, 40, 50, 60, 66, 70, 75, 80, 83, 90, 100];
+      return sizes.reduce((prev, curr) => Math.abs(curr - n) < Math.abs(prev - n) ? curr : prev);
+    }
+  }
   const size = settings._column_size as number | undefined;
   if (!size) return 100;
   const sizes = [10, 11, 12, 14, 16, 20, 25, 30, 33, 40, 50, 60, 66, 70, 75, 80, 83, 90, 100];
   return sizes.reduce((prev, curr) => Math.abs(curr - size) < Math.abs(prev - size) ? curr : prev);
 }
 
-function renderSection(node: ElementorNode, resolvedStyles: ResolvedStyles): string {
+function renderSection(node: ElementorNode, resolvedStyles: ResolvedStyles, inColumn = false): string {
   const settings = node.settings || {};
   const id = node.id || generateId('section');
   const classes: string[] = ['elementor-element', `elementor-element-${id}`, 'elementor-section'];
-  const isInner = node.elements?.some(e => e.elType === 'column') || false;
-  classes.push(isInner ? 'elementor-inner-section' : 'elementor-top-section');
+  // A section is INNER only when it lives inside a column's widget-wrap.
+  // Top-level sections contain columns too, so content can't tell them apart.
+  classes.push(inColumn ? 'elementor-inner-section' : 'elementor-top-section');
   const layout = (settings.layout as string) || 'boxed';
   if (layout === 'full_width') classes.push('elementor-section-full_width');
   else classes.push('elementor-section-boxed');
@@ -1951,6 +1962,18 @@ function renderSection(node: ElementorNode, resolvedStyles: ResolvedStyles): str
   const children = node.elements || [];
 
   let sectionStyle = buildContainerStyle(settings, resolvedStyles);
+
+  // Honor the section height modes Elementor actually emits. Without this the
+  // min-height/full-height sections collapse or render at the wrong height.
+  if (height === 'fit_to_screen') {
+    sectionStyle = `${sectionStyle};min-height:100vh`.replace(/^;/, '');
+  } else if (height === 'min_height') {
+    const minHeight = dimVal(settings.min_height) || dimVal(settings.min_height_size);
+    if (minHeight) sectionStyle = `${sectionStyle};min-height:${minHeight}`.replace(/^;/, '');
+  } else if (height === 'custom') {
+    const customHeight = dimVal(settings.custom_height);
+    if (customHeight) sectionStyle = `${sectionStyle};height:${customHeight}`.replace(/^;/, '');
+  }
 
   return `<${htmlTag} class="${classes.join(' ')}" data-id="${id}" data-element_type="section"${customId}${sectionStyle ? ` style="${sectionStyle}"` : ''}>
 ${bgOverlay}
@@ -1976,7 +1999,7 @@ function renderColumn(node: ElementorNode, resolvedStyles: ResolvedStyles): stri
   const colStyle = buildContainerStyle(settings, resolvedStyles);
   return `<div class="${classes.join(' ')}" data-id="${id}" data-element_type="column"${customId}${colStyle ? ` style="${colStyle}"` : ''}>
   <div class="elementor-widget-wrap${hasChildren ? ' elementor-element-populated' : ''}">
-    ${children.map(c => renderNode(c, resolvedStyles)).join('\n')}
+    ${children.map(c => renderNode(c, resolvedStyles, true)).join('\n')}
   </div>
 </div>`;
 }
@@ -1995,11 +2018,22 @@ function renderContainer(node: ElementorNode, resolvedStyles: ResolvedStyles): s
   const customId = settings._element_id ? ` id="${esc(String(settings._element_id))}"` : '';
   const children = node.elements || [];
   // Core fix: containers previously rendered with NO background/sizing styles.
-  const conStyle = buildContainerStyle(settings, resolvedStyles);
+  const conStyleParts: string[] = [];
+  const baseStyle = buildContainerStyle(settings, resolvedStyles);
+  if (baseStyle) conStyleParts.push(baseStyle);
+  // Flex alignment — Elementor emits these as per-breakpoint settings; apply
+  // the desktop values so rows/columns are positioned instead of stretching.
+  if (settings.justify_content) conStyleParts.push(`justify-content:${settings.justify_content}`);
+  if (settings.align_items) conStyleParts.push(`align-items:${settings.align_items}`);
+  else if (settings.content_position) {
+    const posMap: Record<string, string> = { top: 'flex-start', middle: 'center', bottom: 'flex-end', center: 'center' };
+    conStyleParts.push(`align-items:${posMap[String(settings.content_position)] || String(settings.content_position)}`);
+  }
+  const conStyle = conStyleParts.join(';');
   const bgOverlay = renderBackgroundOverlay(settings, resolvedStyles);
   return `<div class="${classes.join(' ')}" data-id="${id}" data-element_type="container"${customId}${conStyle ? ` style="${conStyle}"` : ''}>
   ${bgOverlay}
-  ${children.map(c => renderNode(c, resolvedStyles)).join('\n')}
+  ${children.map(c => renderNode(c, resolvedStyles, false)).join('\n')}
 </div>`;
 }
 
@@ -2028,10 +2062,10 @@ function renderWidget(node: ElementorNode, resolvedStyles: ResolvedStyles): stri
 </div>`;
 }
 
-function renderNode(node: ElementorNode, resolvedStyles: ResolvedStyles): string {
+function renderNode(node: ElementorNode, resolvedStyles: ResolvedStyles, inColumn = false): string {
   if (!node) return '';
   switch (node.elType) {
-    case 'section': return renderSection(node, resolvedStyles);
+    case 'section': return renderSection(node, resolvedStyles, inColumn);
     case 'column': return renderColumn(node, resolvedStyles);
     case 'container': return renderContainer(node, resolvedStyles);
     case 'widget': return renderWidget(node, resolvedStyles);
@@ -2098,14 +2132,17 @@ ${googleFontsLink}
     --e-global-typography-text-font-family: ${resolvedStyles.typography.text?.fontFamily || 'Roboto'};
   }
 
-  .elementor-section { position: relative; padding: 60px 24px; }
+  .elementor-section { position: relative; }
+  .elementor-top-section { padding: 60px 24px; }
+  .elementor-inner-section { padding: 0; }
   .elementor-section .elementor-container { display: flex; margin-right: auto; margin-left: auto; position: relative; max-width: 1140px; flex-wrap: wrap; }
   .elementor-section.elementor-section-boxed > .elementor-container { max-width: 1140px; }
   .elementor-section.elementor-section-full_width > .elementor-container { max-width: 100%; }
   .elementor-section.elementor-section-items-top > .elementor-container { align-items: flex-start; }
   .elementor-section.elementor-section-items-middle > .elementor-container { align-items: center; }
   .elementor-section.elementor-section-items-bottom > .elementor-container { align-items: flex-end; }
-  .elementor-section.elementor-section-height-full { min-height: 100vh; }
+  .elementor-section-height-full, .elementor-section-height-fit_to_screen { min-height: 100vh; }
+  .elementor-section-height-min_height { min-height: 400px; }
 
   .elementor-column { position: relative; min-height: 1px; display: flex; flex-direction: column; }
   .elementor-column-gap-default > .elementor-column > .elementor-element-populated { padding: 10px; }
@@ -2432,17 +2469,19 @@ ${googleFontsLink}
     .elementor-col-20, .elementor-col-25, .elementor-col-30, .elementor-col-33, .elementor-col-40,
     .elementor-col-50, .elementor-col-60, .elementor-col-66, .elementor-col-70, .elementor-col-75,
     .elementor-col-80, .elementor-col-83, .elementor-col-90, .elementor-col-100 { width: 100%; }
-    .elementor-section { padding: 40px 16px; }
+    .elementor-top-section { padding: 40px 16px; }
   }
   @media (max-width: 767px) {
     .elementor-column { width: 100% !important; }
   }
 
-  .e-con { display: flex; flex-direction: row; flex-wrap: wrap; position: relative; min-width: 0; min-height: 0; }
+  .e-con { display: flex; flex-direction: row; flex-wrap: wrap; position: relative; min-width: 0; min-height: 0; gap: var(--e-con-gap, 20px); }
   .e-con-boxed { max-width: 1140px; margin: 0 auto; width: 100%; }
   .e-con-full { width: 100%; }
   .e-con-row { flex-direction: row; }
   .e-con-column { flex-direction: column; }
+  .e-con > .elementor-widget { width: auto; }
+  .e-con > .elementor-widget:not(:last-child) { margin-bottom: 0; }
 </style>
 </head>
 <body>

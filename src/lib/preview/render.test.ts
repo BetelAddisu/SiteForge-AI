@@ -634,4 +634,123 @@ describe('renderWidget coverage', () => {
 
     expect(html).toContain('color:#0EA5E9');
   });
+
+  it('renders a fit_to_screen section with min-height:100vh', () => {
+    const tree = [{
+      id: 'fit-screen',
+      elType: 'section' as const,
+      settings: { height: 'fit_to_screen' },
+      elements: [],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('elementor-section-height-fit_to_screen');
+    expect(html).toContain('min-height:100vh');
+  });
+
+  it('renders a min_height section with its configured min-height value', () => {
+    const tree = [{
+      id: 'min-height',
+      elType: 'section' as const,
+      settings: {
+        height: 'min_height',
+        min_height: { unit: 'px', size: 600 },
+      },
+      elements: [],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('elementor-section-height-min_height');
+    expect(html).toContain('min-height:600px');
+  });
+
+  it('applies column width from _inline_size when _column_size is absent', () => {
+    const tree = [{
+      id: 'inline-size-section',
+      elType: 'section' as const,
+      elements: [{
+        id: 'inline-col',
+        elType: 'column' as const,
+        settings: { _inline_size: 50 },
+        elements: [],
+      }, {
+        id: 'inline-col-2',
+        elType: 'column' as const,
+        settings: { _inline_size: '50%' },
+        elements: [],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('elementor-column elementor-col-50');
+    // Both 50% columns get the col-50 class (not collapsed to full width)
+    expect(html.match(/elementor-column elementor-col-50/g)).toHaveLength(2);
+  });
+
+  it('does not apply the top-section default padding to inner sections', () => {
+    const tree = [{
+      id: 'outer',
+      elType: 'section' as const,
+      settings: {},
+      elements: [{
+        id: 'col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'inner',
+          elType: 'section' as const,
+          settings: {},
+          elements: [],
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    // The top-level section (which contains a column) is still a TOP section
+    expect(html).toContain('elementor-element-outer');
+    expect(html).toMatch(/elementor-element-outer[^>]*elementor-top-section/);
+    // The section nested inside the column's widget-wrap is an INNER section
+    expect(html).toMatch(/elementor-element-inner[^>]*elementor-inner-section/);
+    expect(html).toContain('.elementor-top-section { padding: 60px 24px; }');
+    expect(html).toContain('.elementor-inner-section { padding: 0; }');
+  });
+
+  it('gives flex containers a default gap and natural-width widgets', () => {
+    const tree = [{
+      id: 'con',
+      elType: 'container' as const,
+      settings: { flex_direction: 'row' },
+      elements: [{
+        id: 'c1',
+        elType: 'widget' as const,
+        widgetType: 'heading',
+        settings: { heading: 'One' },
+      }, {
+        id: 'c2',
+        elType: 'widget' as const,
+        widgetType: 'heading',
+        settings: { heading: 'Two' },
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('.e-con { display: flex; flex-direction: row; flex-wrap: wrap; position: relative; min-width: 0; min-height: 0; gap: var(--e-con-gap, 20px); }');
+    expect(html).toContain('.e-con > .elementor-widget { width: auto; }');
+  });
+
+  it('applies justify-content/align-items from container settings', () => {
+    const tree = [{
+      id: 'con-align',
+      elType: 'container' as const,
+      settings: {
+        flex_direction: 'row',
+        justify_content: 'center',
+        content_position: 'middle',
+      },
+      elements: [],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('justify-content:center');
+    expect(html).toContain('align-items:center');
+  });
 });
