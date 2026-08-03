@@ -14,41 +14,10 @@
  */
 
 import { NextResponse } from 'next/server';
-import { listFiles, r2, R2_BUCKET } from '@/lib/storage/r2';
-import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { listFiles } from '@/lib/storage/r2';
 import JSZip from 'jszip';
 import { renderElementorToHtml, type ElementorNode } from '@/lib/preview/render';
-
-interface ManifestTemplate {
-  name: string;
-  screenshot: string;
-  source: string;
-  type: string;
-  metadata?: Record<string, unknown>;
-  elementor_pro_required: boolean;
-}
-
-interface Manifest {
-  manifest_version: string;
-  title: string;
-  templates: ManifestTemplate[];
-}
-
-function extractKitSlug(filename: string): string {
-  const withoutExt = filename.replace('.zip', '');
-  const withoutTimestamp = withoutExt.replace(/-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-utc$/, '');
-  const cleanName = withoutTimestamp
-    .replace(/-elementor-template-kit$/i, '')
-    .replace(/-elementor-pro-template-kit$/i, '')
-    .replace(/-woocommerce-el$/i, '')
-    .replace(/-wordpress-theme$/i, '')
-    .replace(/-full$/i, '');
-  return cleanName;
-}
-
-function slugify(text: string): string {
-  return text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
-}
+import { getZipFromR2, extractKitSlug, slugify, type Manifest } from '@/lib/templates/manifest';
 
 /**
  * Extract the Global Kit Styles page_settings (system_colors, system_typography,
@@ -87,17 +56,9 @@ async function extractTemplateContent(
   templateSource: string
 ): Promise<{ elements: ElementorNode[]; name: string } | null> {
   try {
-    const command = new GetObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: zipName,
-    });
-    
-    const response = await r2.send(command);
-    const zipData = await response.Body?.transformToByteArray();
-    
-    if (!zipData) return null;
-    
-    const zip = await JSZip.loadAsync(zipData);
+    const zip = await getZipFromR2(zipName);
+    if (!zip) return null;
+
     const templateEntry = zip.file(templateSource);
     
     if (!templateEntry) return null;
@@ -158,17 +119,9 @@ export async function GET(request: Request) {
       
       // Try to find the template in this ZIP's manifest
       try {
-        const command = new GetObjectCommand({
-          Bucket: R2_BUCKET,
-          Key: zipName,
-        });
+        const zip = await getZipFromR2(zipName);
+        if (!zip) continue;
         
-        const response = await r2.send(command);
-        const zipData = await response.Body?.transformToByteArray();
-        
-        if (!zipData) continue;
-        
-        const zip = await JSZip.loadAsync(zipData);
         const manifestFile = zip.file('manifest.json') || zip.file('kit-manifest.json');
         
         if (!manifestFile) continue;

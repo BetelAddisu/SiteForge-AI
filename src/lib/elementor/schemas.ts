@@ -9,7 +9,8 @@
  * - AI usage logging for cost tracking
  */
 
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold, Schema } from '@google/genai';
+import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from '@google/genai';
+import type { Schema } from '@google/genai';
 import { z } from 'zod';
 import { zodToGeminiSchema } from './zod-to-gemini';
 
@@ -139,10 +140,14 @@ export function estimateTokenCost(
 // AI Provider
 // ============================================================================
 
+export type AIProviderType = 'gemini' | 'groq';
+
 export interface AIConfig {
   apiKey: string;
+  provider?: AIProviderType;
   model?: string;
   temperature?: number;
+  baseUrl?: string;
 }
 
 export interface GenerationOptions {
@@ -151,14 +156,127 @@ export interface GenerationOptions {
   verbose?: boolean;
 }
 
-export class AIContentEngine {
+// ----------------------------------------------------------------------------
+// Provider interface — implement this to add a new backend (e.g. Groq, Anthropic)
+// ----------------------------------------------------------------------------
+
+export interface GenerateContentRequest {
+  model: string;
+  contents: string;
+  config?: {
+    responseMimeType?: string;
+    responseSchema?: unknown;
+    systemInstruction?: { text: string };
+  };
+}
+
+export interface AIProvider {
+  readonly name: AIProviderType;
+  generateContent(request: GenerateContentRequest): Promise<{ text?: string }>;
+}
+
+/**
+ * Google Gemini provider (the default backend).
+ */
+export class GeminiProvider implements AIProvider {
+  readonly name: AIProviderType = 'gemini';
   private client: GoogleGenAI;
+
+  constructor(config: AIConfig) {
+    this.client = new GoogleGenAI({ apiKey: config.apiKey });
+  }
+
+  async generateContent(request: GenerateContentRequest): Promise<{ text?: string }> {
+    const safetySettings = [
+      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+    ];
+
+    const response = await this.client.models.generateContent({
+      model: request.model,
+      contents: request.contents,
+      config: {
+        responseMimeType: request.config?.responseMimeType,
+        responseSchema: request.config?.responseSchema as Schema | undefined,
+        safetySettings,
+        systemInstruction: request.config?.systemInstruction,
+      },
+    });
+
+    return { text: response.text };
+  }
+}
+
+/**
+ * Groq provider (OpenAI-compatible chat completions API).
+ * Enable with AIConfig.provider = 'groq'.
+ */
+export class GroqProvider implements AIProvider {
+  readonly name: AIProviderType = 'groq';
+  private apiKey: string;
+  private baseUrl: string;
+
+  constructor(config: AIConfig) {
+    this.apiKey = config.apiKey;
+    this.baseUrl = config.baseUrl || 'https://api.groq.com/openai/v1/chat/completions';
+  }
+
+  async generateContent(request: GenerateContentRequest): Promise<{ text?: string }> {
+    const systemInstruction = request.config?.systemInstruction?.text;
+    const messages: Array<{ role: string; content: string }> = [];
+    if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
+    messages.push({ role: 'user', content: request.contents });
+
+    const body: Record<string, unknown> = {
+      model: request.model,
+      messages,
+    };
+
+    if (request.config?.responseMimeType === 'application/json') {
+      body.response_format = { type: 'json_object' };
+    }
+
+    const response = await fetch(this.baseUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Groq API error: ${response.status} ${await response.text()}`);
+    }
+
+    const data = await response.json();
+    return { text: data?.choices?.[0]?.message?.content };
+  }
+}
+
+/**
+ * Factory — creates a provider based on AIConfig.provider (default: gemini).
+ */
+export function createAIProvider(config: AIConfig): AIProvider {
+  switch (config.provider) {
+    case 'groq':
+      return new GroqProvider(config);
+    case 'gemini':
+    default:
+      return new GeminiProvider(config);
+  }
+}
+
+export class AIContentEngine {
+  private provider: AIProvider;
   private model: string;
   private verbose: boolean;
 
   constructor(config: AIConfig) {
-    this.client = new GoogleGenAI({ apiKey: config.apiKey });
-    this.model = config.model || 'gemini-2.5-flash-lite';
+    this.provider = createAIProvider(config);
+    this.model = config.model || (config.provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-2.5-flash-lite');
     this.verbose = config.temperature !== undefined;
   }
 
@@ -174,12 +292,6 @@ export class AIContentEngine {
     attempts: number;
   }> {
     const maxRetries = options.maxRetries ?? 2;
-    const safetySettings = [
-      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    ];
 
     let attempts = 0;
 
@@ -187,18 +299,17 @@ export class AIContentEngine {
       attempts++;
 
       try {
-        // Convert Zod schema to Gemini schema format
+        // Convert Zod schema to the provider's response schema format
         const geminiSchema = zodToGeminiSchema(schema);
         
         console.log('[AI] Requesting content with schema:', JSON.stringify(geminiSchema, null, 2));
         
-        const response = await this.client.models.generateContent({
+        const response = await this.provider.generateContent({
           model: this.model,
           contents: prompt,
           config: {
             responseMimeType: 'application/json',
             responseSchema: geminiSchema,
-            safetySettings,
             systemInstruction: options.systemInstruction ? { text: options.systemInstruction } : undefined,
           },
         });
@@ -435,7 +546,10 @@ export function getContentEngine(): AIContentEngine {
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is not set');
     }
-    globalEngine = new AIContentEngine({ apiKey });
+    globalEngine = new AIContentEngine({
+      apiKey,
+      provider: (process.env.AI_PROVIDER as AIProviderType) || 'gemini',
+    });
   }
   return globalEngine;
 }

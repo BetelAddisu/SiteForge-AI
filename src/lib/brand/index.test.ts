@@ -46,7 +46,7 @@ describe('mergeBrandTokens', () => {
   it('user primary overrides template primary', () => {
     const template = { colors: { primary: { value: '#000000' } } };
     const merged = mergeBrandTokens(
-      { colors: { primary: '#FFFFFF' } },
+      { colors: { primary: '#FFFFFF', secondary: '' } },
       template as any,
     );
     expect(merged.colors.primary).toBe('#FFFFFF');
@@ -60,7 +60,7 @@ describe('mergeBrandTokens', () => {
       },
     };
     const merged = mergeBrandTokens(
-      { colors: { primary: '#FF0000' } },
+      { colors: { primary: '#FF0000', secondary: '' } },
       template as any,
     );
     // User overrode primary

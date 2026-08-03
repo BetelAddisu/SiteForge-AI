@@ -1,29 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
+import { createServerSupabaseClient } from '@/lib/database/server-supabase';
 import { findAllNodesByWidgetType, setNodeContent } from '@/lib/elementor/modifier';
 import { classifySections } from '@/lib/elementor/section-classifier';
 import type { ElementorNode } from '@/lib/elementor/parser';
 import { validateElementorJson } from '@/lib/elementor/validator';
-
-async function createServerSupabaseClient() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            try { cookieStore.set(name, value, options); } catch { }
-          });
-        },
-      },
-    }
-  );
-}
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {

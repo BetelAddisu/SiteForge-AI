@@ -25,8 +25,9 @@ interface AdminStats {
 }
 
 interface SystemStatus {
+  storageProvider: string;
   database: { connected: boolean; error: string | null };
-  supabaseStorage: { connected: boolean; error: string | null; bucketExists: boolean };
+  storage: { connected: boolean; error: string | null; bucketExists: boolean };
   geminiApi: { configured: boolean };
   unsplashApi: { configured: boolean };
   wordpress: { configured: boolean };
@@ -218,27 +219,27 @@ export default function AdminPage() {
               </Badge>
             </div>
 
-            {/* Supabase Storage */}
+            {/* Storage */}
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="flex items-center gap-3">
-                {status?.supabaseStorage?.connected ? (
+                {status?.storage?.connected ? (
                   <CheckCircle className="h-5 w-5 text-green-600" />
                 ) : (
                   <XCircle className="h-5 w-5 text-red-600" />
                 )}
                 <div>
-                  <p className="font-medium">Supabase Storage</p>
+                  <p className="font-medium">Storage ({status?.storageProvider || 'r2'})</p>
                   <p className="text-sm text-muted-foreground">
-                    {status?.supabaseStorage?.connected 
-                      ? status?.supabaseStorage?.bucketExists 
-                        ? 'Template bucket accessible'
-                        : 'Buckets accessible (no templates bucket)'
-                      : status?.supabaseStorage?.error || 'Connection failed'}
+                    {status?.storage?.connected 
+                      ? status?.storage?.bucketExists 
+                        ? 'Bucket accessible'
+                        : 'Connected (bucket empty)'
+                      : status?.storage?.error || 'Connection failed'}
                   </p>
                 </div>
               </div>
-              <Badge variant={status?.supabaseStorage?.connected ? 'success' : 'destructive'}>
-                {status?.supabaseStorage?.connected ? 'Operational' : 'Error'}
+              <Badge variant={status?.storage?.connected ? 'success' : 'destructive'}>
+                {status?.storage?.connected ? 'Operational' : 'Error'}
               </Badge>
             </div>
 

@@ -10,80 +10,8 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { listFiles, r2, R2_BUCKET } from '@/lib/storage/r2';
-import { GetObjectCommand } from "@aws-sdk/client-s3";
-import JSZip from 'jszip';
-
-interface ManifestTemplate {
-  name: string;
-  screenshot: string;
-  source: string;
-  type: string;
-  metadata?: Record<string, unknown>;
-  elementor_pro_required: boolean;
-}
-
-interface Manifest {
-  manifest_version: string;
-  title: string;
-  templates: ManifestTemplate[];
-}
-
-function slugify(text: string): string {
-  return text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
-}
-
-function extractKitSlug(filename: string): string {
-  const withoutExt = filename.replace('.zip', '');
-  const withoutTimestamp = withoutExt.replace(/-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-utc$/, '');
-  const cleanName = withoutTimestamp
-    .replace(/-elementor-template-kit$/i, '')
-    .replace(/-elementor-pro-template-kit$/i, '')
-    .replace(/-woocommerce-el$/i, '')
-    .replace(/-wordpress-theme$/i, '')
-    .replace(/-full$/i, '');
-  return cleanName;
-}
-
-function detectCategory(templateName: string): string {
-  const name = templateName.toLowerCase();
-  if (name.includes('hero') || name.includes('home') || name.includes('banner')) return 'hero';
-  if (name.includes('about') || name.includes('who')) return 'about';
-  if (name.includes('service')) return 'services';
-  if (name.includes('pricing') || name.includes('price')) return 'pricing';
-  if (name.includes('team')) return 'team';
-  if (name.includes('testimonial') || name.includes('review')) return 'testimonial';
-  if (name.includes('faq')) return 'faq';
-  if (name.includes('contact')) return 'contact';
-  if (name.includes('header')) return 'header';
-  if (name.includes('footer')) return 'footer';
-  if (name.includes('product')) return 'product';
-  if (name.includes('404')) return 'error';
-  return 'section';
-}
-
-function detectIndustry(kitName: string): string | null {
-  const name = kitName.toLowerCase();
-  const industries: [string, string][] = [
-    ['wine', 'Restaurant'], ['restaurant', 'Restaurant'], ['cafe', 'Restaurant'], ['food', 'Restaurant'],
-    ['digital', 'Technology'], ['tech', 'Technology'],
-    ['marketing', 'Marketing'], ['agency', 'Marketing'],
-    ['medical', 'Healthcare'], ['health', 'Healthcare'],
-    ['fitness', 'Fitness'], ['gym', 'Fitness'],
-    ['real estate', 'Real Estate'], ['property', 'Real Estate'],
-    ['legal', 'Legal'], ['law', 'Legal'],
-    ['finance', 'Finance'], ['financial', 'Finance'],
-    ['travel', 'Travel'], ['hotel', 'Travel'],
-    ['education', 'Education'],
-    ['nonprofit', 'Non-Profit'], ['charity', 'Non-Profit'],
-    ['ecommerce', 'E-commerce'], ['shop', 'E-commerce'],
-    ['creative', 'Creative'], ['portfolio', 'Creative'],
-  ];
-  for (const [key, value] of industries) {
-    if (name.includes(key)) return value;
-  }
-  return null;
-}
+import { listFiles } from '@/lib/storage/r2';
+import { getZipFromR2, extractKitSlug, detectCategory, detectIndustry, slugify, type Manifest } from '@/lib/templates/manifest';
 
 export async function POST(request: Request) {
   try {
@@ -105,21 +33,11 @@ export async function POST(request: Request) {
       try {
         console.log(`[Import] Processing: ${zipName}`);
         
-        // Download ZIP from R2
-        const command = new GetObjectCommand({
-          Bucket: R2_BUCKET,
-          Key: zipName,
-        });
-        
-        const response = await r2.send(command);
-        const zipData = await response.Body?.transformToByteArray();
-        
-        if (!zipData) {
+        const zip = await getZipFromR2(zipName);
+        if (!zip) {
           results.errors.push(`Failed to download: ${zipName}`);
           continue;
         }
-        
-        const zip = await JSZip.loadAsync(zipData);
 
         // Find manifest - real kits use kit-manifest.json
         const manifestFile = zip.file('kit-manifest.json') || zip.file('manifest.json');

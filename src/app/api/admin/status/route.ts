@@ -7,22 +7,27 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { prisma } from '@/lib/prisma';
+import { listFiles as listR2Files } from '@/lib/storage/r2';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 export async function GET() {
+  const storageProvider = process.env.STORAGE_PROVIDER || 'r2';
+
   const status: {
+    storageProvider: string;
     database: { connected: boolean; error: string | null };
-    supabaseStorage: { connected: boolean; error: string | null; bucketExists: boolean };
+    storage: { connected: boolean; error: string | null; bucketExists: boolean };
     geminiApi: { configured: boolean };
     unsplashApi: { configured: boolean };
     wordpress: { configured: boolean };
     healthy: boolean;
     timestamp: string;
   } = {
+    storageProvider,
     database: { connected: false, error: null },
-    supabaseStorage: { connected: false, error: null, bucketExists: false },
+    storage: { connected: false, error: null, bucketExists: false },
     geminiApi: { configured: false },
     unsplashApi: { configured: false },
     wordpress: { configured: false },
@@ -38,21 +43,34 @@ export async function GET() {
     status.database.error = String(error);
   }
 
-  // Check Supabase storage
-  if (supabaseUrl && supabaseServiceKey) {
-    try {
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      const { data, error } = await supabase.storage.listBuckets();
-      
-      if (!error && data) {
-        status.supabaseStorage.connected = true;
-        const templatesBucket = data.find(b => b.name === 'templates');
-        status.supabaseStorage.bucketExists = !!templatesBucket;
-      } else {
-        status.supabaseStorage.error = error?.message || 'Failed to list buckets';
+  // Check storage connectivity for the active provider only
+  if (storageProvider === 'supabase') {
+    if (supabaseUrl && supabaseServiceKey) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        const { data, error } = await supabase.storage.listBuckets();
+
+        if (!error && data) {
+          status.storage.connected = true;
+          const templatesBucket = data.find(b => b.name === 'templates');
+          status.storage.bucketExists = !!templatesBucket;
+        } else {
+          status.storage.error = error?.message || 'Failed to list buckets';
+        }
+      } catch (error) {
+        status.storage.error = String(error);
       }
+    } else {
+      status.storage.error = 'Supabase credentials not configured';
+    }
+  } else {
+    // R2 is the active provider
+    try {
+      const files = await listR2Files('');
+      status.storage.connected = true;
+      status.storage.bucketExists = files.length > 0;
     } catch (error) {
-      status.supabaseStorage.error = String(error);
+      status.storage.error = String(error);
     }
   }
 
@@ -71,7 +89,7 @@ export async function GET() {
   // Calculate overall health
   status.healthy = 
     status.database.connected && 
-    status.supabaseStorage.connected &&
+    status.storage.connected &&
     status.geminiApi.configured;
 
   return NextResponse.json(status);

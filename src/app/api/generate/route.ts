@@ -6,40 +6,11 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
+import { createServerSupabaseClient } from '@/lib/database/server-supabase';
 import { createPipeline, getPipelineProgress } from '@/lib/generator/pipeline';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const geminiApiKey = process.env.GEMINI_API_KEY || '';
-
-// Create Supabase server client that reads from cookies
-async function createServerSupabaseClient() {
-  const cookieStore = await cookies();
-
-  return createServerClient(
-    supabaseUrl,
-    supabaseAnonKey,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            try {
-              cookieStore.set(name, value, options);
-            } catch {
-              // Ignore errors in read-only context
-            }
-          });
-        },
-      },
-    }
-  );
-}
 
 export async function POST(request: Request) {
   try {

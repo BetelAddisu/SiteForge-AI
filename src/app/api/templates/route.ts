@@ -1,83 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getSignedDownloadUrl, listFiles, r2, R2_BUCKET } from '@/lib/storage/r2';
-import { GetObjectCommand } from "@aws-sdk/client-s3";
-import JSZip from 'jszip';
-
-interface ManifestTemplate {
-  name: string;
-  screenshot: string;
-  source: string;
-  type: string;
-  metadata?: Record<string, unknown>;
-  elementor_pro_required: boolean;
-}
-
-interface Manifest {
-  manifest_version: string;
-  title: string;
-  templates: ManifestTemplate[];
-}
-
-function slugify(text: string): string {
-  return text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
-}
-
-function detectCategory(templateName: string): string {
-  const name = templateName.toLowerCase();
-  if (name.includes('hero') || name.includes('home') || name.includes('banner')) return 'hero';
-  if (name.includes('about') || name.includes('who')) return 'about';
-  if (name.includes('service')) return 'services';
-  if (name.includes('pricing') || name.includes('price')) return 'pricing';
-  if (name.includes('team')) return 'team';
-  if (name.includes('testimonial') || name.includes('review')) return 'testimonial';
-  if (name.includes('faq')) return 'faq';
-  if (name.includes('contact')) return 'contact';
-  if (name.includes('header')) return 'header';
-  if (name.includes('footer')) return 'footer';
-  if (name.includes('product')) return 'product';
-  if (name.includes('off-canvas') || name.includes('offcanvas')) return 'offcanvas';
-  if (name.includes('form')) return 'form';
-  if (name.includes('blog') || name.includes('post')) return 'blog';
-  if (name.includes('404')) return 'error';
-  return 'section';
-}
-
-function detectIndustry(kitName: string): string | null {
-  const name = kitName.toLowerCase();
-  const industries: [string, string][] = [
-    ['wine', 'Restaurant'], ['restaurant', 'Restaurant'], ['cafe', 'Restaurant'], ['food', 'Restaurant'],
-    ['digital', 'Technology'], ['tech', 'Technology'], ['ai', 'Technology'], ['robotics', 'Technology'],
-    ['marketing', 'Marketing'], ['agency', 'Marketing'],
-    ['medical', 'Healthcare'], ['health', 'Healthcare'],
-    ['fitness', 'Fitness'], ['gym', 'Fitness'],
-    ['real estate', 'Real Estate'], ['property', 'Real Estate'],
-    ['legal', 'Legal'], ['law', 'Legal'],
-    ['finance', 'Finance'], ['financial', 'Finance'],
-    ['travel', 'Travel'], ['hotel', 'Travel'],
-    ['education', 'Education'],
-    ['nonprofit', 'Non-Profit'], ['charity', 'Non-Profit'],
-    ['ecommerce', 'E-commerce'], ['shop', 'E-commerce'],
-    ['creative', 'Creative'], ['portfolio', 'Creative'],
-    ['architecture', 'Architecture'], ['interior', 'Architecture'],
-    ['fashion', 'Fashion'], ['beauty', 'Fashion'],
-  ];
-  for (const [key, value] of industries) {
-    if (name.includes(key)) return value;
-  }
-  return null;
-}
-
-function extractKitSlug(filename: string): string {
-  const withoutExt = filename.replace('.zip', '');
-  const withoutTimestamp = withoutExt.replace(/-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-utc$/, '');
-  const cleanName = withoutTimestamp
-    .replace(/-elementor-template-kit$/i, '')
-    .replace(/-elementor-pro-template-kit$/i, '')
-    .replace(/-woocommerce-el$/i, '')
-    .replace(/-wordpress-theme$/i, '')
-    .replace(/-full$/i, '');
-  return cleanName;
-}
+import { getSignedDownloadUrl, listFiles } from '@/lib/storage/r2';
+import { getZipFromR2, extractKitSlug, detectCategory, detectIndustry, slugify, type Manifest } from '@/lib/templates/manifest';
 
 // Fetch templates from R2
 async function fetchTemplatesFromR2() {
@@ -94,17 +17,9 @@ async function fetchTemplatesFromR2() {
     try {
       console.log(`[R2] Processing: ${zipName}`);
       
-      const command = new GetObjectCommand({
-        Bucket: R2_BUCKET,
-        Key: zipName,
-      });
+      const zip = await getZipFromR2(zipName);
+      if (!zip) continue;
       
-      const response = await r2.send(command);
-      const zipData = await response.Body?.transformToByteArray();
-      
-      if (!zipData) continue;
-      
-      const zip = await JSZip.loadAsync(zipData);
       const manifestFile = zip.file('manifest.json');
       if (!manifestFile) continue;
       

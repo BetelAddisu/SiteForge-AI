@@ -1,26 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
+import { createServerSupabaseClient } from '@/lib/database/server-supabase';
 import { GenerationPipeline } from '@/lib/generator/pipeline';
-
-async function createServerSupabaseClient() {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            try { cookieStore.set(name, value, options); } catch { }
-          });
-        },
-      },
-    }
-  );
-}
 
 interface GenerateRequest {
   businessName: string;
@@ -31,6 +12,7 @@ interface GenerateRequest {
     secondary?: string;
   };
   customInstructions?: string;
+  websiteUrl?: string;
   templateId?: string;
   kitId?: string;
   resume?: boolean;
@@ -78,13 +60,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const body: GenerateRequest = await request.json();
 
     // Build business data from request and project
+    const projectBusinessInfo = project.businessInfo as any || {};
     const businessData = {
       businessName: body.businessName || project.businessName,
       industry: body.industry || project.industry || 'general',
       description: project.description || '',
       stylePreset: body.stylePreset || project.stylePreset || 'modern',
       brandColors: (body.brandColors as any) || project.brandColors as any || {},
-      businessInfo: project.businessInfo as any || {},
+      websiteUrl: body.websiteUrl || projectBusinessInfo.contact?.website || projectBusinessInfo.website || undefined,
+      businessInfo: projectBusinessInfo,
     };
 
     // Update project status

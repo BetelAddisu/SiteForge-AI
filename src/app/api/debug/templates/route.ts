@@ -1,34 +1,6 @@
 import { NextResponse } from 'next/server';
-import { listFiles, r2, R2_BUCKET } from '@/lib/storage/r2';
-import { GetObjectCommand } from "@aws-sdk/client-s3";
-import JSZip from 'jszip';
-
-interface ManifestTemplate {
-  name: string;
-  screenshot: string;
-  source: string;
-  type: string;
-  metadata?: Record<string, unknown>;
-  elementor_pro_required: boolean;
-}
-
-interface Manifest {
-  manifest_version: string;
-  title: string;
-  templates: ManifestTemplate[];
-}
-
-function extractKitSlug(filename: string): string {
-  const withoutExt = filename.replace('.zip', '');
-  const withoutTimestamp = withoutExt.replace(/-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-utc$/, '');
-  const cleanName = withoutTimestamp
-    .replace(/-elementor-template-kit$/i, '')
-    .replace(/-elementor-pro-template-kit$/i, '')
-    .replace(/-woocommerce-el$/i, '')
-    .replace(/-wordpress-theme$/i, '')
-    .replace(/-full$/i, '');
-  return cleanName;
-}
+import { listFiles, R2_BUCKET } from '@/lib/storage/r2';
+import { getZipFromR2, extractKitSlug, type Manifest } from '@/lib/templates/manifest';
 
 export async function GET() {
   try {
@@ -48,20 +20,12 @@ export async function GET() {
       try {
         console.log('[Debug] Processing:', zipName);
         
-        const command = new GetObjectCommand({
-          Bucket: R2_BUCKET,
-          Key: zipName,
-        });
-        
-        const response = await r2.send(command);
-        const zipData = await response.Body?.transformToByteArray();
-        
-        if (!zipData) {
+        const zip = await getZipFromR2(zipName);
+        if (!zip) {
           debugResults.push({ zip: zipName, error: 'No data' });
           continue;
         }
         
-        const zip = await JSZip.loadAsync(zipData);
         const manifestFile = zip.file('manifest.json');
         
         if (!manifestFile) {

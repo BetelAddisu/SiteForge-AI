@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { 
   User, 
   Key, 
@@ -40,9 +39,8 @@ export default function SettingsPage() {
   const [savingWp, setSavingWp] = useState(false);
   
   // API Keys state
-  const [geminiKey, setGeminiKey] = useState('');
-  const [unsplashKey, setUnsplashKey] = useState('');
-  const [savingKeys, setSavingKeys] = useState(false);
+  const [geminiKey, setGeminiKey] = useState(false);
+  const [unsplashKey, setUnsplashKey] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -69,9 +67,9 @@ export default function SettingsPage() {
           setWpConnected(!!data.settings.wordpressConnected);
         }
         if (data.apiKeys) {
-          // Don't show actual keys, just indicate they exist
-          setGeminiKey(data.apiKeys.gemini ? '••••••••••••' : '');
-          setUnsplashKey(data.apiKeys.unsplash ? '••••••••••••' : '');
+          // API keys are server-side env vars; only surface whether they are set
+          setGeminiKey(!!data.apiKeys.gemini);
+          setUnsplashKey(!!data.apiKeys.unsplash);
         }
       }
     } catch (err) {
@@ -112,24 +110,6 @@ export default function SettingsPage() {
       console.error('WordPress test failed:', err);
     } finally {
       setTestingWp(false);
-    }
-  };
-
-  const handleSaveApiKeys = async () => {
-    setSavingKeys(true);
-    try {
-      await fetch('/api/settings/api-keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          gemini: geminiKey !== '••••••••••••' ? geminiKey : undefined,
-          unsplash: unsplashKey !== '••••••••••••' ? unsplashKey : undefined,
-        }),
-      });
-    } catch (err) {
-      console.error('Failed to save API keys:', err);
-    } finally {
-      setSavingKeys(false);
     }
   };
 
@@ -355,16 +335,16 @@ export default function SettingsPage() {
                 <Label htmlFor="gemini">Google Gemini API Key</Label>
                 <Input 
                   id="gemini" 
-                  type="password"
-                  placeholder={geminiKey || "Enter your API key"}
-                  value={geminiKey}
-                  onChange={(e) => setGeminiKey(e.target.value)}
+                  type="text"
+                  readOnly
+                  value={geminiKey ? 'Configured' : 'Not configured'}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Get your API key from{' '}
+                  Set <code className="rounded bg-muted px-1">GEMINI_API_KEY</code> in your{' '}
                   <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                     Google AI Studio
-                  </a>
+                  </a>{' '}
+                  and add it to your hosting environment (e.g. Vercel project settings).
                 </p>
               </div>
 
@@ -372,38 +352,22 @@ export default function SettingsPage() {
                 <Label htmlFor="unsplash">Unsplash API Key</Label>
                 <Input 
                   id="unsplash" 
-                  type="password"
-                  placeholder={unsplashKey || "Enter your API key"}
-                  value={unsplashKey}
-                  onChange={(e) => setUnsplashKey(e.target.value)}
+                  type="text"
+                  readOnly
+                  value={unsplashKey ? 'Configured' : 'Not configured'}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Get your API key from{' '}
+                  Set <code className="rounded bg-muted px-1">UNSPLASH_ACCESS_KEY</code> from{' '}
                   <a href="https://unsplash.com/developers" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                     Unsplash Developers
-                  </a>
+                  </a>{' '}
+                  to enable stock image search.
                 </p>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <Button onClick={handleSaveApiKeys} disabled={savingKeys}>
-                  {savingKeys ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save API Keys
-                    </>
-                  )}
-                </Button>
               </div>
 
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Shield className="h-4 w-4" />
-                API keys are encrypted and stored securely.
+                API keys are read from server environment variables and never stored in the database.
               </div>
             </CardContent>
           </Card>
