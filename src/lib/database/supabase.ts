@@ -18,7 +18,11 @@ export function createClient(): any {
     };
   }
   
-  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+  return createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    realtime: {
+      enabled: false,
+    },
+  });
 }
 
 // Type for Supabase auth helpers

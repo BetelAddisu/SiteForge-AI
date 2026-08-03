@@ -1,32 +1,23 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { prisma } from '@/lib/prisma';
-import crypto from 'crypto';
-
-function getSupabaseClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-}
-
-// Simple encryption for app password
-function encrypt(text: string): string {
-  const key = process.env.ENCRYPTION_KEY || 'default-key-change-me';
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(key.slice(0, 32)), iv);
-  let encrypted = cipher.update(text);
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return iv.toString('hex') + ':' + encrypted.toString('hex');
-}
+import { createServerSupabaseClient } from '@/lib/database/server-supabase';
+import { saveWordPressConnection } from '@/lib/wordpress';
 
 export async function POST(request: Request) {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const appUser = await prisma.user.findUnique({
+      where: { supabaseId: user.id },
+    });
+
+    if (!appUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const body = await request.json();
@@ -36,21 +27,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Upsert WordPress connection
-    await prisma.wordPressConnection.upsert({
-      where: { userId: user.id },
-      update: {
-        siteUrl: url,
-        username,
-        appPassword: encrypt(appPassword),
-      },
-      create: {
-        userId: user.id,
-        siteUrl: url,
-        username,
-        appPassword: encrypt(appPassword),
-      },
-    });
+    // Save using the same helper the publish path reads from, keyed by the
+    // Prisma user id (the settings GET and publish route both look it up that way)
+    await saveWordPressConnection(appUser.id, url, username, appPassword);
 
     return NextResponse.json({ success: true });
   } catch (error) {

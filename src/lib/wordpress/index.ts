@@ -4,7 +4,7 @@
  * Phase 13: WordPress REST API connector for publishing websites.
  */
 
-import { createHash } from 'crypto';
+import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { prisma } from '../prisma';
 
 // ============================================================================
@@ -252,12 +252,33 @@ export class WordPressClient {
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'siteforge-default-key';
 
+function getEncryptionKey(): Buffer {
+  return createHash('sha256').update(ENCRYPTION_KEY).digest();
+}
+
 function encryptPassword(password: string): string {
-  return Buffer.from(password).toString('base64');
+  const iv = randomBytes(16);
+  const cipher = createCipheriv('aes-256-cbc', getEncryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(password, 'utf8'), cipher.final()]);
+  return `v1:${iv.toString('hex')}:${encrypted.toString('hex')}`;
 }
 
 function decryptPassword(encrypted: string): string {
-  return Buffer.from(encrypted, 'base64').toString('utf8');
+  // Backward-compatible with values stored as plain base64 before AES was added
+  if (!encrypted.startsWith('v1:')) {
+    try {
+      return Buffer.from(encrypted, 'base64').toString('utf8');
+    } catch {
+      return encrypted;
+    }
+  }
+
+  const parts = encrypted.split(':');
+  if (parts.length !== 3) throw new Error('Malformed encrypted password');
+  const [, ivHex, dataHex] = parts;
+  const decipher = createDecipheriv('aes-256-cbc', getEncryptionKey(), Buffer.from(ivHex, 'hex'));
+  const decrypted = Buffer.concat([decipher.update(Buffer.from(dataHex, 'hex')), decipher.final()]);
+  return decrypted.toString('utf8');
 }
 
 /**

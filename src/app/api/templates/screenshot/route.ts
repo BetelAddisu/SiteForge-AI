@@ -7,63 +7,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { listFiles, r2, R2_BUCKET } from '@/lib/storage/r2';
-import { GetObjectCommand } from "@aws-sdk/client-s3";
-import JSZip from 'jszip';
-
-interface ManifestTemplate {
-  name: string;
-  screenshot: string;
-  elementor_pro_required: boolean;
-}
-
-interface Manifest {
-  title: string;
-  templates: ManifestTemplate[];
-}
-
-function extractKitSlug(filename: string): string {
-  const withoutExt = filename.replace('.zip', '');
-  const withoutTimestamp = withoutExt.replace(/-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-utc$/, '');
-  const cleanName = withoutTimestamp
-    .replace(/-elementor-template-kit$/i, '')
-    .replace(/-elementor-pro-template-kit$/i, '')
-    .replace(/-woocommerce-el$/i, '')
-    .replace(/-wordpress-theme$/i, '')
-    .replace(/-full$/i, '');
-  return cleanName;
-}
-
-// Cache for zip files
-const zipCache = new Map<string, { zip: JSZip; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000;
-
-async function getZipFromR2(zipName: string): Promise<JSZip | null> {
-  const cached = zipCache.get(zipName);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.zip;
-  }
-  
-  try {
-    const command = new GetObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: zipName,
-    });
-    
-    const response = await r2.send(command);
-    const zipData = await response.Body?.transformToByteArray();
-    
-    if (!zipData) return null;
-    
-    const zip = await JSZip.loadAsync(zipData);
-    zipCache.set(zipName, { zip, timestamp: Date.now() });
-    
-    return zip;
-  } catch (err) {
-    console.error('[Screenshot] Error fetching ZIP from R2:', err);
-    return null;
-  }
-}
+import { listFiles } from '@/lib/storage/r2';
+import { getZipFromR2, extractKitSlug, slugify, type Manifest } from '@/lib/templates/manifest';
 
 export async function GET(request: Request) {
   try {
@@ -130,7 +75,7 @@ export async function GET(request: Request) {
         const kitSlug = extractKitSlug(zipName);
 
         for (const template of manifest.templates) {
-          const templateSlug = template.name.toLowerCase().replace(/[^\w]/g, '-');
+          const templateSlug = slugify(template.name);
           const fullId = `${kitSlug}-${templateSlug}`;
 
           if (fullId === id.toLowerCase() || fullId.includes(id.toLowerCase())) {

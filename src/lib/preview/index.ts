@@ -8,14 +8,6 @@
 import { prisma } from '@/lib/prisma';
 import { renderElementorToHtml, type ElementorNode } from './render';
 
-type Viewport = 'desktop' | 'tablet' | 'mobile';
-
-const VIEWPORT_CONFIGS = {
-  desktop: { width: 1440, height: 900 },
-  tablet: { width: 768, height: 1024 },
-  mobile: { width: 375, height: 812 },
-};
-
 export interface PreviewOptions {
   projectId: string;
   elementorData?: unknown[];
@@ -60,41 +52,3 @@ export async function generatePreview(options: PreviewOptions): Promise<{ succes
     return { success: false, error: String(error) };
   }
 }
-
-export async function generateAllViewports(options: PreviewOptions): Promise<{ success: boolean; previews?: Record<Viewport, string>; error?: string }> {
-  const previews = {} as Record<Viewport, string>;
-  for (const viewport of ['desktop', 'tablet', 'mobile'] as Viewport[]) {
-    const result = await generatePreview({ ...options });
-    if (result.success && result.previewUrl) previews[viewport] = result.previewUrl;
-  }
-  return { success: true, previews };
-}
-
-export async function getCachedPreview(projectId: string): Promise<{ success: boolean; previewUrl?: string; timestamp?: Date; error?: string }> {
-  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { previewImage: true, updatedAt: true } });
-  if (!project) return { success: false, error: 'Project not found' };
-  if (!project.previewImage) return { success: false, error: 'No preview available' };
-  return { success: true, previewUrl: project.previewImage, timestamp: project.updatedAt };
-}
-
-export async function invalidatePreview(projectId: string): Promise<void> {
-  await prisma.project.update({ where: { id: projectId }, data: { previewImage: null } });
-}
-
-export type { Viewport };
-export const VIEWPORT_CONFIGS_EXPORT = VIEWPORT_CONFIGS;
-
-export interface ViewportConfig {
-  width: number;
-  height: number;
-  label: string;
-  icon: string;
-}
-
-export const VIEWPORT_CONFIGS_LEGACY: Record<Viewport, ViewportConfig> = {
-  desktop: { width: 1440, height: 900, label: 'Desktop', icon: 'monitor' },
-  tablet: { width: 768, height: 1024, label: 'Tablet', icon: 'tablet' },
-  mobile: { width: 375, height: 812, label: 'Mobile', icon: 'smartphone' },
-};
-
-export { generatePreview as generatePreviewForProject };

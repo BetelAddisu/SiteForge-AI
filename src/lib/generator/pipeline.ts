@@ -14,6 +14,8 @@ import type { ElementorNode } from '../elementor/parser';
 import { validateElementorJson } from '../elementor/validator';
 import { generatePreview } from '../preview';
 import { createBrandFromProjectData, applyBrandToTree } from '../brand';
+import { mineBusinessInfo, type BusinessInfo } from '../business-miner';
+import { getRandomUnsplashPhoto } from '../media';
 
 // ============================================================================
 // Types
@@ -48,6 +50,7 @@ export interface PipelineOptions {
     businessName: string;
     industry: string;
     description?: string;
+    websiteUrl?: string;
     stylePreset?: string;
     brandColors?: { primary?: string; secondary?: string };
     services?: string[];
@@ -114,25 +117,31 @@ export class GenerationPipeline {
       // Step 1: Initialize
       await this.stepInitialize(options);
       
-      // Step 2: Find or create template (MUST come before content generation)
+      // Step 2: Analyze the business (enriches provided data from public sources)
+      await this.stepAnalyzeBusiness(options);
+      
+      // Step 3: Find or create template (MUST come before content generation)
       await this.stepSelectTemplates(options);
       
-      // Step 3: Generate content (now aware of template structure)
+      // Step 4: Generate content (now aware of template structure)
       await this.stepGenerateContent(options);
       
-      // Step 4: Create the Elementor structure (MUST come before brand so elementorData exists)
+      // Step 5: Generate assets (logo + stock images, before structure is built)
+      await this.stepGenerateAssets(options);
+      
+      // Step 6: Create the Elementor structure (MUST come before brand so elementorData exists)
       await this.stepCreateElementorStructure(options);
       
-      // Step 5: Apply brand (injects brand colors/fonts into the elementor JSON tree)
+      // Step 7: Apply brand (injects brand colors/fonts into the elementor JSON tree)
       await this.stepApplyBrand(options);
       
-      // Step 6: Validate
+      // Step 8: Validate
       await this.stepValidateJson(options);
       
-      // Step 7: Generate preview
+      // Step 9: Generate preview
       await this.stepGeneratePreview(options);
       
-      // Step 8: Mark as ready
+      // Step 10: Mark as ready
       await this.stepReadyForPublish(options);
       
       console.log('[Pipeline] Generation complete!');
@@ -172,6 +181,9 @@ export class GenerationPipeline {
         break;
       case 'GENERATE_CONTENT':
         await this.stepGenerateContent(options);
+        break;
+      case 'GENERATE_ASSETS':
+        await this.stepGenerateAssets(options);
         break;
       case 'APPLY_BRAND':
         await this.stepApplyBrand(options);
@@ -217,13 +229,51 @@ export class GenerationPipeline {
       mainService: options.businessData.mainService,
     };
 
+    // Enrich the analysis from public sources when a website is provided.
+    // Mining is best-effort: failures never abort the pipeline.
+    let mined: BusinessInfo | undefined;
+    const miningSources: string[] = [];
+    const miningErrors: string[] = [];
+
+    if (options.businessData.websiteUrl) {
+      const result = await mineBusinessInfo(options.businessData.websiteUrl, {
+        apiKey: process.env.GEMINI_API_KEY,
+        includeSocial: true,
+      });
+
+      if (result.success && result.data) {
+        mined = result.data;
+        miningSources.push(...result.sources);
+      }
+      miningErrors.push(...result.errors);
+
+      // Merge mined details that the user didn't provide explicitly
+      if (mined?.description && !context.description) context.description = mined.description;
+      if (mined?.services?.length && !context.services?.length) context.services = mined.services;
+    }
+
     this.state!.checkpointData = {
       ...this.state!.checkpointData,
-      businessAnalysis: context,
+      businessAnalysis: {
+        ...context,
+        mined,
+        miningSources,
+        miningErrors,
+      },
     };
 
+    // Persist mined business info for later steps / publishing
+    if (mined) {
+      const updates: Record<string, unknown> = { businessInfo: mined as object };
+      if (mined.logo) updates.logo = mined.logo;
+      await this.prisma.project.update({
+        where: { id: options.projectId },
+        data: updates,
+      }).catch(err => console.error('[Pipeline] Failed to persist mined business info:', err));
+    }
+
     await this.saveCheckpoint('ANALYZE_BUSINESS');
-    options.onStepComplete?.('ANALYZE_BUSINESS', context);
+    options.onStepComplete?.('ANALYZE_BUSINESS', this.state!.checkpointData['businessAnalysis']);
   }
 
   // Step 3: Select Templates - loads ALL sections for multi-template composition
@@ -416,9 +466,55 @@ export class GenerationPipeline {
 
   // Step 5: Generate Assets
   private async stepGenerateAssets(options: PipelineOptions): Promise<void> {
+    const businessAnalysis = this.state!.checkpointData['businessAnalysis'] as {
+      businessName: string;
+      industry: string;
+      mined?: BusinessInfo;
+    } | undefined;
+
+    // Logo comes from mined business info (real URL) or falls back to null
+    const logo = businessAnalysis?.mined?.logo ?? null;
+
+    // Stock images per page section — only when Unsplash is configured.
+    // No fabricated URLs: if a fetch fails, that section simply gets no image.
+    const stockImages: Array<{ section: string; url: string; alt: string; photographer: string; photographerUrl: string }> = [];
+    const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
+
+    if (unsplashKey) {
+      const industry = options.businessData.industry || businessAnalysis?.industry || 'business';
+      const sectionQueries: Array<{ section: string; query: string }> = [
+        { section: 'hero', query: `${industry} hero banner` },
+        { section: 'about', query: `${industry} team office` },
+        { section: 'services', query: `${industry} service` },
+        { section: 'contact', query: `${industry} contact` },
+      ];
+
+      for (const { section, query } of sectionQueries) {
+        try {
+          const result = await getRandomUnsplashPhoto(query, unsplashKey);
+          if (result.success && result.image) {
+            stockImages.push({
+              section,
+              url: result.image.url,
+              alt: result.image.altDescription || `${industry} ${section} image`,
+              photographer: result.image.photographer,
+              photographerUrl: result.image.photographerUrl,
+            });
+          } else {
+            console.warn(`[Pipeline] Unsplash fetch failed for ${section}: ${result.error || 'unknown error'}`);
+          }
+        } catch (error) {
+          console.warn(`[Pipeline] Unsplash fetch error for ${section}:`, error);
+        }
+      }
+    } else {
+      console.log('[Pipeline] UNSPLASH_ACCESS_KEY not set - skipping stock image generation');
+    }
+
     const assets = {
-      images: [],
-      logo: null,
+      logo,
+      stockImages,
+      generatedAt: new Date().toISOString(),
     };
 
     this.state!.checkpointData = {
@@ -778,15 +874,16 @@ export class GenerationPipeline {
       await this.saveCheckpoint('GENERATE_PREVIEW');
       options.onStepComplete?.('GENERATE_PREVIEW', { previewUrl });
     } catch (error) {
-      // If preview generation fails, use a placeholder
-      const fallbackUrl = `https://storage.example.com/previews/${options.projectId}/preview.png`;
+      // Preview is a nice-to-have; don't fabricate a URL (Rule #1). Leave it
+      // empty so the UI shows "preview unavailable" rather than a dead link.
+      console.error('[Pipeline] Preview generation failed:', error);
       this.state!.checkpointData = {
         ...this.state!.checkpointData,
-        previewUrl: fallbackUrl,
+        previewUrl: '',
       };
 
       await this.saveCheckpoint('GENERATE_PREVIEW');
-      options.onStepComplete?.('GENERATE_PREVIEW', { previewUrl: fallbackUrl });
+      options.onStepComplete?.('GENERATE_PREVIEW', { previewUrl: '' });
     }
   }
 
@@ -844,8 +941,8 @@ export class GenerationPipeline {
     
     // FIX: Skip completed steps instead of re-running all
     const allSteps: PipelineStep[] = [
-      'INITIALIZE', 'SELECT_TEMPLATES', 'GENERATE_CONTENT',
-      'APPLY_BRAND', 'MODIFY_JSON', 'VALIDATE_JSON',
+      'INITIALIZE', 'ANALYZE_BUSINESS', 'SELECT_TEMPLATES', 'GENERATE_CONTENT',
+      'GENERATE_ASSETS', 'APPLY_BRAND', 'MODIFY_JSON', 'VALIDATE_JSON',
       'GENERATE_PREVIEW', 'READY_FOR_PUBLISH'
     ];
     

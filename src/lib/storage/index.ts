@@ -7,8 +7,9 @@
  * directly.
  *
  * Usage:
- *   import { storage } from '@/lib/storage';
- *   await storage.uploadFile('path/to/file.json', data, 'application/json');
+ *   import { getStorageProvider } from '@/lib/storage';
+ *   const provider = await getStorageProvider();
+ *   await provider.uploadFile('path/to/file.json', data, 'application/json');
  *
  * The implementation is selected by STORAGE_PROVIDER env var:
  *   "r2"        → Cloudflare R2 (default for template files, generated content)
@@ -48,43 +49,4 @@ export async function getStorageProvider(): Promise<StorageProvider> {
   }
 
   return cachedProvider!;
-}
-
-/**
- * Convenience re-exports for the most common operations.
- * These delegate to the current provider.
- */
-
-export async function uploadFile(
-  key: string,
-  data: Buffer | Uint8Array | string,
-  contentType: string
-): Promise<UploadResult> {
-  const provider = await getStorageProvider();
-  return provider.uploadFile(key, data, contentType);
-}
-
-export async function getPublicUrl(key: string): Promise<string> {
-  const provider = await getStorageProvider();
-  return provider.getPublicUrl(key);
-}
-
-export async function listFiles(prefix?: string): Promise<FileInfo[]> {
-  const provider = await getStorageProvider();
-  return provider.listFiles(prefix);
-}
-
-export async function downloadFile(key: string): Promise<Buffer | null> {
-  const provider = await getStorageProvider();
-  return provider.downloadFile(key);
-}
-
-export async function deleteFile(key: string): Promise<void> {
-  const provider = await getStorageProvider();
-  return provider.deleteFile(key);
-}
-
-export async function fileExists(key: string): Promise<boolean> {
-  const provider = await getStorageProvider();
-  return provider.fileExists(key);
 }
