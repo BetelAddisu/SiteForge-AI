@@ -2,26 +2,24 @@
 /**
  * bulk-import.ts
  * 
- * Phase 3A: Template Bulk Import Pipeline
+ * Phase 3A: Template Bulk Import Pipeline (Optimized)
  * 
- * Processes Elementor template ZIPs in batches with:
- * - Idempotency checking
- * - Fault isolation
- * - Disk-safe temp management
- * - Progress visibility
- * - Lazy preview generation
+ * Optimizations:
+ * - Pre-fetch existing templates in ONE query at start (not N queries)
+ * - Use prisma.$transaction for atomic template + sections creation
+ * - Controlled concurrency with semaphore (not unbounded Promise.all)
+ * - Single DB connection reused (not creating new client per operation)
+ * - Batch idempotency checks using findMany with IN clause
  * 
- * Usage: npx tsx scripts/bulk-import.ts --source ./templates --batch-size 10
+ * Usage: npx tsx scripts/bulk-import.ts --source ./templates --concurrency 5
  */
 
 import AdmZip from 'adm-zip';
-import { createClient } from '@supabase/supabase-js';
 import { PrismaClient } from '@prisma/client';
 import { parseElementorTree, validateElementorJson, extractSections } from '../src/lib/elementor/parser';
 import { extractGlobalStyles } from '../src/lib/elementor/global-styles';
-import { writeFileSync, readdirSync, statSync, mkdirSync, rmSync, existsSync } from 'fs';
-import { join, basename, dirname } from 'path';
-import { tmpdir } from 'os';
+import { writeFileSync, readdirSync, statSync } from 'fs';
+import { join, basename } from 'path';
 
 // ============================================================================
 // Configuration
@@ -29,9 +27,7 @@ import { tmpdir } from 'os';
 
 interface Config {
   sourcePath: string;
-  batchSize: number;
-  supabaseUrl: string;
-  supabaseKey: string;
+  concurrency: number;  // Max concurrent DB writes
   dryRun: boolean;
   skipExisting: boolean;
 }
@@ -40,9 +36,7 @@ function parseArgs(): Config {
   const args = process.argv.slice(2);
   const config: Config = {
     sourcePath: './templates',
-    batchSize: 10,
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    concurrency: 5,  // Default: 5 concurrent DB writes
     dryRun: false,
     skipExisting: true,
   };
@@ -53,8 +47,8 @@ function parseArgs(): Config {
       case '--source':
         config.sourcePath = args[++i];
         break;
-      case '--batch-size':
-        config.batchSize = parseInt(args[++i], 10);
+      case '--concurrency':
+        config.concurrency = parseInt(args[++i], 10);
         break;
       case '--dry-run':
         config.dryRun = true;
@@ -94,16 +88,44 @@ interface ProcessingStats {
 }
 
 // ============================================================================
-// Supabase & Prisma Clients
+// Prisma Client (single instance)
 // ============================================================================
 
-let supabase: ReturnType<typeof createClient>;
 let prisma: PrismaClient;
 
-function initClients(config: Config) {
-  if (!config.dryRun) {
-    supabase = createClient(config.supabaseUrl, config.supabaseKey);
-    prisma = new PrismaClient();
+function initPrisma(): PrismaClient {
+  // Single Prisma client instance reused for entire import
+  // Prisma manages connection pooling internally
+  return new PrismaClient();
+}
+
+/**
+ * Semaphore for controlled concurrency
+ * Limits the number of concurrent DB operations
+ */
+class Semaphore {
+  private running = 0;
+  private queue: Array<() => void> = [];
+
+  constructor(private maxConcurrent: number) {}
+
+  async acquire(): Promise<void> {
+    if (this.running < this.maxConcurrent) {
+      this.running++;
+      return;
+    }
+    return new Promise(resolve => {
+      this.queue.push(resolve);
+    });
+  }
+
+  release(): void {
+    this.running--;
+    const next = this.queue.shift();
+    if (next) {
+      this.running++;
+      next();
+    }
   }
 }
 
@@ -258,33 +280,30 @@ function calculateCompatibilityScore(structure: ReturnType<typeof parseElementor
 
 /**
  * Process a single template ZIP
+ * Uses $transaction to batch template + sections creation atomically
  */
 async function processTemplate(
   zipPath: string,
   config: Config,
-  stats: ProcessingStats
+  stats: ProcessingStats,
+  existingTemplates: Set<string>,
+  semaphore: Semaphore
 ): Promise<ImportResult> {
   const fileName = basename(zipPath);
   
+  // Wait for semaphore before starting DB work
+  await semaphore.acquire();
+  
   try {
-    // Check if already imported
-    if (config.skipExisting) {
-      if (!config.dryRun) {
-        const existing = await prisma.template.findFirst({
-          where: { filePath: zipPath },
-        });
-        
-        if (existing) {
-          return {
-            file: fileName,
-            status: 'skipped',
-            templateId: existing.id,
-          };
-        }
-      }
+    // Check if already imported (using pre-fetched set)
+    if (config.skipExisting && existingTemplates.has(zipPath)) {
+      return {
+        file: fileName,
+        status: 'skipped',
+      };
     }
     
-    // Extract data
+    // Extract data (CPU-bound, outside transaction)
     const extracted = extractFromZip(zipPath);
     
     if (!extracted) {
@@ -307,59 +326,56 @@ async function processTemplate(
       };
     }
     
-    // Create processing job
-    const processingJob = await prisma.processingJob.create({
-      data: {
-        stage: 'extract',
-        status: 'PROCESSING',
-        template: {
-          create: {
-            name: extracted.name,
-            category: inferCategory(extracted.sections),
-            filePath: zipPath,
-            importStatus: 'PROCESSING',
-            compatibilityScore: extracted.compatibilityScore,
-            compatibilityNotes: {
-              widgetTypes: extracted.metadata.widgetTypes,
-              thirdPartyWidgets: extracted.metadata.thirdPartyWidgets,
-            },
-            metadata: extracted.metadata,
-            globalStyles: extracted.globalStyles,
+    // Use $transaction to create template + sections atomically
+    // This reduces 4 DB round-trips to 1
+    const result = await prisma.$transaction(async (tx) => {
+      // Create template
+      const template = await tx.template.create({
+        data: {
+          name: extracted.name,
+          slug: extracted.name.toLowerCase().replace(/\s+/g, '-'),
+          category: inferCategory(extracted.sections),
+          filePath: zipPath,
+          importStatus: 'PROCESSING',
+          compatibilityScore: extracted.compatibilityScore,
+          compatibilityNotes: {
+            widgetTypes: extracted.metadata.widgetTypes,
+            thirdPartyWidgets: extracted.metadata.thirdPartyWidgets,
           },
+          metadata: extracted.metadata,
+          globalStyles: extracted.globalStyles,
         },
-      },
-      include: {
-        template: true,
-      },
-    });
-    
-    // Create template sections with actual Elementor nodes
-    await prisma.templateSection.createMany({
-      data: extracted.sections.map((section, index) => ({
-        templateId: processingJob.template!.id,
-        type: section.type,
-        title: section.title,
-        content: section.content,  // This is now ElementorNode[] from parser.ts
-        order: index,              // Track section order for composition
-      })),
-    });
-    
-    // Update processing job as complete
-    await prisma.processingJob.update({
-      where: { id: processingJob.id },
-      data: { status: 'COMPLETE' },
-    });
-    
-    // Update template status
-    await prisma.template.update({
-      where: { id: processingJob.template!.id },
-      data: { importStatus: 'COMPLETE' },
+      });
+      
+      // Create sections in batch
+      if (extracted.sections.length > 0) {
+        await tx.templateSection.createMany({
+          data: extracted.sections.map((section, index) => ({
+            templateId: template.id,
+            type: section.type,
+            title: section.title,
+            content: section.content,
+            order: index,
+          })),
+        });
+      }
+      
+      // Create processing job
+      await tx.processingJob.create({
+        data: {
+          stage: 'extract',
+          status: 'COMPLETE',
+          templateId: template.id,
+        },
+      });
+      
+      return template;
     });
     
     return {
       file: fileName,
       status: 'success',
-      templateId: processingJob.template!.id,
+      templateId: result.id,
       stats: {
         sections: extracted.metadata.sections,
         widgets: extracted.metadata.widgets,
@@ -372,6 +388,8 @@ async function processTemplate(
       status: 'failed',
       error: String(error),
     };
+  } finally {
+    semaphore.release();
   }
 }
 
@@ -392,39 +410,42 @@ function inferCategory(sections: ReturnType<typeof extractSections>): string {
 }
 
 /**
- * Process batch of templates
+ * Process batch of templates with controlled concurrency
+ * Uses semaphore to limit concurrent DB operations
  */
 async function processBatch(
   files: string[],
   config: Config,
-  stats: ProcessingStats
+  stats: ProcessingStats,
+  existingTemplates: Set<string>
 ): Promise<ImportResult[]> {
+  const semaphore = new Semaphore(config.concurrency);
   const results: ImportResult[] = [];
   
-  // Process in parallel batches
-  const batches: string[][] = [];
-  for (let i = 0; i < files.length; i += config.batchSize) {
-    batches.push(files.slice(i, i + config.batchSize));
-  }
+  // Process all files with controlled concurrency
+  // Each file waits on semaphore before starting DB work
+  const promises = files.map(file => processTemplate(
+    file,
+    config,
+    stats,
+    existingTemplates,
+    semaphore
+  ));
   
-  for (const batch of batches) {
-    const batchResults = await Promise.all(
-      batch.map(file => processTemplate(file, config, stats))
-    );
-    
-    for (const result of batchResults) {
-      stats.succeeded += result.status === 'success' ? 1 : 0;
-      stats.skipped += result.status === 'skipped' ? 1 : 0;
-      stats.failed += result.status === 'failed' ? 1 : 0;
-      results.push(result);
-    }
+  // Process results as they complete
+  for (const promise of promises) {
+    const result = await promise;
+    stats.succeeded += result.status === 'success' ? 1 : 0;
+    stats.skipped += result.status === 'skipped' ? 1 : 0;
+    stats.failed += result.status === 'failed' ? 1 : 0;
+    results.push(result);
     
     // Print progress
     const progress = Math.round(((stats.succeeded + stats.skipped + stats.failed) / stats.total) * 100);
-    console.log(`\n📊 Progress: ${progress}% (${stats.succeeded + stats.skipped + stats.failed}/${stats.total})`);
-    console.log(`   ✅ Succeeded: ${stats.succeeded} | ⏭️  Skipped: ${stats.skipped} | ❌ Failed: ${stats.failed}`);
+    process.stdout.write(`\r📊 Progress: ${progress}% (${stats.succeeded + stats.skipped + stats.failed}/${stats.total})`);
   }
   
+  console.log('');  // New line after progress
   return results;
 }
 
@@ -436,10 +457,10 @@ async function main() {
   const config = parseArgs();
   
   console.log('═'.repeat(80));
-  console.log('📦 SiteForge AI - Template Bulk Import');
+  console.log('📦 SiteForge AI - Template Bulk Import (Optimized)');
   console.log('═'.repeat(80));
   console.log(`   Source: ${config.sourcePath}`);
-  console.log(`   Batch Size: ${config.batchSize}`);
+  console.log(`   Concurrency: ${config.concurrency}`);
   console.log(`   Dry Run: ${config.dryRun}`);
   console.log(`   Skip Existing: ${config.skipExisting}`);
   console.log('');
@@ -463,8 +484,22 @@ async function main() {
   console.log(`📁 Found ${zipFiles.length} ZIP files`);
   console.log('');
   
-  // Initialize clients
-  initClients(config);
+  // Initialize Prisma (single instance, reused)
+  if (!config.dryRun) {
+    prisma = initPrisma();
+  }
+  
+  // Pre-fetch existing templates in ONE query (optimization)
+  // Instead of N queries during processing
+  console.log('🔍 Checking for existing templates...');
+  const existingTemplates = config.dryRun ? new Set<string>() : (
+    await prisma.template.findMany({
+      where: { filePath: { in: zipFiles } },
+      select: { filePath: true },
+    })
+  ).reduce((set, t) => set.add(t.filePath), new Set<string>());
+  console.log(`   Found ${existingTemplates.size} already imported`);
+  console.log('');
   
   // Process
   const stats: ProcessingStats = {
@@ -477,14 +512,14 @@ async function main() {
   
   console.log('🚀 Starting import...\n');
   
-  const results = await processBatch(zipFiles, config, stats);
+  const results = await processBatch(zipFiles, config, stats, existingTemplates);
   
   stats.endTime = new Date();
   
   // Print summary
   const duration = (stats.endTime.getTime() - stats.startTime.getTime()) / 1000;
   
-  console.log('\n\n' + '='.repeat(80));
+  console.log('\n' + '='.repeat(80));
   console.log('📈 IMPORT SUMMARY');
   console.log('='.repeat(80));
   console.log(`   Total Files: ${stats.total}`);
@@ -492,7 +527,9 @@ async function main() {
   console.log(`   ⏭️  Skipped: ${stats.skipped}`);
   console.log(`   ❌ Failed: ${stats.failed}`);
   console.log(`   Duration: ${duration.toFixed(1)}s`);
-  console.log(`   Rate: ${(stats.total / duration).toFixed(1)} templates/sec`);
+  if (duration > 0) {
+    console.log(`   Rate: ${(stats.total / duration).toFixed(1)} templates/sec`);
+  }
   
   // Show failures
   const failures = results.filter(r => r.status === 'failed');

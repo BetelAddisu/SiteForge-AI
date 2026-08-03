@@ -15,7 +15,8 @@
     "postinstall": "prisma generate",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:phase0": "tsx scripts/phase0/smoke-test.ts"
+    "test:phase0": "tsx scripts/phase0/smoke-test.ts",
+    "qa:visual": "tsx scripts/qa/visual-qa-batch.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1089.0",
@@ -69,6 +70,7 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^9.11.0",
     "eslint-config-next": "15.5.20",
+    "playwright": "^1.62.1",
     "postcss": "^8.4.45",
     "prisma": "^5.20.0",
     "tailwindcss": "^3.4.11",
