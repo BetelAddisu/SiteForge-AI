@@ -118,6 +118,7 @@ interface TokenUsage {
 }
 
 const GEMINI_PRICING: Record<string, { inputPer1M: number; outputPer1M: number }> = {
+  'gemini-2.5-flash-lite': { inputPer1M: 0.10, outputPer1M: 0.40 },
   'gemini-2.0-flash': { inputPer1M: 0.10, outputPer1M: 0.40 },
   'gemini-2.0-flash-lite': { inputPer1M: 0.075, outputPer1M: 0.30 },
   'gemini-1.5-pro': { inputPer1M: 1.25, outputPer1M: 5.00 },
@@ -129,7 +130,7 @@ export function estimateTokenCost(
   inputTokens: number,
   outputTokens: number
 ): number {
-  const pricing = GEMINI_PRICING[model] || GEMINI_PRICING['gemini-2.0-flash'];
+  const pricing = GEMINI_PRICING[model] || GEMINI_PRICING['gemini-2.5-flash-lite'];
   return (inputTokens / 1_000_000) * pricing.inputPer1M + 
          (outputTokens / 1_000_000) * pricing.outputPer1M;
 }
@@ -157,7 +158,7 @@ export class AIContentEngine {
 
   constructor(config: AIConfig) {
     this.client = new GoogleGenAI({ apiKey: config.apiKey });
-    this.model = config.model || 'gemini-2.0-flash';
+    this.model = config.model || 'gemini-2.5-flash-lite';
     this.verbose = config.temperature !== undefined;
   }
 

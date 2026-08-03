@@ -100,6 +100,7 @@ type ServiceContent = z.infer<typeof ServiceContentSchema>;
 // ============================================================================
 
 const GEMINI_PRICING = {
+  'gemini-2.5-flash-lite': { inputPer1M: 0.10, outputPer1M: 0.40 },
   'gemini-2.0-flash': { inputPer1M: 0.10, outputPer1M: 0.40 },
   'gemini-2.0-flash-lite': { inputPer1M: 0.075, outputPer1M: 0.30 },
   'gemini-1.5-pro': { inputPer1M: 1.25, outputPer1M: 5.00 },
@@ -121,7 +122,7 @@ class AIReplacer {
   private model: string;
   private verbose: boolean;
   
-  constructor(apiKey: string, model: string = 'gemini-2.0-flash', verbose: boolean = false) {
+  constructor(apiKey: string, model: string = 'gemini-2.5-flash-lite', verbose: boolean = false) {
     this.client = new GoogleGenAI({ apiKey });
     this.model = model;
     this.verbose = verbose;
@@ -169,7 +170,7 @@ class AIReplacer {
       // Estimate tokens (rough approximation)
       const inputTokens = Math.ceil(prompt.length / 4);
       const outputTokens = Math.ceil(text.length / 4);
-      const pricing = GEMINI_PRICING[this.model as keyof typeof GEMINI_PRICING] || GEMINI_PRICING['gemini-2.0-flash'];
+      const pricing = GEMINI_PRICING[this.model as keyof typeof GEMINI_PRICING] || GEMINI_PRICING['gemini-2.5-flash-lite'];
       const estimatedCost = (inputTokens / 1_000_000) * pricing.inputPer1M + 
                            (outputTokens / 1_000_000) * pricing.outputPer1M;
       
@@ -369,10 +370,10 @@ async function main() {
   console.log(`   Business: ${businessName}`);
   console.log(`   Industry: ${industry}`);
   console.log(`   Test Count: ${args.count}`);
-  console.log(`   Model: gemini-2.0-flash`);
+  console.log(`   Model: gemini-2.5-flash-lite`);
   console.log('');
   
-  const ai = new AIReplacer(apiKey, 'gemini-2.0-flash', args.verbose);
+  const ai = new AIReplacer(apiKey, 'gemini-2.5-flash-lite', args.verbose);
   
   const results: { scenario: string; success: boolean; attempts: number; usage?: TokenUsage; error?: string }[] = [];
   let totalCost = 0;

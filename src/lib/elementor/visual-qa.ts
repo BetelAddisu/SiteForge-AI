@@ -47,7 +47,7 @@ export async function compareScreenshots(
   options: CompareOptions
 ): Promise<{ success: boolean; data?: VisualQaReport; error?: string }> {
   const client = new GoogleGenAI({ apiKey: options.apiKey });
-  const model = options.model || 'gemini-2.0-flash';
+  const model = options.model || 'gemini-2.5-flash-lite';
 
   const prompt = `You are comparing two screenshots of the same website template${options.templateName ? ` ("${options.templateName}")` : ''}.
 
