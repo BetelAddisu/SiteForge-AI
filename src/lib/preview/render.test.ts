@@ -219,7 +219,11 @@ describe('renderWidget coverage', () => {
     expect(html).toContain('poster="https://example.com/poster.jpg"');
   });
 
-  it('resolves Theme Styles __globals__ page_settings (body_color → white via custom color)', () => {
+  it('keeps structured system_colors authoritative over theme-style body_color', () => {
+    // Some kits ship BOTH a system_colors array and flat theme-style fields.
+    // The structured palette is what globals/colors?id=* resolves to, so the
+    // flat body_color must NOT clobber the palette entry (a theme whose
+    // body_color points at a custom white color must not turn "text" white).
     const tree = [{
       id: 'theme-style-test',
       elType: 'section' as const,
@@ -246,7 +250,8 @@ describe('renderWidget coverage', () => {
       },
     });
 
-    expect(html).toContain('background:#FFFFFF');
+    expect(html).toContain('background:#160C1C');
+    expect(html).not.toContain('background:#FFFFFF');
   });
 
   it('renders gradient background overlays with resolved __globals__ colors', () => {
@@ -752,5 +757,137 @@ describe('renderWidget coverage', () => {
 
     expect(html).toContain('justify-content:center');
     expect(html).toContain('align-items:center');
+  });
+
+  it('emits units on string dimensions (Elementor stores them as strings)', () => {
+    const tree = [{
+      id: 'string-dim',
+      elType: 'section' as const,
+      settings: {
+        background_background: 'classic',
+        background_color: '#0A0903',
+        padding: { unit: 'px', top: '200', right: '0', bottom: '120', left: '0' },
+        margin: { unit: 'px', top: '0', right: '0', bottom: '0', left: '0' },
+        border_border: 'solid',
+        border_width: { unit: 'px', top: '1', right: '0', bottom: '1', left: '0' },
+      },
+      elements: [],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('padding:200px 0px 120px 0px');
+    expect(html).toContain('margin:0px 0px 0px 0px');
+    expect(html).toContain('border:1px 0px 1px 0px solid');
+    // No unitless dimension declarations anywhere
+    expect(html).not.toMatch(/padding:\d+ \d+ \d+ \d+/);
+  });
+
+  it('does not let the background color overlay cover the background image', () => {
+    const tree = [{
+      id: 'img-bg',
+      elType: 'container' as const,
+      settings: {
+        background_background: 'classic',
+        background_color: '#0A0903',
+        background_image: { url: 'https://example.com/hero.jpg', id: 1 },
+        background_position: 'bottom center',
+        background_size: 'cover',
+      },
+      elements: [],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('background-image:url(https://example.com/hero.jpg)');
+    expect(html).toContain('background-position:bottom center');
+    // The image overlay must be the only background-layer div; a solid color
+    // overlay would sit on top and hide the image.
+    expect((html.match(/elementor-background-overlay[^>]*background-image/g) || []).length).toBe(1);
+    expect((html.match(/elementor-background-overlay[^>]*background-color:#0A0903;/g) || [])).toHaveLength(0);
+  });
+
+  it('renders background_overlay_image for classic overlays', () => {
+    const tree = [{
+      id: 'ov-img',
+      elType: 'container' as const,
+      settings: {
+        background_background: 'classic',
+        background_color: '#0A0903',
+        background_overlay_background: 'classic',
+        background_overlay_image: { url: 'https://example.com/texture.png', id: 2 },
+        background_overlay_opacity: { unit: 'px', size: 0.18 },
+      },
+      elements: [],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('background-image:url(https://example.com/texture.png)');
+    expect(html).toContain('opacity:0.18');
+  });
+
+  it('treats translucent 8-digit-hex backgrounds as non-solid for contrast', () => {
+    const tree = [{
+      id: 'alpha-bg',
+      elType: 'container' as const,
+      settings: {
+        background_background: 'classic',
+        background_color: '#FFFFFF14',
+      },
+      elements: [],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('background:#FFFFFF14');
+    // No contrast color forced — text inherits from the parent instead.
+    expect(html).not.toMatch(/color:#333333/);
+  });
+
+  it('uses the kit text color as the page body default', () => {
+    const tree = [{
+      id: 'body-color',
+      elType: 'section' as const,
+      settings: {},
+      elements: [],
+    }] as any;
+    const html = renderElementorToHtml(tree, {
+      globalKitPageSettings: {
+        system_colors: [
+          { _id: 'primary', title: 'Primary', color: '#FFFFFF' },
+          { _id: 'secondary', title: 'Secondary', color: '#0A0903' },
+          { _id: 'text', title: 'Text', color: '#A7A7A7' },
+          { _id: 'accent', title: 'Accent', color: '#FF4F22' },
+        ],
+      },
+    });
+
+    expect(html).toContain('color: #A7A7A7');
+  });
+
+  it('resolves a dark kit secondary for global background references', () => {
+    const tree = [{
+      id: 'dark-kit',
+      elType: 'container' as const,
+      settings: {
+        background_background: 'classic',
+        background_color: '',
+        __globals__: { background_color: 'globals/colors?id=secondary' },
+      },
+      elements: [],
+    }] as any;
+    const html = renderElementorToHtml(tree, {
+      globalKitPageSettings: {
+        system_colors: [
+          { _id: 'primary', title: 'Primary', color: '#FFFFFF' },
+          { _id: 'secondary', title: 'Secondary', color: '#0A0903' },
+          { _id: 'text', title: 'Text', color: '#A7A7A7' },
+          { _id: 'accent', title: 'Accent', color: '#FF4F22' },
+        ],
+        // Flat theme-style fields must NOT override the structured palette:
+        // h2_color points at the kit's white primary but secondary stays dark.
+        h2_color: '#FFFFFF',
+      },
+    });
+
+    expect(html).toContain('background:#0A0903');
+    expect(html).toContain('color:#ffffff');
   });
 });

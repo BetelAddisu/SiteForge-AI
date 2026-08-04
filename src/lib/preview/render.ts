@@ -117,10 +117,13 @@ export function extractKitStyles(
 
   // Helper: apply theme-style page_settings onto kitStyles
   function applyPageSettings(ps: Record<string, unknown>): void {
+    const sysColors = Array.isArray(ps.system_colors) ? ps.system_colors as unknown as Array<{ _id?: string; title?: string; color?: string }> : null;
+    const sysTypo = Array.isArray(ps.system_typography) ? ps.system_typography as unknown as Array<Record<string, unknown>> : null;
+    const hasStructuredColors = sysColors !== null;
+    const hasStructuredTypography = sysTypo !== null;
     // System colors array (Digicy format)
-    if (Array.isArray(ps.system_colors)) {
-      ps.system_colors.forEach((c: unknown) => {
-        const color = c as { _id?: string; title?: string; color?: string };
+    if (sysColors) {
+      sysColors.forEach(color => {
         if (color._id && color.color) {
           const existing = kitStyles.systemColors.find(sc => sc._id === color._id);
           if (existing) existing.color = resolvePsColor(color.color) || color.color;
@@ -132,9 +135,8 @@ export function extractKitStyles(
       kitStyles.customColors = ps.custom_colors as ElementorKitStyles['customColors'];
     }
     // System typography array
-    if (Array.isArray(ps.system_typography)) {
-      ps.system_typography.forEach((t: unknown) => {
-        const typo = t as Record<string, unknown>;
+    if (sysTypo) {
+      sysTypo.forEach(typo => {
         const id = typo._id as string;
         if (id) {
           const existing = kitStyles.systemTypography.find(st => st._id === id);
@@ -151,6 +153,11 @@ export function extractKitStyles(
     }
 
     // --- Theme Styles individual fields (Saras format) ---
+    // Only apply this fallback when the kit does NOT provide the structured
+    // system_colors/system_typography arrays. When those arrays exist they are
+    // authoritative; mapping h1/h2/body colors onto the palette entries here
+    // would clobber the real palette colors (e.g. h2_color pointing at the
+    // kit's white "primary" must not redefine the near-black "secondary").
     // Map: h1 → primary, h2 → secondary, body → text, link → accent
     const headingColorMap: Record<string, string> = {
       h1_color: 'primary', h2_color: 'secondary', h3_color: 'primary',
@@ -159,13 +166,15 @@ export function extractKitStyles(
       link_normal_color: 'accent',
     };
     const psGlobals = ps.__globals__ as Record<string, unknown> | undefined;
-    for (const [key, sysId] of Object.entries(headingColorMap)) {
-      // __globals__ map takes priority over the direct (cached) value
-      const rawVal = (psGlobals && psGlobals[key] as string) || (ps[key] as string | undefined);
-      const val = resolvePsColor(rawVal);
-      if (val) {
-        const existing = kitStyles.systemColors.find(sc => sc._id === sysId);
-        if (existing) existing.color = val;
+    if (!hasStructuredColors) {
+      for (const [key, sysId] of Object.entries(headingColorMap)) {
+        // __globals__ map takes priority over the direct (cached) value
+        const rawVal = (psGlobals && psGlobals[key] as string) || (ps[key] as string | undefined);
+        const val = resolvePsColor(rawVal);
+        if (val) {
+          const existing = kitStyles.systemColors.find(sc => sc._id === sysId);
+          if (existing) existing.color = val;
+        }
       }
     }
 
@@ -174,11 +183,13 @@ export function extractKitStyles(
       h1_typography_font_family: 'primary', body_typography_font_family: 'text',
       h2_typography_font_family: 'secondary', link_normal_typography_font_family: 'accent',
     };
-    for (const [key, sysId] of Object.entries(headingFontMap)) {
-      const val = ps[key] as string | undefined;
-      if (val) {
-        const existing = kitStyles.systemTypography.find(st => st._id === sysId);
-        if (existing) existing.typography_font_family = val;
+    if (!hasStructuredTypography) {
+      for (const [key, sysId] of Object.entries(headingFontMap)) {
+        const val = ps[key] as string | undefined;
+        if (val) {
+          const existing = kitStyles.systemTypography.find(st => st._id === sysId);
+          if (existing) existing.typography_font_family = val;
+        }
       }
     }
 
@@ -366,10 +377,12 @@ function resolveSetting(
 }
 
 /**
- * Parse a CSS color into RGB. Returns null for unparseable values
- * (named colors, var() references, etc.) so callers can skip them.
+ * Parse a CSS color into RGB (plus alpha when known). Returns null for
+ * unparseable values (named colors, var() references, etc.) so callers can
+ * skip them. Handles 3/6/8-digit hex and rgba(). Elementor kit colors are
+ * frequently 8-digit hex like "#FFFFFF14" (near-transparent white).
  */
-function parseColor(color: string): { r: number; g: number; b: number } | null {
+function parseColor(color: string): { r: number; g: number; b: number; a?: number } | null {
   const c = (color || '').trim();
   let m = c.match(/^#([0-9a-f]{3})$/i);
   if (m) {
@@ -387,9 +400,23 @@ function parseColor(color: string): { r: number; g: number; b: number } | null {
       b: parseInt(m[1].slice(4, 6), 16),
     };
   }
-  m = c.match(/rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+  m = c.match(/^#([0-9a-f]{8})$/i);
   if (m) {
-    return { r: +m[1], g: +m[2], b: +m[3] };
+    return {
+      r: parseInt(m[1].slice(0, 2), 16),
+      g: parseInt(m[1].slice(2, 4), 16),
+      b: parseInt(m[1].slice(4, 6), 16),
+      a: parseInt(m[1].slice(6, 8), 16) / 255,
+    };
+  }
+  m = c.match(/rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s]+([\d.]+))?\)/);
+  if (m) {
+    return {
+      r: +m[1],
+      g: +m[2],
+      b: +m[3],
+      a: m[4] !== undefined ? +m[4] : undefined,
+    };
   }
   return null;
 }
@@ -397,11 +424,13 @@ function parseColor(color: string): { r: number; g: number; b: number } | null {
 /**
  * Determine whether a CSS color is visually dark (low luminance).
  * Unparseable colors are treated as light so we never assume white text
- * on an unknown (possibly light) background.
+ * on an unknown (possibly light) background. Near-transparent colors defer
+ * to whatever is behind them, so they are never treated as solid dark/light.
  */
 function isDarkColor(color: string): boolean {
   const rgb = parseColor(color);
   if (!rgb) return false;
+  if (rgb.a !== undefined && rgb.a < 0.5) return false;
   const lum = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
   return lum < 0.5;
 }
@@ -409,11 +438,15 @@ function isDarkColor(color: string): boolean {
 /**
  * Pick a readable text color for the given background: white for dark
  * backgrounds, dark gray for light backgrounds. Returns '' when the
- * background is unknown (e.g. a plain image with no color), so the
- * browser's natural inheritance is preserved.
+ * background is unknown (e.g. a plain image with no color) or too
+ * transparent to judge, so the browser's natural inheritance is preserved.
  */
 function contrastTextColor(bgColor: string): string {
   if (!bgColor) return '';
+  const parsed = parseColor(bgColor);
+  // A mostly-transparent color paints very little of the actual backdrop;
+  // let the parent's text color inherit instead of guessing.
+  if (parsed && parsed.a !== undefined && parsed.a < 0.5) return '';
   return isDarkColor(bgColor) ? '#ffffff' : '#333333';
 }
 
@@ -451,14 +484,30 @@ function getEffectiveBackgroundColor(settings: Record<string, unknown>, resolved
 // Elementor Dimension Helpers
 // ============================================================
 
+/**
+ * Attach a unit to a dimension value. Elementor stores values as bare numbers
+ * OR strings (e.g. "200") with the unit in a sibling `unit` field, so we must
+ * append it ourselves — a unitless padding/margin is invalid CSS and silently
+ * drops the whole declaration. If the value already carries a unit, keep it.
+ */
+function unitize(raw: unknown, unit?: unknown): string {
+  if (raw == null) return '';
+  const s = String(raw).trim();
+  if (s === '') return '';
+  if (/[a-z%]$/i.test(s)) return s;
+  const u = unit && String(unit) !== '' ? String(unit) : 'px';
+  return `${s}${u}`;
+}
+
 function dimVal(v: unknown, fallback = ''): string {
   if (v == null || v === '') return fallback;
   if (typeof v === 'number') return `${v}px`;
   if (typeof v === 'object') {
     const o = v as Record<string, unknown>;
-    if (typeof o.size === 'number') return `${o.size}${o.unit || 'px'}`;
+    if (o.size != null && o.size !== '') return unitize(o.size, o.unit);
   }
-  return String(v);
+  const s = String(v).trim();
+  return s === '' ? fallback : s;
 }
 
 function dimStr(v: unknown, fallback = ''): string {
@@ -466,19 +515,18 @@ function dimStr(v: unknown, fallback = ''): string {
   if (typeof v === 'number') return `${v}px`;
   if (typeof v === 'object') {
     const o = v as Record<string, unknown>;
-    if (typeof o.top === 'number') {
+    if (o.top != null && o.top !== '') {
       const u = o.unit || 'px';
-      const t = String(o.top), r = String(o.right ?? o.top), b = String(o.bottom ?? o.top), l = String(o.left ?? o.right ?? o.top);
-      return `${t}${u} ${r}${u} ${b}${u} ${l}${u}`;
-    }
-    if (typeof o.size === 'number') return `${o.size}${o.unit || 'px'}`;
-    if (typeof o.top === 'string') {
-      const u = o.unit || 'px';
-      const t = o.top, r = o.right ?? t, b = o.bottom ?? t, l = o.left ?? r;
+      const t = unitize(o.top, u);
+      const r = unitize(o.right ?? o.top, u);
+      const b = unitize(o.bottom ?? o.top, u);
+      const l = unitize(o.left ?? o.right ?? o.top, u);
       return `${t} ${r} ${b} ${l}`;
     }
+    if (o.size != null && o.size !== '') return unitize(o.size, o.unit);
   }
-  return String(v);
+  const s = String(v).trim();
+  return s === '' ? fallback : s;
 }
 
 function buildContainerStyle(settings: Record<string, unknown>, resolvedStyles?: ResolvedStyles): string {
@@ -524,8 +572,10 @@ function buildContainerStyle(settings: Record<string, unknown>, resolvedStyles?:
   const bs = settings.border_border as string;
   if (bs && bs !== 'none') {
     const bw = dimStr(settings.border_width) || '1px';
-    const bc = (settings.border_color as string) || '#e5e7eb';
-    parts.push(`border:${bw} ${bs} ${bc}`);
+    const bc = resolvedStyles
+      ? resolveSetting(settings, 'border_color', resolvedStyles)
+      : (settings.border_color as string) || '';
+    parts.push(`border:${bw} ${bs} ${bc || '#e5e7eb'}`);
   }
   const br = dimStr(settings.border_radius);
   if (br) parts.push(`border-radius:${br}`);
@@ -1846,11 +1896,15 @@ function renderBackgroundOverlay(settings: Record<string, unknown>, resolvedStyl
   const bgColor = resolvedStyles
     ? resolveSetting(settings, 'background_color', resolvedStyles)
     : (settings.background_color as string) || '';
-  if (bgColor && bg !== 'video') {
+  const bgImage = settings.background_image as { url?: string; id?: number } | undefined;
+  const hasBgImage = bg === 'classic' && !!bgImage?.url;
+  // A solid color overlay must NOT be painted when a background image is also
+  // set, or it fully covers the image. When both exist the image layers above
+  // the color (which stays as the element's own fallback via buildContainerStyle).
+  if (bgColor && bg !== 'video' && !hasBgImage) {
     overlay += `<div class="elementor-background-overlay" style="background-color:${bgColor};"></div>`;
   }
-  const bgImage = settings.background_image as { url?: string; id?: number } | undefined;
-  if (bg === 'classic' && bgImage?.url) {
+  if (hasBgImage) {
     const position = (settings.background_position as string) || 'center center';
     const repeat = (settings.background_repeat as string) || 'no-repeat';
     const size = (settings.background_size as string) || 'cover';
@@ -1878,8 +1932,14 @@ function renderBackgroundOverlay(settings: Record<string, unknown>, resolvedStyl
     const overlayColor = resolvedStyles
       ? resolveSetting(settings, 'background_overlay_color', resolvedStyles)
       : (settings.background_overlay_color as string) || '';
-    if (overlayColor) {
-      const opacity = (settings.background_overlay_opacity as { size?: number })?.size ?? 0.5;
+    const overlayImage = settings.background_overlay_image as { url?: string; id?: number } | undefined;
+    const opacity = (settings.background_overlay_opacity as { size?: number })?.size ?? 0.5;
+    if (overlayImage?.url) {
+      const position = (settings.background_overlay_position as string) || 'center center';
+      const repeat = (settings.background_overlay_repeat as string) || 'no-repeat';
+      const size = (settings.background_overlay_size as string) || 'cover';
+      overlay += `<div class="elementor-background-overlay" style="background-image:url(${esc(overlayImage.url)});background-position:${position};background-repeat:${repeat};background-size:${size};opacity:${opacity};"></div>`;
+    } else if (overlayColor) {
       overlay += `<div class="elementor-background-overlay" style="background-color:${overlayColor};opacity:${opacity};"></div>`;
     }
   } else if (overlayType === 'gradient') {
@@ -2116,7 +2176,7 @@ ${googleFontsLink}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js" defer></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
-  body { margin: 0; padding: 0; font-family: ${bodyFont}, 'Roboto', sans-serif; line-height: 1.5; color: #333; background: #fff; }
+  body { margin: 0; padding: 0; font-family: ${bodyFont}, 'Roboto', sans-serif; line-height: 1.5; color: ${resolvedStyles.colors.text || '#333333'}; background: #fff; }
   a { box-shadow: none; text-decoration: none; }
   img { height: auto; max-width: 100%; border: none; border-radius: 0; box-shadow: none; }
   hr { margin: 0; background-color: transparent; }
