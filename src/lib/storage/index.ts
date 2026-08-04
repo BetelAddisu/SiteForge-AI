@@ -22,6 +22,16 @@ import type { StorageProvider, UploadResult, FileInfo } from './types';
 
 export type { StorageProvider, UploadResult, FileInfo };
 
+/**
+ * Name of the bucket the active provider stores files in. Provider-agnostic:
+ * both built-in providers keep template/media assets in their own configured
+ * bucket, so this just mirrors the relevant env var.
+ */
+export const STORAGE_BUCKET =
+  process.env.R2_BUCKET_NAME ||
+  process.env.SUPABASE_STORAGE_BUCKET ||
+  'templates';
+
 let cachedProvider: StorageProvider | null = null;
 
 /**

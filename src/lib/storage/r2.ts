@@ -85,6 +85,10 @@ export function createR2StorageProvider(): StorageProvider {
       return `${process.env.R2_PUBLIC_URL || ''}/${key}`;
     },
 
+    async getSignedDownloadUrl(key: string, expiresIn: number = 3600): Promise<string> {
+      return getSignedDownloadUrl(key, expiresIn);
+    },
+
     async listFiles(prefix?: string): Promise<FileInfo[]> {
       const command = new ListObjectsV2Command({
         Bucket: R2_BUCKET,

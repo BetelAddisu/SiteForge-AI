@@ -11,8 +11,7 @@
  */
 
 import JSZip from 'jszip';
-import { r2, R2_BUCKET } from '@/lib/storage/r2';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { getStorageProvider } from '@/lib/storage';
 
 // ============================================================================
 // Manifest types
@@ -117,13 +116,8 @@ export async function getZipFromR2(zipName: string): Promise<JSZip | null> {
   }
 
   try {
-    const command = new GetObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: zipName,
-    });
-
-    const response = await r2.send(command);
-    const zipData = await response.Body?.transformToByteArray();
+    const provider = await getStorageProvider();
+    const zipData = await provider.downloadFile(zipName);
 
     if (!zipData) return null;
 
@@ -132,7 +126,7 @@ export async function getZipFromR2(zipName: string): Promise<JSZip | null> {
 
     return zip;
   } catch (err) {
-    console.error('[Manifest] Error fetching ZIP from R2:', err);
+    console.error('[Manifest] Error fetching ZIP from storage:', err);
     return null;
   }
 }

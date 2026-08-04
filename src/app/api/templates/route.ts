@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getSignedDownloadUrl, listFiles } from '@/lib/storage/r2';
+import { getStorageProvider } from '@/lib/storage';
 import { getZipFromR2, extractKitSlug, detectCategory, detectIndustry, slugify, type Manifest } from '@/lib/templates/manifest';
 
-// Fetch templates from R2
+// Fetch templates from storage
 async function fetchTemplatesFromR2() {
-  console.log('[R2] Starting fetch from R2...');
+  console.log('[Templates] Starting fetch from storage...');
   
-  const zipFiles = await listFiles('');
+  const provider = await getStorageProvider();
+  const files = await provider.listFiles();
+  const zipFiles = files.map(f => f.key);
   const zipNames = zipFiles.filter(f => f.endsWith('.zip'));
-  console.log(`[R2] Found ${zipNames.length} ZIP files`);
+  console.log(`[Templates] Found ${zipNames.length} ZIP files`);
   
   const kitMap = new Map<string, any>();
   const templates: any[] = [];
@@ -111,7 +113,8 @@ export async function GET(request: Request) {
       const template = templates.find(t => t.id === templateId);
       
       if (template) {
-        const signedUrl = await getSignedDownloadUrl(template.storageKey);
+        const provider = await getStorageProvider();
+        const signedUrl = await provider.getSignedDownloadUrl(template.storageKey);
         return NextResponse.json({ 
           downloadUrl: signedUrl,
           template,
@@ -121,8 +124,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 });
     }
     
-    // Fetch from R2 directly
-    console.log('[Templates] Fetching from R2...');
+    // Fetch from storage directly
+    console.log('[Templates] Fetching from storage...');
     const { kits, templates } = await fetchTemplatesFromR2();
     
     // Apply filters

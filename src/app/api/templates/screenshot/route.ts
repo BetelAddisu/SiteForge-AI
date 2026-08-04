@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { listFiles } from '@/lib/storage/r2';
+import { getStorageProvider } from '@/lib/storage';
 import { getZipFromR2, extractKitSlug, slugify, type Manifest } from '@/lib/templates/manifest';
 
 export async function GET(request: Request) {
@@ -21,7 +21,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Template kit or ID required' }, { status: 400 });
     }
 
-    const zipFiles = await listFiles('');
+    const provider = await getStorageProvider();
+    const zipFiles = (await provider.listFiles()).map(f => f.key);
     const zipNames = zipFiles.filter(f => f.endsWith('.zip'));
 
     let targetZip: string | null = null;

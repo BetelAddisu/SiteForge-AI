@@ -10,18 +10,19 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { listFiles } from '@/lib/storage/r2';
+import { getStorageProvider } from '@/lib/storage';
 import { getZipFromR2, extractKitSlug, detectCategory, detectIndustry, slugify, type Manifest } from '@/lib/templates/manifest';
 
 export async function POST(request: Request) {
   try {
-    console.log('[Import] Starting template import from R2...');
+    console.log('[Import] Starting template import from storage...');
     
-    // List all ZIP files from R2
-    const zipNames = await listFiles('');
-    const zipFiles = zipNames.filter(f => f.endsWith('.zip'));
+    // List all ZIP files from the configured storage
+    const provider = await getStorageProvider();
+    const listed = (await provider.listFiles()).map(f => f.key);
+    const zipFiles = listed.filter(f => f.endsWith('.zip'));
     
-    console.log(`[Import] Found ${zipFiles.length} ZIP files in R2`);
+    console.log(`[Import] Found ${zipFiles.length} ZIP files in storage`);
     
     const results = {
       kitsFound: zipFiles.length,

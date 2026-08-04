@@ -14,7 +14,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { listFiles } from '@/lib/storage/r2';
+import { getStorageProvider } from '@/lib/storage';
 import JSZip from 'jszip';
 import { renderElementorToHtml, type ElementorNode } from '@/lib/preview/render';
 import { getZipFromR2, extractKitSlug, slugify, type Manifest } from '@/lib/templates/manifest';
@@ -108,7 +108,8 @@ export async function GET(request: Request) {
     const parts = templateId.split('-');
     
     // Find the ZIP file and extract the template
-    const zipFiles = await listFiles('');
+    const provider = await getStorageProvider();
+    const zipFiles = (await provider.listFiles()).map(f => f.key);
     const zipNames = zipFiles.filter(f => f.endsWith('.zip'));
     
     for (const zipName of zipNames) {

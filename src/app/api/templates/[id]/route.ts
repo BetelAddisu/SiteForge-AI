@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSignedDownloadUrl } from '@/lib/storage/r2';
+import { getStorageProvider } from '@/lib/storage';
 
 export async function GET(
   request: Request,
@@ -22,10 +22,11 @@ export async function GET(
       return NextResponse.json({ error: 'Template not found' }, { status: 404 });
     }
 
-    // Generate signed download URL for R2
+    // Generate signed download URL for the configured storage
     let downloadUrl: string | null = null;
     if (template.storageProvider === 'r2' && template.storageKey) {
-      downloadUrl = await getSignedDownloadUrl(template.storageKey);
+      const provider = await getStorageProvider();
+      downloadUrl = await provider.getSignedDownloadUrl(template.storageKey);
     }
 
     // Add screenshot URL if not present

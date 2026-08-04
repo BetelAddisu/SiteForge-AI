@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import { listFiles, R2_BUCKET } from '@/lib/storage/r2';
+import { getStorageProvider, STORAGE_BUCKET } from '@/lib/storage';
 import { getZipFromR2, extractKitSlug, type Manifest } from '@/lib/templates/manifest';
 
 export async function GET() {
   try {
-    console.log('[Debug] R2_BUCKET:', R2_BUCKET);
+    console.log('[Debug] STORAGE_BUCKET:', STORAGE_BUCKET);
     
-    const zipFiles = await listFiles('');
+    const provider = await getStorageProvider();
+    const zipFiles = (await provider.listFiles()).map(f => f.key);
     const zipNames = zipFiles.filter(f => f.endsWith('.zip'));
     
     console.log('[Debug] Found', zipNames.length, 'ZIP files');
@@ -58,7 +59,7 @@ export async function GET() {
     
     return NextResponse.json({
       success: true,
-      bucket: R2_BUCKET,
+      bucket: STORAGE_BUCKET,
       totalZipFiles: zipNames.length,
       firstFewZips: zipNames.slice(0, 5),
       debugResults
@@ -69,7 +70,7 @@ export async function GET() {
     return NextResponse.json({
       success: false,
       error: String(error),
-      bucket: R2_BUCKET,
+      bucket: STORAGE_BUCKET,
     }, { status: 500 });
   }
 }

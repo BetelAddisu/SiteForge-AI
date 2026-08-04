@@ -52,6 +52,18 @@ export function createSupabaseStorageProvider(): StorageProvider {
       return data.publicUrl;
     },
 
+    async getSignedDownloadUrl(key: string, expiresIn: number = 3600): Promise<string> {
+      const client = getClient();
+      const { data, error } = await client.storage
+        .from(BUCKET)
+        .createSignedUrl(key, expiresIn);
+      if (error || !data?.signedUrl) {
+        // Fall back to the public URL if signed URLs are unavailable.
+        return this.getPublicUrl(key);
+      }
+      return data.signedUrl;
+    },
+
     async listFiles(prefix?: string): Promise<FileInfo[]> {
       const client = getClient();
       const { data, error } = await client.storage.from(BUCKET).list(prefix);

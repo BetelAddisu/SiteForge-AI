@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { prisma } from '@/lib/prisma';
-import { listFiles as listR2Files } from '@/lib/storage/r2';
+import { getStorageProvider } from '@/lib/storage';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -64,9 +64,10 @@ export async function GET() {
       status.storage.error = 'Supabase credentials not configured';
     }
   } else {
-    // R2 is the active provider
+    // Check the configured (R2 or other) provider
     try {
-      const files = await listR2Files('');
+      const provider = await getStorageProvider();
+      const files = await provider.listFiles();
       status.storage.connected = true;
       status.storage.bucketExists = files.length > 0;
     } catch (error) {
