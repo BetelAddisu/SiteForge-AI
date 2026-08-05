@@ -457,14 +457,14 @@ function contrastTextColor(bgColor: string): string {
  * color exists.
  */
 function getEffectiveBackgroundColor(settings: Record<string, unknown>, resolvedStyles?: ResolvedStyles): string {
-  const bg = settings.background_background as string;
+  const bg = (settings.background_background as string) || (settings._background_background as string) || '';
   if (!bg || bg === 'none' || bg === '' || bg === 'video') return '';
   const c1 = resolvedStyles
-    ? resolveSetting(settings, 'background_color', resolvedStyles)
-    : (settings.background_color as string) || '';
+    ? resolveSetting(settings, 'background_color', resolvedStyles) || resolveSetting(settings, '_background_color', resolvedStyles)
+    : (settings.background_color as string) || (settings._background_color as string) || '';
   const c2 = resolvedStyles
-    ? resolveSetting(settings, 'background_gradient_second_color', resolvedStyles)
-    : (settings.background_gradient_second_color as string) || '';
+    ? resolveSetting(settings, 'background_gradient_second_color', resolvedStyles) || resolveSetting(settings, '_background_gradient_second_color', resolvedStyles)
+    : (settings.background_gradient_second_color as string) || (settings._background_gradient_second_color as string) || '';
   let color = c1;
   if (bg === 'gradient' && c2) {
     // Text must stay readable across the whole gradient; assume the darker end.
@@ -532,14 +532,16 @@ function dimStr(v: unknown, fallback = ''): string {
 function buildContainerStyle(settings: Record<string, unknown>, resolvedStyles?: ResolvedStyles): string {
   const parts: string[] = [];
 
-  // Background — resolve global color refs via __globals__ when available
-  const bg = settings.background_background as string;
+  // Elementor stores advanced widget styling under "_"-prefixed keys
+  // (_padding, _background_*, _border_*, ...). Fall back to those so boxes,
+  // cards and widgets keep their padding/background/border in the preview.
+  const bg = (settings.background_background as string) || (settings._background_background as string) || '';
   const bgColor = resolvedStyles
-    ? resolveSetting(settings, 'background_color', resolvedStyles)
-    : (settings.background_color as string) || '';
+    ? resolveSetting(settings, 'background_color', resolvedStyles) || resolveSetting(settings, '_background_color', resolvedStyles)
+    : (settings.background_color as string) || (settings._background_color as string) || '';
   const bgColor2 = resolvedStyles
-    ? resolveSetting(settings, 'background_gradient_second_color', resolvedStyles)
-    : (settings.background_gradient_second_color as string) || '';
+    ? resolveSetting(settings, 'background_gradient_second_color', resolvedStyles) || resolveSetting(settings, '_background_gradient_second_color', resolvedStyles)
+    : (settings.background_gradient_second_color as string) || (settings._background_gradient_second_color as string) || '';
   if (bg === 'gradient') {
     const type = (settings.background_gradient_type as string) || 'linear';
     const angle = ((settings.background_gradient_angle as { size?: number })?.size) ?? 180;
@@ -561,23 +563,23 @@ function buildContainerStyle(settings: Record<string, unknown>, resolvedStyles?:
   if (textColor) parts.push(`color:${textColor}`);
 
   // Padding
-  const pad = dimStr(settings.padding);
+  const pad = dimStr(settings.padding) || dimStr(settings._padding);
   if (pad) parts.push(`padding:${pad}`);
 
   // Margin
-  const marg = dimStr(settings.margin);
+  const marg = dimStr(settings.margin) || dimStr(settings._margin);
   if (marg) parts.push(`margin:${marg}`);
 
   // Border
-  const bs = settings.border_border as string;
+  const bs = (settings.border_border as string) || (settings._border_border as string) || '';
   if (bs && bs !== 'none') {
-    const bw = dimStr(settings.border_width) || '1px';
+    const bw = dimStr(settings.border_width) || dimStr(settings._border_width) || '1px';
     const bc = resolvedStyles
-      ? resolveSetting(settings, 'border_color', resolvedStyles)
-      : (settings.border_color as string) || '';
+      ? resolveSetting(settings, 'border_color', resolvedStyles) || resolveSetting(settings, '_border_color', resolvedStyles)
+      : (settings.border_color as string) || (settings._border_color as string) || '';
     parts.push(`border:${bw} ${bs} ${bc || '#e5e7eb'}`);
   }
-  const br = dimStr(settings.border_radius);
+  const br = dimStr(settings.border_radius) || dimStr(settings._border_radius);
   if (br) parts.push(`border-radius:${br}`);
 
   // Box shadow
@@ -734,11 +736,16 @@ function renderImage(settings: Record<string, unknown>): string {
   const h = settings.height as { size?: number; unit?: string } | undefined;
   if (w?.size && w.size > 0) imgStyle += `width:${w.size}${w.unit || 'px'};`;
   if (h?.size && h.size > 0) imgStyle += `height:${h.size}${h.unit || 'px'};`;
-  if (settings.image_size_type === 'custom' && settings.image_custom_dimension) {
+  // Elementor stores custom image dimensions either with image_size === 'custom'
+  // or (in some kits) a legacy image_size_type flag.
+  const imageSize = settings.image_size as string | undefined;
+  if ((imageSize === 'custom' || settings.image_size_type === 'custom') && settings.image_custom_dimension) {
     const dim = settings.image_custom_dimension as { width?: number; height?: number };
     if (dim?.width) imgStyle += `width:${dim.width}px;`;
     if (dim?.height) imgStyle += `height:${dim.height}px;`;
   }
+  const radius = dimStr(settings.image_border_radius);
+  if (radius) imgStyle += `border-radius:${radius};`;
   if (settings.hover_animation) imgStyle += `transition:transform 0.3s;`;
   if (settings.object_fit) imgStyle += `object-fit:${settings.object_fit};`;
   const imgAttr = imgStyle ? ` style="${imgStyle}"` : '';
@@ -838,12 +845,29 @@ function renderImageBox(settings: Record<string, unknown>, resolvedStyles: Resol
   const titleColor = resolveSetting(settings, 'title_color', resolvedStyles);
   const descColor = resolveSetting(settings, 'description_color', resolvedStyles);
   const titleTypo = buildTypoStyle(settings);
-  const imageHtml = url ? `<figure class="elementor-image-box-img"><img src="${esc(url)}" alt="${esc(imageAlt)}" loading="lazy"${imgFallbackAttr()} /></figure>` : '';
+  // image_size controls the image width as a % of the box (Elementor default 100%).
+  const imageSize = settings.image_size as { size?: number; unit?: string } | undefined;
+  const imgWidth = imageSize?.size != null && imageSize.size > 0 ? imageSize.size : 100;
+  const borderRadius = dimStr(settings.image_border_radius);
+  const imageSpace = settings.image_space as { size?: number; unit?: string } | undefined;
+  const space = imageSpace?.size != null ? `${imageSpace.size}${imageSpace.unit || 'px'}` : '';
+  let figureStyle = `width:${imgWidth}%;`;
+  if (position === 'left' || position === 'right') {
+    if (space) figureStyle += `margin-right:${space};`;
+  } else {
+    figureStyle += 'margin-left:auto;margin-right:auto;';
+    if (space) figureStyle += `margin-bottom:${space};`;
+  }
+  let imgStyle = 'width:100%;height:auto;display:block;';
+  if (borderRadius) imgStyle += `border-radius:${borderRadius};`;
+  const imageHtml = url
+    ? `<figure class="elementor-image-box-img" style="${figureStyle}"><img src="${esc(url)}" alt="${esc(imageAlt)}" loading="lazy" style="${imgStyle}"${imgFallbackAttr()} /></figure>`
+    : '';
   const contentHtml = `<div class="elementor-image-box-content">
     <h3 class="elementor-image-box-title" style="${titleColor ? `color:${titleColor};` : ''}${titleTypo}">${esc(title)}</h3>
     <p class="elementor-image-box-description" style="${descColor ? `color:${descColor};` : ''}">${esc(description)}</p>
   </div>`;
-  const cls = position === 'left' ? ` elementor-image-box-${position}` : '';
+  const cls = position === 'left' || position === 'right' ? ` elementor-image-box-${position}` : '';
   return `<div class="elementor-image-box-wrapper${cls}">${imageHtml}${contentHtml}</div>`;
 }
 
@@ -953,8 +977,17 @@ function renderImageCarousel(settings: Record<string, unknown>): string {
   const slides = (settings.slides as Array<{ image?: { url?: string; alt?: string } }>) || [];
   let carouselImages = images.length > 0 ? images : slides.map(s => s.image || { url: '', alt: '' });
   if (carouselImages.length === 0) return `<div class="elementor-image-carousel-wrapper"><div class="elementor-image-carousel" style="padding:40px;text-align:center;color:#999;">[Image Carousel]</div></div>`;
+  // slides_to_show governs how many images fit side by side. Single-show
+  // carousels (e.g. fade) get full-width slides so the images stay large.
+  const slidesToShow = (settings.slides_to_show as number) || 1;
+  const gap = 16;
+  const slideWidth = slidesToShow > 1
+    ? `calc(${100 / slidesToShow}% - ${Math.round((gap * (slidesToShow - 1)) / slidesToShow)}px)`
+    : '100%';
+  const radius = dimStr(settings.image_border_radius);
+  const imgStyle = `width:100%;display:block;${radius ? `border-radius:${radius};` : ''}`;
   const items = carouselImages.map((img, i) =>
-    `<div class="swiper-slide" data-slide="${i}"><img src="${esc(img.url || '')}" alt="${esc(img.alt || '')}" loading="lazy" style="width:100%;display:block;"${imgFallbackAttr()} /></div>`
+    `<div class="swiper-slide" data-slide="${i}" style="width:${slideWidth}"><img src="${esc(img.url || '')}" alt="${esc(img.alt || '')}" loading="lazy" style="${imgStyle}"${imgFallbackAttr()} /></div>`
   ).join('');
   const dots = carouselImages.map((_, i) =>
     `<span class="sf-img-dot${i === 0 ? ' sf-active' : ''}" data-slide="${i}"></span>`
@@ -2218,7 +2251,7 @@ ${googleFontsLink}
   .elementor-col-80 { width: 80%; } .elementor-col-83 { width: 83.333%; } .elementor-col-90 { width: 90%; }
   .elementor-col-100 { width: 100%; }
 
-  .elementor-widget { position: relative; width: 100%; }
+  .elementor-widget { position: relative; width: 100%; min-width: 0; }
   .elementor-widget:not(:last-child) { margin-bottom: 20px; }
   .elementor-widget-wrap { position: relative; width: 100%; flex-wrap: wrap; align-content: flex-start; display: flex; flex-direction: column; }
   .elementor-widget-wrap > .elementor-element { width: 100%; }
@@ -2244,8 +2277,10 @@ ${googleFontsLink}
 
   .elementor-spacer { height: 100%; }
   .elementor-spacer-inner { width: 100%; }
-  .elementor-image { display: inline-block; }
-  .elementor-image img { display: block; width: 100%; }
+  .elementor-widget-image { text-align: center; }
+  .elementor-widget-image.elementor-align-left { text-align: left; }
+  .elementor-widget-image.elementor-align-right { text-align: right; }
+  .elementor-image img { max-width: 100%; height: auto; vertical-align: middle; }
 
   .elementor-counter { display: flex; justify-content: center; align-items: stretch; flex-direction: column-reverse; }
   .elementor-counter-number-wrapper { flex: 1; display: flex; font-size: 69px; font-weight: 600; line-height: 1; text-align: center; }
@@ -2253,13 +2288,15 @@ ${googleFontsLink}
   .elementor-counter-title { flex: 1; display: flex; justify-content: center; align-items: center; margin: 0; padding: 0; font-size: 19px; font-weight: 400; line-height: 2.5; }
 
   .elementor-image-box-wrapper { display: flex; flex-direction: column; text-align: center; width: 100%; }
-  .elementor-image-box-img { display: inline-block; margin: 0 auto 15px; }
-  .elementor-image-box-img img { display: block; width: 100%; height: 200px; object-fit: cover; border-radius: 12px; }
+  .elementor-image-box-img { display: inline-block; margin: 0 auto; }
+  .elementor-image-box-img img { display: block; width: 100%; height: auto; }
   .elementor-image-box-content { width: 100%; flex-grow: 1; }
   .elementor-image-box-title { margin: 0 0 8px; font-size: 1.25rem; font-weight: 600; }
   .elementor-image-box-description { margin: 0; font-size: 1rem; line-height: 1.6; }
   .elementor-image-box-wrapper.elementor-image-box-left { flex-direction: row; align-items: center; gap: 20px; text-align: left; }
-  .elementor-image-box-wrapper.elementor-image-box-left .elementor-image-box-img { width: 120px; height: 120px; margin-bottom: 0; flex-shrink: 0; }
+  .elementor-image-box-wrapper.elementor-image-box-left .elementor-image-box-img { margin: 0; flex-shrink: 0; }
+  .elementor-image-box-wrapper.elementor-image-box-right { flex-direction: row-reverse; align-items: center; gap: 20px; text-align: left; }
+  .elementor-image-box-wrapper.elementor-image-box-right .elementor-image-box-img { margin: 0; flex-shrink: 0; }
 
   .elementor-icon-box-wrapper { display: flex; flex-direction: column; text-align: center; }
   .elementor-icon-box-icon { display: inline-block; flex: 0 0 auto; line-height: 0; margin-bottom: 15px; }
@@ -2287,11 +2324,11 @@ ${googleFontsLink}
   .elementor-video { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; }
   .elementor-video iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-  .elementor-image-carousel-wrapper { overflow: hidden; }
+  .elementor-image-carousel-wrapper { overflow: hidden; max-width: 100%; }
   .elementor-image-carousel { display: flex; overflow-x: auto; gap: 16px; scroll-snap-type: x mandatory; scrollbar-width: none; }
   .elementor-image-carousel::-webkit-scrollbar { display: none; }
-  .swiper-slide { flex-shrink: 0; width: 300px; scroll-snap-align: start; }
-  .swiper-slide img { width: 100%; height: 200px; object-fit: cover; border-radius: 12px; }
+  .swiper-slide { flex-shrink: 0; scroll-snap-align: start; }
+  .swiper-slide img { width: 100%; height: auto; display: block; }
 
   .elementor-progress-bar-wrapper { margin: 10px 0; }
   .elementor-progress-title { display: block; margin-bottom: 6px; font-weight: 600; }
@@ -2401,7 +2438,7 @@ ${googleFontsLink}
   .ekit_position_bottom_right { bottom: 12px; right: 12px; }
 
   .elementskit-info-image-box { border-radius: 10px; overflow: hidden; transition: all 0.3s; }
-  .elementskit-info-image-box .elementskit-box-header img { width: 100%; height: 220px; object-fit: cover; display: block; }
+  .elementskit-info-image-box .elementskit-box-header img { width: 100%; height: auto; object-fit: cover; display: block; }
   .elementskit-info-image-box .elementskit-box-body { padding: 24px; }
   .elementskit-info-image-box .elementskit-info-box-title { margin: 0 0 10px; font-size: 1.3rem; font-weight: 600; }
   .elementskit-info-image-box .elementskit-box-style-content { font-size: 1rem; line-height: 1.6; color: inherit; }

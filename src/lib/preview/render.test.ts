@@ -335,6 +335,280 @@ describe('renderWidget coverage', () => {
     expect(html).toContain('Image%20unavailable');
   });
 
+  it('renders image widget at its configured percent width, not forced to 100%', () => {
+    const tree = [{
+      id: 'img-width-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'img-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'img-widget',
+          elType: 'widget' as const,
+          widgetType: 'image',
+          settings: {
+            image: { url: 'https://example.com/hero.jpg', alt: 'Hero' },
+            width: { unit: '%', size: 87 },
+            align: 'center',
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toMatch(/class="elementor-image"[^>]*>[\s\S]*<img[^>]*style="[^"]*width:87%;/);
+  });
+
+  it('honors image_custom_dimension when image_size is custom', () => {
+    const tree = [{
+      id: 'img-custom-dim-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'img-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'img-widget',
+          elType: 'widget' as const,
+          widgetType: 'image',
+          settings: {
+            image: { url: 'https://example.com/p.jpg', alt: 'P' },
+            image_size: 'custom',
+            image_custom_dimension: { width: 640, height: 480 },
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('width:640px;');
+    expect(html).toContain('height:480px;');
+  });
+
+  it('honors image_custom_dimension via the legacy image_size_type flag', () => {
+    const tree = [{
+      id: 'img-legacy-dim-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'img-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'img-widget',
+          elType: 'widget' as const,
+          widgetType: 'image',
+          settings: {
+            image: { url: 'https://example.com/p.jpg', alt: 'P' },
+            image_size_type: 'custom',
+            image_custom_dimension: { width: 300, height: 200 },
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('width:300px;');
+    expect(html).toContain('height:200px;');
+  });
+
+  it('applies image_border_radius to image widget images', () => {
+    const tree = [{
+      id: 'img-radius-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'img-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'img-widget',
+          elType: 'widget' as const,
+          widgetType: 'image',
+          settings: {
+            image: { url: 'https://example.com/hero.jpg', alt: 'Hero' },
+            image_border_radius: { unit: 'px', top: '32', right: '32', bottom: '32', left: '32', isLinked: true },
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('border-radius:32px 32px 32px 32px;');
+  });
+
+  it('sizes image-box images to image_size percent width', () => {
+    const tree = [{
+      id: 'ib-size-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'ib-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'ib-widget',
+          elType: 'widget' as const,
+          widgetType: 'image-box',
+          settings: {
+            image: { url: 'https://example.com/avatar.jpg', alt: 'Avatar' },
+            title_text: 'Jane',
+            description_text: 'Lead',
+            image_size: { unit: '%', size: 20 },
+            image_position: 'left',
+            image_border_radius: { unit: 'px', size: 100 },
+            image_space: { unit: 'px', size: 10 },
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('width:20%');
+    expect(html).toContain('border-radius:100px');
+    expect(html).toContain('margin-right:10px');
+  });
+
+  it('keeps image-box images full width by default and unstretched', () => {
+    const tree = [{
+      id: 'ib-default-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'ib-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'ib-widget',
+          elType: 'widget' as const,
+          widgetType: 'image-box',
+          settings: {
+            image: { url: 'https://example.com/logo.png', alt: 'Logo' },
+            title_text: 'SEO',
+            description_text: 'Grow',
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('width:100%;');
+    expect(html).toContain('height:auto');
+    // Must not be forced into a fixed height crop
+    expect(html).not.toContain('height:200px');
+    expect(html).not.toContain('object-fit:cover');
+  });
+
+  it('renders single-show carousel slides at full width', () => {
+    const tree = [{
+      id: 'car-single-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'car-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'car-widget',
+          elType: 'widget' as const,
+          widgetType: 'image-carousel',
+          settings: {
+            slides_to_show: 1,
+            carousel: [
+              { url: 'https://example.com/1.jpg', alt: '1' },
+              { url: 'https://example.com/2.jpg', alt: '2' },
+            ],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    const slideWidths = Array.from(html.matchAll(/class="swiper-slide"[^>]*style="width:([^"]+)"/g)).map(m => m[1]);
+    expect(slideWidths).toHaveLength(2);
+    expect(slideWidths.every(w => w === '100%')).toBe(true);
+  });
+
+  it('sizes multi-show carousel slides so they fit without overflow', () => {
+    const tree = [{
+      id: 'car-multi-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'car-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'car-widget',
+          elType: 'widget' as const,
+          widgetType: 'image-carousel',
+          settings: {
+            slides_to_show: 5,
+            carousel: [
+              { url: 'https://example.com/1.jpg', alt: '1' },
+              { url: 'https://example.com/2.jpg', alt: '2' },
+              { url: 'https://example.com/3.jpg', alt: '3' },
+              { url: 'https://example.com/4.jpg', alt: '4' },
+              { url: 'https://example.com/5.jpg', alt: '5' },
+            ],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toMatch(/style="width:calc\(20% - 13px\)"/);
+  });
+
+  it('applies advanced _padding/_background/_border widget styles (card look)', () => {
+    const tree = [{
+      id: 'adv-style-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'adv-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'adv-widget',
+          elType: 'widget' as const,
+          widgetType: 'heading',
+          settings: {
+            heading: 'Card',
+            _padding: { unit: 'px', top: '024', right: '032', bottom: '024', left: '032' },
+            _background_background: 'classic',
+            _background_color: '',
+            _border_border: 'solid',
+            _border_radius: { unit: 'px', top: '24', right: '24', bottom: '24', left: '24', isLinked: true },
+            __globals__: { _background_color: 'globals/colors?id=primary' },
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree, {
+      globalKitPageSettings: {
+        system_colors: [{ _id: 'primary', title: 'Primary', color: '#7000FF' }],
+      },
+    });
+
+    expect(html).toContain('padding:024px 032px 024px 032px;');
+    expect(html).toContain('background:#7000FF');
+    expect(html).toContain('border:1px solid #e5e7eb;');
+    expect(html).toContain('border-radius:24px 24px 24px 24px');
+  });
+
+  it('does not blow out the layout for string-valued _padding (acatrade heading)', () => {
+    const tree = [{
+      id: 'pad-blowout-test',
+      elType: 'section' as const,
+      settings: {},
+      elements: [{
+        id: 'pad-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'pad-widget',
+          elType: 'widget' as const,
+          widgetType: 'heading',
+          settings: {
+            heading: 'Helping businesses succeed worldwide',
+            _padding: { unit: 'px', top: '0', right: '300', bottom: '0', left: '300' },
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('padding:0px 300px 0px 300px');
+    // Widgets must be able to shrink inside flex containers so large padding
+    // cannot overflow the viewport (flex min-width:auto bug).
+    expect(html).toMatch(/\.elementor-widget\s*\{[^}]*min-width:\s*0/);
+  });
+
   it('renders elementskit-lottie with the lottie-web library and data-path', () => {
     const tree = [{
       id: 'lottie-test',
