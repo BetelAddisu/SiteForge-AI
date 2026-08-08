@@ -619,6 +619,28 @@ function buildTypoStyle(settings: Record<string, unknown>): string {
   return parts.join(';');
 }
 
+// Like buildTypoStyle but for prefixed typography keys (e.g. the Slides
+// widget's heading_typography_* / description_typography_* controls).
+function buildPrefixedTypoStyle(settings: Record<string, unknown>, prefix: string): string {
+  const parts: string[] = [];
+  const pick = (key: string) => settings[`${prefix}_${key}`];
+  const ff = pick('font_family') as string;
+  if (ff) parts.push(`font-family:${ff}`);
+  const fs = dimVal(pick('font_size'));
+  if (fs) parts.push(`font-size:${fs}`);
+  const fw = pick('font_weight') as string;
+  if (fw) parts.push(`font-weight:${fw}`);
+  const lh = dimVal(pick('line_height'));
+  if (lh) parts.push(`line-height:${lh}`);
+  const ls = dimVal(pick('letter_spacing'));
+  if (ls) parts.push(`letter-spacing:${ls}`);
+  const tt = pick('text_transform') as string;
+  if (tt && tt !== 'none') parts.push(`text-transform:${tt}`);
+  const fsStyle = pick('font_style') as string;
+  if (fsStyle) parts.push(`font-style:${fsStyle}`);
+  return parts.join(';');
+}
+
 function buildHoverContainerStyle(settings: Record<string, unknown>): string {
   const parts: string[] = [];
   if (settings.background_hover_color) parts.push(`background:${settings.background_hover_color}`);
@@ -973,10 +995,10 @@ function renderElementsKitVideo(settings: Record<string, unknown>): string {
 }
 
 function renderImageCarousel(settings: Record<string, unknown>): string {
-  const images = (settings.carousel as Array<{ url?: string; alt?: string }>) || [];
-  const slides = (settings.slides as Array<{ image?: { url?: string; alt?: string } }>) || [];
-  let carouselImages = images.length > 0 ? images : slides.map(s => s.image || { url: '', alt: '' });
-  if (carouselImages.length === 0) return `<div class="elementor-image-carousel-wrapper"><div class="elementor-image-carousel" style="padding:40px;text-align:center;color:#999;">[Image Carousel]</div></div>`;
+  const images = (settings.carousel as Array<{ url?: string; alt?: string; _id?: string }>) || [];
+  const slides = (settings.slides as Array<{ image?: { url?: string; alt?: string }; _id?: string }>) || [];
+  let carouselImages = images.length > 0 ? images : slides.map(s => ({ ...(s.image || { url: '', alt: '' }), _id: s._id }));
+  if (carouselImages.length === 0) return `<div class="elementor-swiper"><div class="elementor-image-carousel-wrapper elementor-main-swiper" style="padding:40px;text-align:center;color:#999;">[Image Carousel]</div></div>`;
   // slides_to_show governs how many images fit side by side. Single-show
   // carousels (e.g. fade) get full-width slides so the images stay large.
   const slidesToShow = (settings.slides_to_show as number) || 1;
@@ -986,15 +1008,24 @@ function renderImageCarousel(settings: Record<string, unknown>): string {
     : '100%';
   const radius = dimStr(settings.image_border_radius);
   const imgStyle = `width:100%;display:block;${radius ? `border-radius:${radius};` : ''}`;
+  // Elementor carousel markup: elementor-swiper > wrapper > swiper-wrapper >
+  // swiper-slide > figure.swiper-slide-inner > img.swiper-slide-image.
   const items = carouselImages.map((img, i) =>
-    `<div class="swiper-slide" data-slide="${i}" style="width:${slideWidth}"><img src="${esc(img.url || '')}" alt="${esc(img.alt || '')}" loading="lazy" style="${imgStyle}"${imgFallbackAttr()} /></div>`
+    `<div class="swiper-slide${img._id ? ` elementor-repeater-item-${esc(img._id)}` : ''}" role="group" aria-roledescription="slide" data-slide="${i}" style="width:${slideWidth}">
+      <figure class="swiper-slide-inner"><img class="swiper-slide-image" src="${esc(img.url || '')}" alt="${esc(img.alt || '')}" loading="lazy" style="${imgStyle}"${imgFallbackAttr()} /></figure>
+    </div>`
   ).join('');
-  const dots = carouselImages.map((_, i) =>
-    `<span class="sf-img-dot${i === 0 ? ' sf-active' : ''}" data-slide="${i}"></span>`
+  const bullets = carouselImages.map((_, i) =>
+    `<span class="swiper-pagination-bullet${i === 0 ? ' swiper-pagination-bullet-active' : ''}" role="button" tabindex="0" aria-label="Go to slide ${i + 1}" data-slide="${i}"></span>`
   ).join('');
-  return `<div class="elementor-image-carousel-wrapper sf-carousel" data-total="${carouselImages.length}">
-    <div class="elementor-image-carousel swiper-container">${items}</div>
-    <div class="sf-img-dots" style="display:flex;justify-content:center;gap:8px;margin-top:12px;">${dots}</div>
+  const n = carouselImages.length;
+  return `<div class="elementor-swiper">
+    <div class="elementor-image-carousel-wrapper elementor-main-swiper swiper" role="region" aria-roledescription="carousel" aria-label="${esc((settings.slides_name as string) || 'Carousel')}" dir="ltr" data-total="${n}">
+      <div class="swiper-wrapper">${items}</div>
+      ${n > 1 ? `<div class="swiper-pagination">${bullets}</div>
+      <div class="elementor-swiper-button elementor-swiper-button-prev" role="button" tabindex="0" aria-label="Previous"><i class="eicon-chevron-left" aria-hidden="true"></i></div>
+      <div class="elementor-swiper-button elementor-swiper-button-next" role="button" tabindex="0" aria-label="Next"><i class="eicon-chevron-right" aria-hidden="true"></i></div>` : ''}
+    </div>
   </div>`;
 }
 
@@ -1728,25 +1759,92 @@ function renderForm(settings: Record<string, unknown>): string {
 }
 
 function renderSlides(settings: Record<string, unknown>, resolvedStyles: ResolvedStyles): string {
-  const slides = (settings.slides as Array<{ heading?: string; description?: string; button_text?: string; link?: { url?: string }; background_image?: { url?: string } }>) || [];
-  if (slides.length === 0) return `<div class="elementor-slides-wrapper" style="padding:80px;text-align:center;background:#1a1a1a;color:#fff;">[Slideshow]</div>`;
+  const slides = (settings.slides as Array<{ heading?: string; description?: string; button_text?: string; link?: { url?: string }; link_click?: string; _id?: string; background_image?: { url?: string }; background_color?: string; background_size?: string; background_ken_burns?: string; zoom_direction?: string; horizontal_position?: string; vertical_position?: string; background_overlay?: string; background_overlay_color?: string; text_align?: string }>) || [];
+  if (slides.length === 0) return `<div class="elementor-swiper"><div class="elementor-slides-wrapper elementor-main-swiper" style="padding:80px;text-align:center;background:#1a1a1a;color:#fff;">[Slideshow]</div></div>`;
+
+  // Widget-level slideshow settings — keys and defaults mirror the Elementor
+  // Pro "Slides" widget (modules/slides/widgets/slides.php).
+  const height = dimVal(settings.slides_height) || '400px';
+  const textAlign = (settings.slides_text_align as string) || 'center';
+  const hPos = (settings.slides_horizontal_position as string) || 'center';
+  const vPos = (settings.slides_vertical_position as string) || 'middle';
+  const contentMaxWidth = dimStr(settings.content_max_width) || '66%';
+  const slidesPadding = dimStr(settings.slides_padding);
+  const headingColor = (settings.heading_color as string) || '';
+  const descColor = (settings.description_color as string) || '';
+  const headingTypo = buildPrefixedTypoStyle(settings, 'heading_typography');
+  const descTypo = buildPrefixedTypoStyle(settings, 'description_typography');
+  const buttonSize = (settings.button_size as string) || 'sm';
+  const titleTag = (settings.slides_title_tag as string) || 'div';
+  const descTag = (settings.slides_description_tag as string) || 'div';
+  const arrowsColor = (settings.arrows_color as string) || '';
+  const dotsColor = (settings.dots_color as string) || '';
+  const arrowsPos = (settings.arrows_position as string) || 'inside';
+  const dotsPos = (settings.dots_position as string) || 'inside';
+  const navigation = (settings.navigation as string) || 'both';
+  const showArrows = navigation === 'arrows' || navigation === 'both';
+  const showDots = navigation === 'dots' || navigation === 'both';
+  const alignItems = vPos === 'top' ? 'flex-start' : vPos === 'bottom' ? 'flex-end' : 'center';
+  const contentAlign = hPos === 'left' ? 'margin-right:auto;' : hPos === 'right' ? 'margin-left:auto;' : 'margin:0 auto;';
+
   const items = slides.map((slide, i) => {
     const bg = slide.background_image?.url || '';
-    const bgStyle = bg ? `background-image:url(${esc(bg)});background-size:cover;background-position:center;` : 'background:#1a1a1a;';
-    return `<div class="elementor-slide" data-slide="${i}" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:500px;${bgStyle}padding:60px 40px;text-align:center;color:#fff;">
-      ${slide.heading ? `<h2 class="elementor-slide-heading" style="font-size:2.5rem;margin:0 0 16px;">${esc(slide.heading)}</h2>` : ''}
-      ${slide.description ? `<p class="elementor-slide-description" style="font-size:1.2rem;margin:0 0 24px;max-width:600px;">${esc(slide.description)}</p>` : ''}
-      ${slide.button_text ? `<a href="${esc(slide.link?.url || '#')}" class="elementor-button" style="background-color:#fff;color:#333;">${esc(slide.button_text)}</a>` : ''}
+    const bgSize = slide.background_size || 'cover';
+    const hp = slide.horizontal_position || '';
+    const vp = slide.vertical_position || '';
+    const bgPos = hp && vp ? `${hp} ${vp}` : 'center center';
+    const kenBurns = slide.background_ken_burns ? ` elementor-ken-burns elementor-ken-burns--${slide.zoom_direction || 'in'}` : '';
+    // Overlay and background live on dedicated layers, exactly like Elementor:
+    // .swiper-slide-bg (role="img") + .elementor-background-overlay.
+    const bgLayerStyle = bg
+      ? `background-image:url(${esc(bg)});background-size:${bgSize};background-position:${bgPos};`
+      : `background-color:${slide.background_color || '#bbbbbb'};`;
+    const overlay = slide.background_overlay === 'yes' && slide.background_overlay_color ? slide.background_overlay_color : '';
+    const slideTextAlign = slide.text_align || textAlign;
+    const slideVAlign = hp && vp
+      ? (vp === 'top' ? 'flex-start' : vp === 'bottom' ? 'flex-end' : 'center')
+      : alignItems;
+    // When the whole slide links, .swiper-slide-inner becomes the anchor.
+    const hasLink = !!(slide.link?.url);
+    const linkOnSlide = hasLink && slide.link_click !== 'button';
+    const innerTag = linkOnSlide ? 'a' : 'div';
+    const innerAttrs = linkOnSlide ? ` href="${esc(slide.link!.url)}"` : '';
+    const buttonTag = hasLink && slide.link_click === 'button' ? 'a' : 'div';
+    const buttonAttrs = hasLink && slide.link_click === 'button' ? ` href="${esc(slide.link!.url)}"` : '';
+    return `<div class="elementor-repeater-item-${esc(slide._id || i)} swiper-slide${i === 0 ? ' sf-active' : ''}" role="group" aria-roledescription="slide" data-slide="${i}" style="height:${height};">
+      <div class="swiper-slide-bg${kenBurns}" role="img" style="${bgLayerStyle}"></div>
+      ${overlay ? `<div class="elementor-background-overlay" style="background-color:${overlay};"></div>` : ''}
+      <${innerTag} class="swiper-slide-inner"${innerAttrs} style="align-items:${slideVAlign};text-align:${slideTextAlign};${slidesPadding ? `padding:${slidesPadding};` : ''}">
+        <div class="swiper-slide-contents" style="max-width:${contentMaxWidth};${contentAlign}">
+          ${slide.heading ? `<${titleTag} class="elementor-slide-heading" style="color:${headingColor};${headingTypo}">${esc(slide.heading)}</${titleTag}>` : ''}
+          ${slide.description ? `<${descTag} class="elementor-slide-description" style="color:${descColor};${descTypo}">${slide.description}</${descTag}>` : ''}
+          ${slide.button_text ? `<${buttonTag} class="elementor-button elementor-slide-button elementor-size-${buttonSize}"${buttonAttrs} style="display:inline-block;">${esc(slide.button_text)}</${buttonTag}>` : ''}
+        </div>
+      </${innerTag}>
     </div>`;
   }).join('');
-  const dots = slides.map((_, i) =>
-    `<span class="sf-slide-dot${i === 0 ? ' sf-active' : ''}" data-slide="${i}"></span>`
+  const bullets = slides.map((_, i) =>
+    `<span class="swiper-pagination-bullet${i === 0 ? ' swiper-pagination-bullet-active' : ''}" role="button" tabindex="0" aria-label="Go to slide ${i + 1}" data-slide="${i}"></span>`
   ).join('');
-  return `<div class="elementor-slides-wrapper sf-carousel" data-total="${slides.length}">
-    ${items}
-    <button class="sf-slide-arrow sf-slide-prev" aria-label="Previous">&#10094;</button>
-    <button class="sf-slide-arrow sf-slide-next" aria-label="Next">&#10095;</button>
-    <div class="sf-slide-dots">${dots}</div>
+  const vars = [
+    arrowsColor ? `--sf-arrow-color:${arrowsColor}` : '',
+    dotsColor ? `--sf-dots-color:${dotsColor}` : '',
+  ].filter(Boolean).join(';');
+  const wrapperCls = [
+    'elementor-slides-wrapper',
+    'elementor-main-swiper',
+    'sf-carousel',
+    arrowsPos === 'outside' ? 'sf-arrows-outside' : '',
+    dotsPos === 'outside' ? 'sf-dots-outside' : '',
+  ].filter(Boolean).join(' ');
+  const wrapperStyle = vars ? ` style="${vars}"` : '';
+  return `<div class="elementor-swiper">
+    <div class="${wrapperCls}" role="region" aria-roledescription="carousel" aria-label="${esc((settings.slides_name as string) || 'Slides')}" dir="ltr" data-animation="${esc((settings.content_animation as string) || '')}" data-total="${slides.length}"${settings.autoplay ? ' data-autoplay="1"' : ''}${wrapperStyle}>
+      <div class="swiper-wrapper elementor-slides">${items}</div>
+      ${slides.length > 1 && showDots ? `<div class="swiper-pagination">${bullets}</div>` : ''}
+      ${slides.length > 1 && showArrows ? `<div class="elementor-swiper-button elementor-swiper-button-prev" role="button" tabindex="0" aria-label="Previous slide"><i class="eicon-chevron-left" aria-hidden="true"></i></div>
+      <div class="elementor-swiper-button elementor-swiper-button-next" role="button" tabindex="0" aria-label="Next slide"><i class="eicon-chevron-right" aria-hidden="true"></i></div>` : ''}
+    </div>
   </div>`;
 }
 
@@ -2324,11 +2422,11 @@ ${googleFontsLink}
   .elementor-video { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; }
   .elementor-video iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-  .elementor-image-carousel-wrapper { overflow: hidden; max-width: 100%; }
-  .elementor-image-carousel { display: flex; overflow-x: auto; gap: 16px; scroll-snap-type: x mandatory; scrollbar-width: none; }
-  .elementor-image-carousel::-webkit-scrollbar { display: none; }
-  .swiper-slide { flex-shrink: 0; scroll-snap-align: start; }
-  .swiper-slide img { width: 100%; height: auto; display: block; }
+  .elementor-image-carousel-wrapper { overflow: hidden; max-width: 100%; position: relative; }
+  .elementor-image-carousel-wrapper .swiper-wrapper { display: flex; overflow-x: auto; gap: 16px; scroll-snap-type: x mandatory; scrollbar-width: none; align-items: center; }
+  .elementor-image-carousel-wrapper .swiper-wrapper::-webkit-scrollbar { display: none; }
+  .elementor-image-carousel-wrapper .swiper-slide { flex-shrink: 0; scroll-snap-align: start; }
+  .swiper-slide img.swiper-slide-image { width: 100%; height: auto; display: block; }
 
   .elementor-progress-bar-wrapper { margin: 10px 0; }
   .elementor-progress-title { display: block; margin-bottom: 6px; font-weight: 600; }
@@ -2367,19 +2465,34 @@ ${googleFontsLink}
   .elementor-form input, .elementor-form textarea { padding: 12px; border: 1px solid #d3d3d3; border-radius: 3px; font-size: 15px; font-family: inherit; }
   .elementor-form textarea { min-height: 100px; resize: vertical; }
 
-  .elementor-slides-wrapper { position: relative; overflow: hidden; min-height: 500px; }
-  .elementor-slide { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 500px; padding: 60px 40px; text-align: center; color: #fff; position: relative; }
-  .elementor-slide.sf-active { display: flex; }
-  .elementor-slide-heading { font-size: 2.5rem; margin: 0 0 16px; }
-  .elementor-slide-description { font-size: 1.2rem; margin: 0 0 24px; max-width: 600px; }
-  .sf-slide-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 10; background: rgba(0,0,0,0.3); color: #fff; border: none; font-size: 2rem; padding: 12px 16px; cursor: pointer; border-radius: 4px; transition: background 0.2s; }
-  .sf-slide-arrow:hover { background: rgba(0,0,0,0.6); }
-  .sf-slide-prev { left: 16px; }
-  .sf-slide-next { right: 16px; }
-  .sf-slide-dots { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 10; }
-  .sf-slide-dot { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.5); cursor: pointer; transition: background 0.2s; }
-  .sf-slide-dot.sf-active { background: #fff; }
-  .sf-slide-dot:hover { background: rgba(255,255,255,0.8); }
+  .elementor-swiper { position: relative; }
+  .elementor-main-swiper { position: relative; }
+  .elementor-slides-wrapper { position: relative; overflow: hidden; }
+  .elementor-slides-wrapper .swiper-wrapper.elementor-slides { display: flex; }
+  .elementor-slides-wrapper .swiper-slide { display: none; flex-shrink: 0; width: 100%; position: relative; overflow: hidden; }
+  .elementor-slides-wrapper .swiper-slide.sf-active { display: block; }
+  .swiper-slide-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; z-index: 0; }
+  .elementor-slides-wrapper .elementor-background-overlay { z-index: 1; }
+  .elementor-slides-wrapper .swiper-slide-inner { position: relative; z-index: 2; display: flex; flex-direction: column; justify-content: center; height: 100%; color: #fff; }
+  .elementor-slides-wrapper .swiper-slide-contents { margin: 0 auto; }
+  .elementor-slide-heading { margin: 0 0 16px; font-size: 2.5rem; line-height: 1.2; }
+  .elementor-slide-description { margin: 0 0 24px; font-size: 1.2rem; max-width: 100%; }
+  .elementor-slide-button { font-family: inherit; }
+  .elementor-ken-burns { animation: sfKenBurns 8s ease-out both; }
+  .elementor-ken-burns--out { animation-name: sfKenBurnsOut; }
+  .elementor-swiper-button { position: absolute; top: 50%; transform: translateY(-50%); z-index: 10; background: rgba(0,0,0,0.3); color: var(--sf-arrow-color, #fff); border: none; font-size: 2rem; padding: 12px 16px; cursor: pointer; border-radius: 4px; transition: background 0.2s; line-height: 1; }
+  .elementor-swiper-button:hover { background: rgba(0,0,0,0.6); }
+  .elementor-swiper-button svg { fill: currentColor; }
+  .elementor-swiper-button-prev { left: 16px; }
+  .elementor-swiper-button-next { right: 16px; }
+  .elementor-slides-wrapper.sf-arrows-outside { overflow: visible; }
+  .elementor-slides-wrapper.sf-arrows-outside .elementor-swiper-button-prev { left: -22px; }
+  .elementor-slides-wrapper.sf-arrows-outside .elementor-swiper-button-next { right: -22px; }
+  .swiper-pagination { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 10; }
+  .elementor-slides-wrapper.sf-dots-outside .swiper-pagination { bottom: -28px; }
+  .swiper-pagination-bullet { width: 12px; height: 12px; border-radius: 50%; background: var(--sf-dots-color, rgba(255,255,255,0.5)); cursor: pointer; transition: background 0.2s; }
+  .swiper-pagination-bullet-active { background: var(--sf-dots-color, #fff); }
+  .swiper-pagination-bullet:hover { background: var(--sf-dots-color, rgba(255,255,255,0.8)); }
 
   .elementor-background-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
   .elementor-section > .elementor-container { position: relative; z-index: 2; }
@@ -2546,6 +2659,8 @@ ${googleFontsLink}
   @keyframes sf-countUp { from { opacity: 0; } to { opacity: 1; } }
   @keyframes sf-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
   @keyframes sf-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  @keyframes sfKenBurns { from { transform: scale(1.1); } to { transform: scale(1); } }
+  @keyframes sfKenBurnsOut { from { transform: scale(1); } to { transform: scale(1.1); } }
 
   .elementor-section { animation: sf-fadeInUp 0.6s ease-out both; }
   .elementor-section:nth-child(2) { animation-delay: 0.1s; }
@@ -2641,71 +2756,72 @@ ${body}
 
   // --- Slide carousel (slides widget) ---
   function initSlideCarousel(wrapper) {
-    var slides = wrapper.querySelectorAll('.elementor-slide');
-    var dots = wrapper.querySelectorAll('.sf-slide-dot');
-    var prev = wrapper.querySelector('.sf-slide-prev');
-    var next = wrapper.querySelector('.sf-slide-next');
+    var slides = wrapper.querySelectorAll('.swiper-wrapper.elementor-slides > .swiper-slide');
+    var dots = wrapper.querySelectorAll('.swiper-pagination-bullet');
+    var prev = wrapper.querySelector('.elementor-swiper-button-prev');
+    var next = wrapper.querySelector('.elementor-swiper-button-next');
     var current = 0, total = slides.length;
     if (total === 0) return;
     function show(idx) {
       idx = (idx + total) % total;
-      slides.forEach(function(s) { s.classList.remove('sf-active'); s.style.display = 'none'; });
-      dots.forEach(function(d) { d.classList.remove('sf-active'); });
+      slides.forEach(function(s) { s.classList.remove('sf-active'); });
+      dots.forEach(function(d) { d.classList.remove('swiper-pagination-bullet-active'); });
       slides[idx].classList.add('sf-active');
-      slides[idx].style.display = 'flex';
-      dots[idx].classList.add('sf-active');
+      dots[idx].classList.add('swiper-pagination-bullet-active');
       current = idx;
     }
-    if (slides[0]) { slides[0].style.display = 'flex'; slides[0].classList.add('sf-active'); }
+    if (slides[0]) { slides[0].classList.add('sf-active'); }
     if (next) next.addEventListener('click', function() { show(current + 1); });
     if (prev) prev.addEventListener('click', function() { show(current - 1); });
     dots.forEach(function(dot) {
       dot.addEventListener('click', function() { show(parseInt(this.getAttribute('data-slide'))); });
     });
-    setInterval(function() { show(current + 1); }, 5000);
+    // Only auto-advance when the widget's autoplay control is enabled.
+    if (wrapper.getAttribute('data-autoplay')) setInterval(function() { show(current + 1); }, 5000);
   }
-  document.querySelectorAll('.sf-carousel').forEach(initSlideCarousel);
+  document.querySelectorAll('.elementor-slides-wrapper.sf-carousel').forEach(initSlideCarousel);
 
-  // Image carousel with dots
-  var imgCarousels = document.querySelectorAll('.elementor-image-carousel');
-  imgCarousels.forEach(function(carousel) {
-    var wrapper = carousel.closest('.sf-carousel');
-    var imgDots = wrapper ? wrapper.querySelectorAll('.sf-img-dot') : [];
-    if (imgDots.length) {
-      imgDots.forEach(function(dot) {
-        dot.addEventListener('click', function() {
-          var idx = parseInt(this.getAttribute('data-slide'));
-          var slideEl = carousel.querySelector('.swiper-slide[data-slide="' + idx + '"]');
-          if (slideEl) slideEl.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
-          imgDots.forEach(function(d) { d.classList.remove('sf-active'); });
-          this.classList.add('sf-active');
-        });
+  // Image carousel (scrollable swiper with dots + arrows)
+  var imgCarousels = document.querySelectorAll('.elementor-image-carousel-wrapper .swiper-wrapper');
+  imgCarousels.forEach(function(track) {
+    var wrapper = track.closest('.elementor-main-swiper');
+    if (!wrapper) return;
+    var slides = track.querySelectorAll('.swiper-slide');
+    if (slides.length < 2) return;
+    var bullets = wrapper.querySelectorAll('.swiper-pagination-bullet');
+    var prev = wrapper.querySelector('.elementor-swiper-button-prev');
+    var next = wrapper.querySelector('.elementor-swiper-button-next');
+    function updateActiveDot() {
+      var trackRect = track.getBoundingClientRect();
+      var activeIdx = 0;
+      slides.forEach(function(s, idx) {
+        var rect = s.getBoundingClientRect();
+        if (rect.left >= trackRect.left && rect.left < trackRect.left + trackRect.width / 2) {
+          activeIdx = idx;
+        }
       });
-      // Update active dot on scroll
-      carousel.addEventListener('scroll', function() {
-        var scrollLeft = this.scrollLeft;
-        var slides = this.querySelectorAll('.swiper-slide');
-        var activeIdx = 0;
-        slides.forEach(function(s, idx) {
-          var rect = s.getBoundingClientRect();
-          var carouselRect = carousel.getBoundingClientRect();
-          if (rect.left >= carouselRect.left && rect.left < carouselRect.left + carouselRect.width / 2) {
-            activeIdx = idx;
-          }
-        });
-        imgDots.forEach(function(d) { d.classList.remove('sf-active'); });
-        if (imgDots[activeIdx]) imgDots[activeIdx].classList.add('sf-active');
-      });
+      bullets.forEach(function(d, i) { d.classList.toggle('swiper-pagination-bullet-active', i === activeIdx); });
     }
-    // Auto-play
-    if (carousel.dataset.autoplay === 'false') return;
-    var scrollAmount = carousel.clientWidth;
-    setInterval(function() {
-      var maxScroll = carousel.scrollWidth - carousel.clientWidth;
-      var nextScroll = carousel.scrollLeft + scrollAmount;
-      if (nextScroll >= maxScroll) { nextScroll = 0; }
-      carousel.scrollTo({ left: nextScroll, behavior: 'smooth' });
-    }, 4000);
+    bullets.forEach(function(dot) {
+      dot.addEventListener('click', function() {
+        var idx = parseInt(this.getAttribute('data-slide'));
+        var slideEl = slides[idx];
+        if (slideEl) slideEl.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+        bullets.forEach(function(d) { d.classList.remove('swiper-pagination-bullet-active'); });
+        this.classList.add('swiper-pagination-bullet-active');
+      });
+    });
+    track.addEventListener('scroll', updateActiveDot);
+    function step(dir) {
+      var amount = track.clientWidth;
+      var maxScroll = track.scrollWidth - track.clientWidth;
+      var nextScroll = dir === 'next'
+        ? Math.min(track.scrollLeft + amount, maxScroll)
+        : Math.max(track.scrollLeft - amount, 0);
+      track.scrollTo({ left: nextScroll, behavior: 'smooth' });
+    }
+    if (next) next.addEventListener('click', function() { step('next'); });
+    if (prev) prev.addEventListener('click', function() { step('prev'); });
   });
 
   // Tabs switching

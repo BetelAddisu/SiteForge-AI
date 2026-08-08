@@ -12,6 +12,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getStorageProvider } from '@/lib/storage';
 import { getZipFromR2, extractKitSlug, detectCategory, detectIndustry, slugify, type Manifest } from '@/lib/templates/manifest';
+import { parseTemplateDocument, getTemplateName } from '@/lib/elementor/template-document';
 
 export async function POST(request: Request) {
   try {
@@ -96,9 +97,9 @@ export async function POST(request: Request) {
             continue;
           }
 
-          // Read the actual Elementor page data - the widget tree lives at
-          // pageJson.content.content (double nested in the real format).
-          // Also resolve template name from the JSON's page_title setting.
+          // Read the actual Elementor page data. The widget tree can arrive as
+          // a bare element array, an inner document (content IS the array), or a
+          // kit wrapper (content.content is the array) — normalize all three.
           let elementorContent: object[] = [];
           let templateName = template.name;
           
@@ -107,23 +108,15 @@ export async function POST(request: Request) {
             if (sourceEntry) {
               const sourceRaw = await sourceEntry.async('string');
               const pageJson = JSON.parse(sourceRaw);
+              const parsed = parseTemplateDocument(pageJson);
 
-              // Extract template name from page_title if available
-              if (pageJson?.content?.content?.[0]?.settings?.page_title) {
-                templateName = pageJson.content.content[0].settings.page_title;
-              }
-
-              // Real structure: pageJson.content.content is the widget array
-              if (Array.isArray(pageJson?.content?.content)) {
-                elementorContent = pageJson.content.content as object[];
-              } else if (Array.isArray(pageJson?.content)) {
-                elementorContent = pageJson.content as object[];
-              } else if (Array.isArray(pageJson)) {
-                elementorContent = pageJson as object[];
-              } else {
+              if (parsed.shape === 'none') {
                 results.errors.push(
                   `Unrecognized page-data shape for ${template.name} in ${zipName} (source: ${template.source})`
                 );
+              } else {
+                elementorContent = parsed.document.content as object[];
+                templateName = getTemplateName(pageJson, template.name);
               }
             } else {
               results.errors.push(

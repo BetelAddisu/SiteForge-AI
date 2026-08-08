@@ -42,3 +42,6 @@ prisma/migrations/
 .vscode/
 *.swp
 *.swo
+
+# elemntore 
+reference/

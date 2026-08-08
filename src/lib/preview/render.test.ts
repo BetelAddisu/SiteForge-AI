@@ -151,7 +151,7 @@ describe('renderWidget coverage', () => {
 
     expect(html).toContain('Counter count-up');
     expect(html).toContain('Accordion toggle');
-    expect(html).toContain('Auto-play');
+    expect(html).toContain('swiper-pagination-bullet');
   });
 
   it('applies background styles to containers (elType: container)', () => {
@@ -545,6 +545,347 @@ describe('renderWidget coverage', () => {
     const html = renderElementorToHtml(tree);
 
     expect(html).toMatch(/style="width:calc\(20% - 13px\)"/);
+  });
+
+  it('renders the slides widget with the first slide visible by default', () => {
+    const tree = [{
+      id: 'slides-visible-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'slides-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'slides-widget',
+          elType: 'widget' as const,
+          widgetType: 'slides',
+          settings: {
+            slides: [
+              { heading: 'First', background_image: { url: 'https://example.com/1.jpg' } },
+              { heading: 'Second', background_image: { url: 'https://example.com/2.jpg' } },
+            ],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    // Slide 0 must be rendered visible before JS runs; others rely on the
+    // Elementor swiper-shell markup (.swiper-slide hidden via CSS, .sf-active shown).
+    expect(html).toMatch(/class="elementor-slides-wrapper elementor-main-swiper sf-carousel"[^>]*data-total="2"/);
+    expect(html).toMatch(/class="elementor-repeater-item-0 swiper-slide sf-active"[^>]*data-slide="0"/);
+    expect(html).toMatch(/class="elementor-repeater-item-1 swiper-slide"[^>]*data-slide="1"/);
+  });
+
+  it('sizes slides from slides_height instead of a hardcoded height', () => {
+    const tree = [{
+      id: 'slides-height-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'slides-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'slides-widget',
+          elType: 'widget' as const,
+          widgetType: 'slides',
+          settings: {
+            slides_height: { unit: 'px', size: 400 },
+            slides: [{ heading: 'H', background_image: { url: 'https://example.com/1.jpg' } }],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('height:400px');
+    expect(html).not.toContain('height:500px');
+  });
+
+  it('honors per-slide background_size and position for slides', () => {
+    const tree = [{
+      id: 'slides-bg-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'slides-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'slides-widget',
+          elType: 'widget' as const,
+          widgetType: 'slides',
+          settings: {
+            slides: [{
+              heading: 'H',
+              background_image: { url: 'https://example.com/hero.jpg' },
+              background_size: 'contain',
+              horizontal_position: 'left',
+              vertical_position: 'top',
+            }],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('background-size:contain');
+    expect(html).toContain('background-position:left top');
+  });
+
+  it('renders the slides background overlay tint', () => {
+    const tree = [{
+      id: 'slides-overlay-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'slides-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'slides-widget',
+          elType: 'widget' as const,
+          widgetType: 'slides',
+          settings: {
+            slides: [{
+              heading: 'H',
+              background_image: { url: 'https://example.com/hero.jpg' },
+              background_overlay: 'yes',
+              background_overlay_color: 'rgba(0,0,0,0.5)',
+            }],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('class="elementor-background-overlay"');
+    expect(html).toContain('background-color:rgba(0,0,0,0.5)');
+  });
+
+  it('keeps rich HTML in slides descriptions unescaped', () => {
+    const tree = [{
+      id: 'slides-html-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'slides-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'slides-widget',
+          elType: 'widget' as const,
+          widgetType: 'slides',
+          settings: {
+            slides: [{ heading: '1912', description: '<strong>Second generation</strong><br>Detail text.' }],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('<strong>Second generation</strong>');
+    expect(html).not.toContain('&lt;strong&gt;');
+  });
+
+  it('applies slides layout controls (align, content width, colors, autoplay off)', () => {
+    const tree = [{
+      id: 'slides-layout-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'slides-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'slides-widget',
+          elType: 'widget' as const,
+          widgetType: 'slides',
+          settings: {
+            slides_text_align: 'left',
+            slides_horizontal_position: 'left',
+            content_max_width: { unit: '%', size: 44 },
+            slides_padding: { unit: '%', top: '10', right: '10', bottom: '10', left: '10', isLinked: true },
+            heading_color: '#FFFFFF',
+            description_color: '#F0F0F0',
+            heading_typography_font_family: 'Prata',
+            heading_typography_font_size: { unit: 'rem', size: 4 },
+            arrows_color: '#000000',
+            slides: [
+              { heading: '1912', description: 'History', background_image: { url: 'https://example.com/h.jpg' } },
+            ],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('text-align:left');
+    expect(html).toContain('max-width:44%');
+    expect(html).toContain('color:#FFFFFF');
+    expect(html).toContain('font-family:Prata');
+    expect(html).toContain('font-size:4rem');
+    expect(html).toContain('--sf-arrow-color:#000000');
+    // autoplay unset -> wrapper carries no data-autoplay attribute
+    expect(html).not.toMatch(/elementor-slides-wrapper[^>]*data-autoplay/);
+  });
+
+  it('enables autoplay only when the slides autoplay control is set', () => {
+    const tree = [{
+      id: 'slides-autoplay-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'slides-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'slides-widget',
+          elType: 'widget' as const,
+          widgetType: 'slides',
+          settings: {
+            autoplay: 'yes',
+            slides: [{ heading: 'H', background_image: { url: 'https://example.com/1.jpg' } }],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('data-autoplay="1"');
+  });
+
+  it('renders Elementor navigation arrows and pagination dots for multi-slide slideshows', () => {
+    const tree = [{
+      id: 'slides-nav-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'slides-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'slides-widget',
+          elType: 'widget' as const,
+          widgetType: 'slides',
+          settings: {
+            slides: [
+              { heading: 'A', background_image: { url: 'https://example.com/a.jpg' } },
+              { heading: 'B', background_image: { url: 'https://example.com/b.jpg' } },
+            ],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toMatch(/class="elementor-swiper-button elementor-swiper-button-prev"[^>]*aria-label="Previous slide"><i class="eicon-chevron-left"/);
+    expect(html).toMatch(/class="elementor-swiper-button elementor-swiper-button-next"[^>]*aria-label="Next slide"><i class="eicon-chevron-right"/);
+    expect(html).toContain('<div class="swiper-pagination">');
+    expect(html).toContain('class="swiper-pagination-bullet swiper-pagination-bullet-active"');
+    expect(html).toMatch(/swiper-pagination-bullet(?! swiper-pagination-bullet-active)/);
+  });
+
+  it('omits navigation when the navigation control is none', () => {
+    const tree = [{
+      id: 'slides-navnone-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'slides-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'slides-widget',
+          elType: 'widget' as const,
+          widgetType: 'slides',
+          settings: {
+            navigation: 'none',
+            slides: [
+              { heading: 'A', background_image: { url: 'https://example.com/a.jpg' } },
+              { heading: 'B', background_image: { url: 'https://example.com/b.jpg' } },
+            ],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).not.toContain('class="elementor-swiper-button');
+    expect(html).not.toContain('class="swiper-pagination"');
+  });
+
+  it('adds ken-burns classes from per-slide background_ken_burns', () => {
+    const tree = [{
+      id: 'slides-kenburns-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'slides-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'slides-widget',
+          elType: 'widget' as const,
+          widgetType: 'slides',
+          settings: {
+            slides: [{
+              heading: 'H',
+              background_image: { url: 'https://example.com/hero.jpg' },
+              background_ken_burns: 'yes',
+              zoom_direction: 'out',
+            }],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toMatch(/class="swiper-slide-bg elementor-ken-burns elementor-ken-burns--out"/);
+  });
+
+  it('uses slides_title_tag/slides_description_tag and links the button when link_click is button', () => {
+    const tree = [{
+      id: 'slides-tags-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'slides-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'slides-widget',
+          elType: 'widget' as const,
+          widgetType: 'slides',
+          settings: {
+            slides_title_tag: 'h2',
+            slides_description_tag: 'p',
+            button_size: 'lg',
+            slides: [{
+              heading: 'Title',
+              description: 'Body',
+              button_text: 'Learn more',
+              link: { url: 'https://example.com/go' },
+              link_click: 'button',
+            }],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toContain('<h2 class="elementor-slide-heading"');
+    expect(html).toContain('<p class="elementor-slide-description"');
+    expect(html).toMatch(/<div class="swiper-slide-inner"/);
+    expect(html).toMatch(/<a class="elementor-button elementor-slide-button elementor-size-lg" href="https:\/\/example\.com\/go"/);
+  });
+
+  it('wraps the whole slide in an anchor when link_click is slide', () => {
+    const tree = [{
+      id: 'slides-link-test',
+      elType: 'section' as const,
+      elements: [{
+        id: 'slides-col',
+        elType: 'column' as const,
+        elements: [{
+          id: 'slides-widget',
+          elType: 'widget' as const,
+          widgetType: 'slides',
+          settings: {
+            slides: [{
+              heading: 'Title',
+              button_text: 'Go',
+              link: { url: 'https://example.com/whole' },
+              link_click: 'slide',
+            }],
+          },
+        }],
+      }],
+    }] as any;
+    const html = renderElementorToHtml(tree);
+
+    expect(html).toMatch(/<a class="swiper-slide-inner" href="https:\/\/example\.com\/whole"/);
+    expect(html).toMatch(/<div class="elementor-button elementor-slide-button elementor-size-sm"/);
   });
 
   it('applies advanced _padding/_background/_border widget styles (card look)', () => {

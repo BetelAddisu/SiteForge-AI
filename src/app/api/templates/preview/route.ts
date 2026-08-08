@@ -18,6 +18,7 @@ import { getStorageProvider } from '@/lib/storage';
 import JSZip from 'jszip';
 import { renderElementorToHtml, type ElementorNode } from '@/lib/preview/render';
 import { getZipFromR2, extractKitSlug, slugify, type Manifest } from '@/lib/templates/manifest';
+import { getTemplateElements, getTemplateName } from '@/lib/elementor/template-document';
 
 /**
  * Extract the Global Kit Styles page_settings (system_colors, system_typography,
@@ -65,24 +66,13 @@ async function extractTemplateContent(
     
     const templateRaw = await templateEntry.async('string');
     const pageJson = JSON.parse(templateRaw);
+
+    // Extract the element tree and display name from any of the supported
+    // shapes (bare array / inner document / kit wrapper).
+    const elements = getTemplateElements(pageJson);
+    const name = getTemplateName(pageJson, '');
     
-    // Extract template name from settings
-    let templateName = '';
-    if (pageJson?.content?.content?.[0]?.settings?.page_title) {
-      templateName = pageJson.content.content[0].settings.page_title;
-    }
-    
-    // Get the elements array - the real structure is pageJson.content.content
-    let elements: ElementorNode[] = [];
-    if (Array.isArray(pageJson?.content?.content)) {
-      elements = pageJson.content.content as ElementorNode[];
-    } else if (Array.isArray(pageJson?.content)) {
-      elements = pageJson.content as ElementorNode[];
-    } else if (Array.isArray(pageJson)) {
-      elements = pageJson as ElementorNode[];
-    }
-    
-    return { elements, name: templateName };
+    return { elements, name };
   } catch (error) {
     console.error('[Template Preview] Error extracting content:', error);
     return null;

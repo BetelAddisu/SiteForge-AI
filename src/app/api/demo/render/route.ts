@@ -21,6 +21,7 @@ import { NextResponse } from 'next/server';
 import * as fs from 'fs';
 import * as path from 'path';
 import { renderElementorToHtml, type ElementorNode, type BrandTokens } from '@/lib/preview/render';
+import { getTemplateElements } from '@/lib/elementor/template-document';
 
 const TEMPLATE_PATH = path.join(process.cwd(), 'templates', 'digicy-digital-agency-elementor-template-kit', 'home.json');
 
@@ -71,20 +72,14 @@ function loadTemplate(): TemplateNode[] | null {
     
     const content = fs.readFileSync(TEMPLATE_PATH, 'utf-8');
     const data = JSON.parse(content);
-    
-    // Handle the nested structure: data.content.content
-    if (data?.content?.content) {
-      return data.content.content as TemplateNode[];
+
+    // Normalize the kit-wrapper / document / bare-array shapes.
+    const elements = getTemplateElements(data);
+    if (elements.length === 0) {
+      console.error('[Demo] Unexpected template structure');
+      return null;
     }
-    if (data?.content) {
-      return data.content as TemplateNode[];
-    }
-    if (Array.isArray(data)) {
-      return data;
-    }
-    
-    console.error('[Demo] Unexpected template structure');
-    return null;
+    return elements as TemplateNode[];
   } catch (error) {
     console.error('[Demo] Error loading template:', error);
     return null;
